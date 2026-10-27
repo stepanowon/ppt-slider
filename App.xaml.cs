@@ -11,6 +11,7 @@ public partial class App : Application
             Shutdown(SelfTest.Run(file, outDir));
             return;
         }
+        Shortcuts.Load();
         var w = new MainWindow();
         w.Show();
         if (e.Args.FirstOrDefault() is { } path) w.Open(path); // file association / "Open with"

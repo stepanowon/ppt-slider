@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+publish/
+*.binlog
+
+# WPF build temp projects (*_wpftmp.csproj)
+*_wpftmp.*
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userprefs
+*.rsuser
+
+# NuGet
+*.nupkg
+packages/
+
+# Test output
+TestResults/
+selftest-out/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store

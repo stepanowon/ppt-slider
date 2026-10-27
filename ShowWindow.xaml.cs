@@ -17,9 +17,10 @@ public partial class ShowWindow : Window
         this.main = main;
         Monitor = monitor;
         Monitors.PlaceFullScreen(this, monitor);
-        foreach (var c in PenState.Palette)
+        foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
-            var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false };
+            var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = "펜/형광펜 색" };
+            Shortcuts.SetFor(b, $"color{i + 1}");
             b.Click += (_, _) => main.Pen.SetColor(c);
             Swatches.Children.Add(b);
         }
@@ -53,14 +54,14 @@ public partial class ShowWindow : Window
 
     void OnKey(object sender, KeyEventArgs e)
     {
-        var k = MainWindow.RealKey(e);
+        var g = Gesture.From(e);
         e.Handled = true;
-        if (k == Key.Escape)
+        if (g is { Key: Key.Escape, Mods: ModifierKeys.None })
         {
             if (main.Pen.Tool != Tool.Select) main.Pen.SetTool(Tool.Select);
             else Close();
         }
-        else e.Handled = main.HandleCommonKey(k);
+        else e.Handled = Shortcuts.Find(g, inShow: true) is { } id && main.Run(id);
     }
 
     void OnClick(object sender, MouseButtonEventArgs e)

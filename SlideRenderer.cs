@@ -10,8 +10,8 @@ using Path = System.Windows.Shapes.Path;
 
 namespace PptSlider;
 
-/// <summary>A top-level shape on the slide and where it was drawn (slide DIPs).</summary>
-public record ShapeHit(OpenXmlElement Element, Rect Bounds);
+/// <summary>A top-level shape on the slide, where it was drawn (slide DIPs) and its drawn text, if any.</summary>
+public record ShapeHit(OpenXmlElement Element, Rect Bounds, FrameworkElement? Text = null);
 
 /// <summary>
 /// Draws PPTX slides as WPF visuals: backgrounds, master/layout graphics, shapes, text, pictures, groups, tables.
@@ -25,6 +25,7 @@ public class SlideRenderer
     readonly Dictionary<SlideMasterPart, Theme> themes = new();
     public double Width { get; }
     public double Height { get; }
+    FrameworkElement? lastText; // text panel of the shape DrawShape just drew
 
     public SlideRenderer(PresentationPart pres)
     {
@@ -92,6 +93,7 @@ public class SlideRenderer
                 el = X.Child(el, "Fallback")?.FirstChild ?? X.Child(el, "Choice")?.FirstChild;
             if (el == null || (skipPh && Ph(el) != null)) continue;
             Rect? r = null;
+            lastText = null;
             try
             {
                 r = el.LocalName switch
@@ -103,7 +105,7 @@ public class SlideRenderer
                 };
             }
             catch (Exception) { /* one malformed shape must not kill the whole slide */ }
-            if (r != null) hits?.Add(new ShapeHit(child, r.Value));
+            if (r != null) hits?.Add(new ShapeHit(child, r.Value, el.LocalName == "sp" ? lastText : null));
         }
     }
 
@@ -183,7 +185,7 @@ public class SlideRenderer
             else { lists.Add(c.DefaultText); lists.Add(X.Child(c.TxStyles, "otherStyle")); }
             var bodies = all.Select(s => X.Child(X.Child(s, "txBody"), "bodyPr")).ToList();
             var fontRef = ColorOf(X.Child(style, "fontRef"), c);
-            if (Text(tx, lists, bodies, c, fontRef) is { } text) host.Children.Add(text);
+            if (Text(tx, lists, bodies, c, fontRef) is { } text) host.Children.Add(lastText = text);
         }
         target.Children.Add(host);
         return r;
@@ -355,8 +357,9 @@ public class SlideRenderer
                     FontSize = size * (X.Long(PC("buSzPct"), "val") ?? 100000) / 100000.0,
                 };
                 if (X.Attr(PC("buFont"), "typeface") is { } bf && !bf.StartsWith('+')) bu.FontFamily = new FontFamily(bf);
+                bu.Tag = Bullet;
                 tb.Inlines.Add(bu);
-                tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6 });
+                tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6, Tag = Bullet });
             }
             foreach (var r in runs)
             {
@@ -376,6 +379,41 @@ public class SlideRenderer
             panel.Children.Add(tb);
         }
         return panel;
+    }
+
+    static readonly object Bullet = new();
+
+    /// <summary>
+    /// The text a <see cref="Text"/> panel drew, as an editable document that looks the same.
+    /// Bullets become non-text inline objects, so the document's text matches <see cref="Deck.GetEditText"/>.
+    /// </summary>
+    public static FlowDocument EditDocument(FrameworkElement textPanel)
+    {
+        var doc = new FlowDocument { PagePadding = new Thickness(0) };
+        foreach (var tb in ((Panel)textPanel).Children.OfType<TextBlock>())
+        {
+            var p = new Paragraph
+            {
+                Margin = tb.Margin, TextAlignment = tb.TextAlignment, LineHeight = tb.LineHeight, LineStackingStrategy = tb.LineStackingStrategy,
+                FontSize = tb.FontSize, FontFamily = tb.FontFamily, Foreground = tb.Foreground,
+            };
+            TextBlock? bullet = null;
+            foreach (var inl in tb.Inlines)
+            {
+                if (inl is LineBreak) { p.Inlines.Add(new LineBreak()); continue; }
+                if (inl is not Run r) continue;
+                var copy = new Run(r.Text)
+                {
+                    FontSize = r.FontSize, FontFamily = r.FontFamily, Foreground = r.Foreground,
+                    FontWeight = r.FontWeight, FontStyle = r.FontStyle, TextDecorations = r.TextDecorations,
+                };
+                if (r.Tag != Bullet) { p.Inlines.Add(copy); continue; }
+                if (bullet == null) p.Inlines.Add(new InlineUIContainer(bullet = new TextBlock()) { BaselineAlignment = BaselineAlignment.Baseline });
+                bullet.Inlines.Add(copy);
+            }
+            doc.Blocks.Add(p);
+        }
+        return doc;
     }
 
     // ---------- fills, lines, colors ----------

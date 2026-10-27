@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Markup;
@@ -35,7 +36,9 @@ public partial class MainWindow : Window
     readonly Dictionary<SlidePart, StrokeCollection> ink = new();
     List<ShapeHit> hits = [];
     OpenXmlElement? selected;
-    TextBox? editBox;
+    RichTextBox? editBox;
+    FrameworkElement? editHidden; // the drawn text the editor covers
+    List<Deck.Fmt> editStart = []; // bold / italic / underline per character when editing began
     ShowWindow? show;
     bool syncing;
     // dragging a selected shape
@@ -50,9 +53,10 @@ public partial class MainWindow : Window
         FontBox.ItemsSource = Fonts.SystemFontFamilies
             .Select(f => f.FamilyNames.TryGetValue(ko, out var n) ? n : f.Source).Distinct().OrderBy(n => n).ToList();
         SizeBox.ItemsSource = FontSizes;
-        foreach (var c in PenState.Palette)
+        foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
             var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2), Background = new SolidColorBrush(c), Focusable = false, BorderBrush = Brushes.Gray, ToolTip = "펜/형광펜 색" };
+            Shortcuts.SetFor(b, $"color{i + 1}");
             b.Click += (_, _) => Pen.SetColor(c);
             Swatches.Children.Add(b);
         }
@@ -60,6 +64,8 @@ public partial class MainWindow : Window
         Pen.Changed += OnPenChanged;
         OnPenChanged();
         UpdateStatus();
+        UpdateHint();
+        Shortcuts.Changed += UpdateHint;
     }
 
     // ---------- document ----------
@@ -184,7 +190,13 @@ public partial class MainWindow : Window
     {
         syncing = true;
         Thumbs.Items.Clear();
-        for (int i = 0; i < Count; i++) Thumbs.Items.Add(new ListBoxItem { Content = ThumbContent(i), Focusable = false });
+        for (int i = 0; i < Count; i++)
+        {
+            var item = new ListBoxItem { Content = ThumbContent(i), Focusable = false };
+            // a ListBoxItem only selects itself on click by taking focus, which a non-focusable one can't: handle the click here
+            item.PreviewMouseLeftButtonDown += (_, e) => { Go(Thumbs.Items.IndexOf(item)); e.Handled = true; };
+            Thumbs.Items.Add(item);
+        }
         syncing = false;
         UpdateTitle();
     }
@@ -258,7 +270,7 @@ public partial class MainWindow : Window
             selected = hits.LastOrDefault(h => h.Bounds.Contains(p))?.Element; // last drawn = topmost
             SyncFormatUi();
             if (selected == null) { DrawSelection(); return; }
-            if (e.ClickCount == 2 && Deck.HasText(selected)) { BeginEdit(); return; }
+            if (e.ClickCount == 2 && Deck.HasText(selected)) { BeginEdit(p); return; }
         }
         dragging = true;
         dragStart = p;
@@ -290,36 +302,145 @@ public partial class MainWindow : Window
         Changed();
     }
 
-    void BeginEdit()
+    /// <summary>
+    /// Edits the selected shape's text in place: the editor shows the text exactly as drawn (fonts, sizes, colors,
+    /// bold, alignment...) on top of the hidden original. <paramref name="caretAt"/> (slide coordinates) places the caret,
+    /// otherwise all text is selected.
+    /// </summary>
+    void BeginEdit(Point? caretAt = null)
     {
         if (SelectedHit is not { } h || !Deck.HasText(h.Element)) return;
-        var size = double.TryParse(Deck.FirstRun(h.Element, "sz"), out var sz) ? sz / 100 : 18;
-        editBox = new TextBox
+        double bt = 2 * Px;
+        FlowDocument doc;
+        Thickness pad = default;
+        Point origin = h.Bounds.TopLeft;
+        if (h.Text is { } panel && panel.IsVisible)
         {
-            Text = Deck.GetText(h.Element), Tag = h.Element,
-            AcceptsReturn = true, TextWrapping = TextWrapping.Wrap,
-            FontSize = size * 96 / 72, FontFamily = new FontFamily("Malgun Gothic"),
-            Width = Math.Max(h.Bounds.Width, 120), MinHeight = h.Bounds.Height,
-            BorderBrush = (Brush)FindResource("Accent"), BorderThickness = new Thickness(2 * Px),
+            doc = SlideRenderer.EditDocument(panel);
+            pad = panel.Margin;
+            origin = panel.TranslatePoint(new Point(-pad.Left, -pad.Top), Stage);
+            origin.X = h.Bounds.X; // the panel stretches to the shape's width
+            editHidden = panel;
+            panel.Visibility = Visibility.Hidden;
+        }
+        else
+        {
+            doc = new FlowDocument { PagePadding = new Thickness(0) };
+            foreach (var line in Deck.GetEditText(h.Element).Split('\n'))
+                doc.Blocks.Add(new Paragraph(new Run(line.Replace('\v', '\n'))) { Margin = default });
+            doc.FontSize = (double.TryParse(Deck.FirstRun(h.Element, "sz"), out var sz) ? sz / 100 : 18) * 96 / 72;
+        }
+        if (doc.Blocks.Count == 0) doc.Blocks.Add(new Paragraph { Margin = default });
+        doc.FontFamily = new FontFamily("Malgun Gothic"); // paragraphs set their own; this is for an empty box
+
+        var box = new RichTextBox
+        {
+            Document = doc, Tag = h.Element,
+            Width = h.Bounds.Width + 2 * bt, MinHeight = h.Bounds.Height + 2 * bt,
+            Padding = pad, Background = Brushes.Transparent, AllowDrop = false,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+            BorderBrush = (Brush)FindResource("Accent"), BorderThickness = new Thickness(bt),
         };
-        Canvas.SetLeft(editBox, h.Bounds.X); Canvas.SetTop(editBox, h.Bounds.Y);
-        editBox.LostKeyboardFocus += (_, _) => CommitEdit();
-        Overlay.Children.Add(editBox);
-        editBox.Focus();
-        editBox.SelectAll();
-        StatusText.Text = "텍스트 편집 중 — 바깥을 클릭하면 적용, Esc는 취소";
+        // plain-text paste; bold / italic / underline go through the user's shortcuts (OnKey), other formatting is not kept
+        DataObject.AddPastingHandler(box, (_, e) =>
+        {
+            if (e.DataObject.GetDataPresent(DataFormats.UnicodeText)) e.FormatToApply = DataFormats.UnicodeText;
+            else e.CancelCommand();
+        });
+        foreach (var cmd in new[] { EditingCommands.ToggleBold, EditingCommands.ToggleItalic, EditingCommands.ToggleUnderline,
+                     EditingCommands.IncreaseFontSize, EditingCommands.DecreaseFontSize, EditingCommands.AlignLeft, EditingCommands.AlignCenter,
+                     EditingCommands.AlignRight, EditingCommands.AlignJustify, EditingCommands.ToggleBullets, EditingCommands.ToggleNumbering,
+                     EditingCommands.IncreaseIndentation, EditingCommands.DecreaseIndentation, EditingCommands.ToggleSubscript, EditingCommands.ToggleSuperscript })
+            box.CommandBindings.Add(new CommandBinding(cmd, (_, e) => e.Handled = true, (_, e) => { e.CanExecute = false; e.Handled = true; }));
+        Canvas.SetLeft(box, origin.X - bt); Canvas.SetTop(box, origin.Y - bt);
+        editBox = box;
+        editStart = EditText(doc).Fmt;
+        box.LostKeyboardFocus += (_, _) => CommitEdit();
+        Overlay.Children.Add(box);
+        box.Focus();
+        if (caretAt is { } pt)
+            Dispatcher.BeginInvoke(() =>
+            {
+                if (editBox == box && box.GetPositionFromPoint(Stage.TranslatePoint(pt, box), true) is { } pos) box.CaretPosition = pos;
+            }, System.Windows.Threading.DispatcherPriority.Loaded);
+        else box.SelectAll();
+        StatusText.Text = "텍스트 편집 중 — 바깥을 클릭하면 적용, Esc는 취소, Shift+Enter는 줄 바꿈";
+    }
+
+    /// <summary>The editor's text in <see cref="Deck.GetEditText"/> form, with each character's bold / italic / underline.</summary>
+    internal static (string Text, List<Deck.Fmt> Fmt) EditText(FlowDocument doc)
+    {
+        var sb = new System.Text.StringBuilder();
+        var fmt = new List<Deck.Fmt>();
+        bool first = true;
+        void Add(char c, Deck.Fmt f = default) { sb.Append(c); fmt.Add(f); }
+        void Inlines(InlineCollection inl)
+        {
+            foreach (var i in inl)
+                switch (i)
+                {
+                    case Run r:
+                        // underline can sit on the run or any span / paragraph around it; weight and style are inherited
+                        bool u = false;
+                        for (DependencyObject? e = r; e is TextElement te && !u; e = te.Parent)
+                            u = (e as Inline)?.TextDecorations?.Any(d => d.Location == TextDecorationLocation.Underline) == true
+                                || (e as Paragraph)?.TextDecorations?.Any(d => d.Location == TextDecorationLocation.Underline) == true;
+                        var f = new Deck.Fmt(r.FontWeight >= FontWeights.Bold, r.FontStyle == FontStyles.Italic, u);
+                        foreach (var c in r.Text.Replace("\r\n", "\n").Replace('\r', '\n')) Add(c == '\n' ? '\v' : c, f);
+                        break;
+                    case LineBreak: Add('\v'); break;
+                    case Span sp: Inlines(sp.Inlines); break;
+                }
+        }
+        void Blocks(BlockCollection blocks)
+        {
+            foreach (var b in blocks)
+                switch (b)
+                {
+                    case Paragraph p: if (!first) Add('\n'); first = false; Inlines(p.Inlines); break;
+                    case Section s: Blocks(s.Blocks); break;
+                    case List l: foreach (var item in l.ListItems) Blocks(item.Blocks); break;
+                }
+        }
+        Blocks(doc.Blocks);
+        return (sb.ToString(), fmt);
+    }
+
+    /// <summary>Bold / italic / underline on the editor's selection (or for the text typed next), like PowerPoint.</summary>
+    void ToggleInEditor(string id) => Toggle(editBox!.Selection, id);
+
+    internal static void Toggle(TextRange sel, string id)
+    {
+        switch (id)
+        {
+            case "bold":
+                bool b = sel.GetPropertyValue(TextElement.FontWeightProperty) is FontWeight w && w >= FontWeights.Bold;
+                sel.ApplyPropertyValue(TextElement.FontWeightProperty, b ? FontWeights.Normal : FontWeights.Bold);
+                break;
+            case "italic":
+                bool i = sel.GetPropertyValue(TextElement.FontStyleProperty) is FontStyle s && s == FontStyles.Italic;
+                sel.ApplyPropertyValue(TextElement.FontStyleProperty, i ? FontStyles.Normal : FontStyles.Italic);
+                break;
+            case "underline":
+                bool u = sel.GetPropertyValue(Inline.TextDecorationsProperty) is TextDecorationCollection d && d.Any(x => x.Location == TextDecorationLocation.Underline);
+                sel.ApplyPropertyValue(Inline.TextDecorationsProperty, u ? new TextDecorationCollection() : TextDecorations.Underline);
+                break;
+        }
     }
 
     void CommitEdit(bool cancel = false)
     {
-        if (editBox is not { } tb) return;
+        if (editBox is not { } box) return;
         editBox = null; // first: removing the box fires LostKeyboardFocus again
-        Overlay.Children.Remove(tb);
+        Overlay.Children.Remove(box);
+        if (editHidden != null) editHidden.Visibility = Visibility.Visible;
+        editHidden = null;
         UpdateStatus();
-        var el = (OpenXmlElement)tb.Tag;
-        if (cancel || tb.Text == Deck.GetText(el)) return;
+        var el = (OpenXmlElement)box.Tag;
+        var (text, fmt) = EditText(box.Document);
+        if (cancel || (text == Deck.GetEditText(el) && fmt.SequenceEqual(editStart))) return;
         Deck!.Snapshot(CurrentSlide!);
-        Deck.SetText(el, tb.Text);
+        Deck.SetEditText(el, text, fmt, editStart);
         Changed();
     }
 
@@ -375,9 +496,10 @@ public partial class MainWindow : Window
 
     void OnGrow(object? s, RoutedEventArgs? e) => SetFontSize(FontSizes.FirstOrDefault(v => v > SelectedSize, SelectedSize + 8));
     void OnShrink(object? s, RoutedEventArgs? e) => SetFontSize(FontSizes.LastOrDefault(v => v < SelectedSize, Math.Max(1, SelectedSize - 1)));
-    void OnBold(object? s, RoutedEventArgs? e) => ToggleRun("b", "1", "0");
-    void OnItalic(object? s, RoutedEventArgs? e) => ToggleRun("i", "1", "0");
-    void OnUnderline(object? s, RoutedEventArgs? e) => ToggleRun("u", "sng", "none");
+    // while editing text these apply to the selection, otherwise to the whole shape
+    void OnBold(object? s, RoutedEventArgs? e) { if (editBox != null) ToggleInEditor("bold"); else ToggleRun("b", "1", "0"); }
+    void OnItalic(object? s, RoutedEventArgs? e) { if (editBox != null) ToggleInEditor("italic"); else ToggleRun("i", "1", "0"); }
+    void OnUnderline(object? s, RoutedEventArgs? e) { if (editBox != null) ToggleInEditor("underline"); else ToggleRun("u", "sng", "none"); }
     void OnAlign(object s, RoutedEventArgs e) => EditSelected(sh => Deck.SetAlign(sh, (string)((Button)s).CommandParameter));
 
     void OnFontColor(object sender, RoutedEventArgs e)
@@ -538,37 +660,69 @@ public partial class MainWindow : Window
 
     void OnBreak(object sender, RoutedEventArgs e) => OpenBreak();
 
-    void OnHelp(object sender, RoutedEventArgs e) => MessageBox.Show(this, """
-        [이동]  → ↓ PageDown Space : 다음    ← ↑ PageUp Backspace : 이전    Home / End
-        [판서]  P : 펜    H : 형광펜    E : 지우개    Esc : 선택(쇼에서는 한 번 더 누르면 종료)
-                1~7 : 색 (검정, 빨강, 파랑, 초록, 노랑, 흰색, 주황)
-                [ 또는 - : 가늘게    ] 또는 + : 굵게    C : 현재 슬라이드 판서 지우기
-        [쇼]    F5 : 처음부터    Shift+F5 : 현재 슬라이드부터    T : Break Time 타이머
-        [편집]  더블클릭/F2 : 텍스트 편집    Delete : 개체 삭제    드래그 : 이동, 오른쪽 아래 모서리 : 크기
-                Ctrl+B/I/U : 굵게/기울임/밑줄    Ctrl+Shift+. / , : 글꼴 크기    Ctrl+Z : 실행 취소
-                Ctrl+M : 새 슬라이드    Ctrl+D : 슬라이드 복제    Ctrl+O : 열기    Ctrl+S : 저장
-        """, "단축키");
+    void OnHelp(object? sender, RoutedEventArgs? e)
+    {
+        var lines = Shortcuts.All.GroupBy(a => a.Group).Select(g =>
+            $"[{g.Key}]\n" + string.Join("\n", g.Where(a => Shortcuts.Of(a.Id).Count > 0).Select(a => $"    {a.Name} : {Shortcuts.Text(a.Id)}")));
+        MessageBox.Show(this, string.Join("\n", lines) + """
+
+            [고정]
+                Esc : 텍스트 편집 취소 / 선택 도구로 (쇼에서는 한 번 더 누르면 종료)
+                더블클릭 : 텍스트 편집    드래그 : 이동, 오른쪽 아래 모서리 : 크기
+
+            단축키는 [슬라이드 쇼] 탭의 [단축키 설정]에서 바꿀 수 있습니다.
+            """, "단축키");
+    }
+
+    void OnShortcutSettings(object? sender, RoutedEventArgs? e) => new ShortcutsWindow { Owner = this }.ShowDialog();
+
+    void UpdateHint() =>
+        EmptyHint.Text = "PPTX 파일을 열거나 이곳으로 끌어다 놓으세요" + (Shortcuts.Text("open") is { Length: > 0 } k ? $" ({k})" : "");
 
     // ---------- keyboard ----------
 
-    /// <summary>Navigation and ink shortcuts shared by the editor and the slide show.</summary>
-    public bool HandleCommonKey(Key k)
+    /// <summary>
+    /// Runs a remappable command (see <see cref="Shortcuts.All"/>); the slide show only looks up InShow ones.
+    /// Returns false when the command did not apply.
+    /// </summary>
+    public bool Run(string id)
     {
-        switch (k)
+        if (id.StartsWith("color") && int.TryParse(id[5..], out var n) && n >= 1 && n <= PenState.Palette.Length)
         {
-            case Key.Right or Key.Down or Key.PageDown or Key.Space or Key.Enter or Key.N: Go(Current + 1); break;
-            case Key.Left or Key.Up or Key.PageUp or Key.Back: Go(Current - 1); break;
-            case Key.Home: Go(0); break;
-            case Key.End: Go(Count - 1); break;
-            case Key.P: Pen.SetTool(Tool.Pen); break;
-            case Key.H: Pen.SetTool(Tool.Highlighter); break;
-            case Key.E: Pen.SetTool(Tool.Eraser); break;
-            case >= Key.D1 and <= Key.D7: Pen.SetColor(PenState.Palette[k - Key.D1]); break;
-            case >= Key.NumPad1 and <= Key.NumPad7: Pen.SetColor(PenState.Palette[k - Key.NumPad1]); break;
-            case Key.OemOpenBrackets or Key.OemMinus or Key.Subtract: Pen.Grow(-1); break;
-            case Key.OemCloseBrackets or Key.OemPlus or Key.Add: Pen.Grow(1); break;
-            case Key.C: ClearInk(); break;
-            case Key.T: OpenBreak(); break;
+            Pen.SetColor(PenState.Palette[n - 1]);
+            return true;
+        }
+        switch (id)
+        {
+            case "next": Go(Current + 1); break;
+            case "prev": Go(Current - 1); break;
+            case "first": Go(0); break;
+            case "last": Go(Count - 1); break;
+            case "select": Pen.SetTool(Tool.Select); break;
+            case "pen": Pen.SetTool(Tool.Pen); break;
+            case "highlighter": Pen.SetTool(Tool.Highlighter); break;
+            case "eraser": Pen.SetTool(Tool.Eraser); break;
+            case "thinner": Pen.Grow(-1); break;
+            case "thicker": Pen.Grow(1); break;
+            case "clearInk": ClearInk(); break;
+            case "break": OpenBreak(); break;
+            case "showFirst": StartShow(0); break;
+            case "showCurrent": StartShow(Current); break;
+            case "open": OnOpen(null, null); break;
+            case "save": Save(false); break;
+            case "saveAs": Save(true); break;
+            case "undo": OnUndo(null, null); break;
+            case "editText": BeginEdit(); break;
+            case "deleteShape" when selected != null: OnDeleteShape(null, null); break;
+            case "bold": OnBold(null, null); break;
+            case "italic": OnItalic(null, null); break;
+            case "underline": OnUnderline(null, null); break;
+            case "grow": OnGrow(null, null); break;
+            case "shrink": OnShrink(null, null); break;
+            case "newSlide": OnNewSlide(null, null); break;
+            case "duplicate": OnDuplicate(null, null); break;
+            case "help": OnHelp(null, null); break;
+            case "settings": OnShortcutSettings(null, null); break;
             default: return false;
         }
         return true;
@@ -582,39 +736,17 @@ public partial class MainWindow : Window
         if (editBox != null)
         {
             if (e.Key == Key.Escape) { CommitEdit(cancel: true); e.Handled = true; }
+            else if (Shortcuts.Find(Gesture.From(e), inShow: false) is { } id && id is "bold" or "italic" or "underline") { ToggleInEditor(id); e.Handled = true; }
             return;
         }
         if (Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes
-        var k = RealKey(e);
-        var mods = Keyboard.Modifiers;
-        bool ctrl = mods.HasFlag(ModifierKeys.Control), shift = mods.HasFlag(ModifierKeys.Shift);
-        e.Handled = true;
-        if (ctrl)
+        var g = Gesture.From(e);
+        if (g is { Key: Key.Escape, Mods: ModifierKeys.None })
         {
-            switch (k)
-            {
-                case Key.O: OnOpen(null, null); break;
-                case Key.S: Save(shift); break;
-                case Key.Z: OnUndo(null, null); break;
-                case Key.B: OnBold(null, null); break;
-                case Key.I: OnItalic(null, null); break;
-                case Key.U: OnUnderline(null, null); break;
-                case Key.M: OnNewSlide(null, null); break;
-                case Key.D: OnDuplicate(null, null); break;
-                case Key.OemPeriod when shift: OnGrow(null, null); break;
-                case Key.OemComma when shift: OnShrink(null, null); break;
-                default: e.Handled = false; break;
-            }
-            return;
+            Pen.SetTool(Tool.Select); selected = null; DrawSelection();
+            e.Handled = true;
         }
-        switch (k)
-        {
-            case Key.F5: StartShow(shift ? Current : 0); break;
-            case Key.F2: BeginEdit(); break;
-            case Key.Delete when selected != null: OnDeleteShape(null, null); break;
-            case Key.Escape: Pen.SetTool(Tool.Select); selected = null; DrawSelection(); break;
-            default: e.Handled = HandleCommonKey(k); break;
-        }
+        else if (Shortcuts.Find(g, inShow: false) is { } id) e.Handled = Run(id);
     }
 
     // ---------- window ----------

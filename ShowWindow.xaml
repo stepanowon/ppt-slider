@@ -1,6 +1,7 @@
 <Window x:Class="PptSlider.ShowWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PptSlider"
         Title="슬라이드 쇼" Background="Black" Topmost="True"
         FontFamily="Segoe UI, Malgun Gothic" InputMethod.IsInputMethodEnabled="False"
         PreviewKeyDown="OnKey" MouseWheel="OnWheel">
@@ -35,22 +36,22 @@
         <Border x:Name="Bar" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Padding="4"
                 Background="#D0202020" CornerRadius="8" Opacity="0.25" MouseEnter="OnBarEnter" MouseLeave="OnBarLeave">
             <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="이전 (←)"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="다음 (→)"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="이전" local:Shortcuts.For="prev"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="다음" local:Shortcuts.For="next"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
-                <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="포인터 (Esc)"/>
-                <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="펜 (P)"/>
-                <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="형광펜 (H)"/>
-                <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="지우개 (E)"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="이 슬라이드 판서 지우기 (C)"/>
+                <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="포인터 (Esc)" local:Shortcuts.For="select"/>
+                <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
+                <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
+                <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="이 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
                 <StackPanel x:Name="Swatches" Orientation="Horizontal" VerticalAlignment="Center"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE738;" Click="OnThinner" ToolTip="가늘게 ([)"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE738;" Click="OnThinner" ToolTip="가늘게" local:Shortcuts.For="thinner"/>
                 <TextBlock x:Name="SizeText" Foreground="White" VerticalAlignment="Center" Width="26" TextAlignment="Center"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE710;" Click="OnThicker" ToolTip="굵게 (])"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE710;" Click="OnThicker" ToolTip="굵게" local:Shortcuts.For="thicker"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE916;" Click="OnBreak" ToolTip="Break Time (T)"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE916;" Click="OnBreak" ToolTip="Break Time" local:Shortcuts.For="break"/>
                 <Button Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="쇼 마침 (Esc)"/>
             </StackPanel>
         </Border>

@@ -158,6 +158,145 @@ public sealed class Deck : IDisposable
         }
     }
 
+    /// <summary>Bold / italic / underline of one character as the editor shows it.</summary>
+    public readonly record struct Fmt(bool B, bool I, bool U);
+
+    /// <summary>Bold / italic / underline the editor changed on a character (null: as its run says).</summary>
+    readonly record struct Ovr(bool? B, bool? I, bool? U)
+    {
+        public bool Any => B != null || I != null || U != null;
+
+        public void Apply(A.RunProperties r)
+        {
+            if (B is { } b) SetAttr(r, "b", b ? "1" : "0");
+            if (I is { } i) SetAttr(r, "i", i ? "1" : "0");
+            if (U is { } u) SetAttr(r, "u", u ? "sng" : "none");
+        }
+    }
+
+    /// <summary>One character of a shape's text and the run / field / line break it came from (null: a paragraph end).</summary>
+    readonly record struct Ch(char C, OpenXmlElement? Src, int Para, bool Typed = false, Ovr O = default);
+
+    static List<Ch> Chars(List<A.Paragraph> paras)
+    {
+        var list = new List<Ch>();
+        for (int i = 0; i < paras.Count; i++)
+        {
+            if (i > 0) list.Add(new('\n', null, i - 1));
+            foreach (var e in paras[i].ChildElements)
+                switch (e)
+                {
+                    case A.Run r: foreach (var c in r.Text?.Text ?? "") list.Add(new(c, r, i)); break;
+                    case A.Field f: foreach (var c in f.Text?.Text ?? "") list.Add(new(c, f, i)); break;
+                    case A.Break: list.Add(new('\v', e, i)); break;
+                }
+        }
+        return list;
+    }
+
+    /// <summary>The text the in-place editor works on: paragraphs joined by '\n', line breaks (a:br) as '\v'.</summary>
+    /// <summary>For each character of <see cref="GetEditText"/>: the run / field / line break it belongs to (null: paragraph end).</summary>
+    internal static List<OpenXmlElement?> CharSources(OpenXmlElement shape) =>
+        Chars(X.Child(shape, "txBody")?.Elements<A.Paragraph>().ToList() ?? []).Select(c => c.Src).ToList();
+
+    public static string GetEditText(OpenXmlElement shape) =>
+        new(Chars(X.Child(shape, "txBody")?.Elements<A.Paragraph>().ToList() ?? []).Select(c => c.C).ToArray());
+
+    /// <summary>
+    /// Applies an edit of <see cref="GetEditText"/> keeping the formatting: unchanged characters keep their run,
+    /// typed text takes the formatting of the text it replaces or follows (as in PowerPoint),
+    /// a new paragraph copies the one it was split from, and untouched paragraphs are left as they are.
+    /// <paramref name="fmt"/> (per character of <paramref name="text"/>) and <paramref name="oldFmt"/> (per character of the
+    /// original text) are what the editor showed after and before: where they differ, bold / italic / underline is set on the run.
+    /// </summary>
+    public static void SetEditText(OpenXmlElement shape, string text, IReadOnlyList<Fmt>? fmt = null, IReadOnlyList<Fmt>? oldFmt = null)
+    {
+        var tx = X.Child(shape, "txBody");
+        var paras = tx?.Elements<A.Paragraph>().ToList() ?? [];
+        if (paras.Count == 0) { SetText(shape, text.Replace('\v', '\n')); return; }
+        var old = Chars(paras);
+        int n = old.Count, pre = 0, suf = 0;
+        while (pre < n && pre < text.Length && old[pre].C == text[pre]) pre++;
+        while (suf < n - pre && suf < text.Length - pre && old[n - 1 - suf].C == text[text.Length - 1 - suf]) suf++;
+
+        // the paragraph the edit starts in, and the formatting typed text takes
+        int at = pre == 0 ? 0 : old[pre - 1].Src == null ? old[pre - 1].Para + 1 : old[pre - 1].Para;
+        bool Styled(int i) => i >= 0 && i < n && old[i].Para == at && old[i].Src is A.Run or A.Field;
+        int styleAt = Styled(pre) && pre < n - suf ? pre // replacing a selection: its first character
+            : Styled(pre - 1) ? pre - 1 : Styled(pre) ? pre : -1;
+        var style = styleAt >= 0 ? old[styleAt].Src : null;
+
+        var items = old.Take(pre)
+            .Concat(text[pre..(text.Length - suf)].Select(c => new Ch(c, style, at, Typed: true)))
+            .Concat(old.Skip(n - suf)).ToList();
+        if (fmt != null && oldFmt != null)
+            for (int k = 0; k < items.Count; k++)
+            {
+                int was = k < pre ? k : k >= text.Length - suf ? k - text.Length + n : styleAt; // the original character it compares to
+                Fmt a = was >= 0 ? oldFmt[was] : default, b = fmt[k];
+                items[k] = items[k] with { O = new Ovr(a.B != b.B ? b.B : null, a.I != b.I ? b.I : null, a.U != b.U ? b.U : null) };
+            }
+        var counts = paras.Select((_, i) => old.Count(c => c.Para == i && c.Src != null)).ToList();
+
+        var result = new List<A.Paragraph>();
+        int cur = items.Count > 0 && !items[0].Typed ? items[0].Para : at;
+        var line = new List<Ch>();
+        foreach (var it in items)
+        {
+            if (it.C != '\n') { line.Add(it); continue; }
+            result.Add(BuildParagraph(paras[cur], cur, line, counts[cur]));
+            line.Clear();
+            if (!it.Typed) cur = it.Para + 1; // a typed Enter splits: both halves copy the same paragraph
+        }
+        result.Add(BuildParagraph(paras[cur], cur, line, counts[cur]));
+
+        foreach (var p in paras) p.Remove();
+        foreach (var p in result) tx!.Append(p);
+    }
+
+    static A.Paragraph BuildParagraph(A.Paragraph tpl, int index, List<Ch> line, int count)
+    {
+        if (line.Count == count && line.All(c => !c.Typed && c.Para == index && !c.O.Any)) return (A.Paragraph)tpl.CloneNode(true);
+        var endPr = tpl.GetFirstChild<A.EndParagraphRunProperties>();
+        A.RunProperties? RPr(OpenXmlElement? src) =>
+            src?.GetFirstChild<A.RunProperties>()?.CloneNode(true) as A.RunProperties ?? (endPr != null ? Copy<A.RunProperties>(endPr) : null);
+
+        var p = new A.Paragraph();
+        if (tpl.ParagraphProperties is { } pp) p.Append(pp.CloneNode(true));
+        A.RunProperties? firstRPr = null;
+        for (int i = 0; i < line.Count;)
+        {
+            var it = line[i];
+            if (it.C == '\v')
+            {
+                if (!it.Typed) p.Append(it.Src!.CloneNode(true));
+                else { var br = new A.Break(); if (RPr(it.Src) is { } r) br.Append(r); p.Append(br); }
+                i++;
+                continue;
+            }
+            int j = i;
+            while (j < line.Count && line[j].C != '\v' && ReferenceEquals(line[j].Src, it.Src) && line[j].O == it.O
+                   && (it.Src is not A.Field || line[j].Typed == it.Typed)) j++; // text typed next to a field must not swallow it
+            var group = line.GetRange(i, j - i);
+            var s = new string(group.Select(c => c.C).ToArray());
+            if (it.Src is A.Field f && !it.O.Any && group.All(c => !c.Typed) && s == f.Text?.Text)
+                p.Append(f.CloneNode(true)); // an untouched field (slide number, date) stays a field
+            else
+            {
+                var run = new A.Run();
+                var r = RPr(it.Src);
+                if (it.O.Any) it.O.Apply(r ??= new A.RunProperties());
+                if (r != null) { run.Append(r); firstRPr ??= r; }
+                run.Append(new A.Text(s));
+                p.Append(run);
+            }
+            i = j;
+        }
+        if (endPr != null) p.Append(endPr.CloneNode(true));
+        else if (firstRPr != null) p.Append(Copy<A.EndParagraphRunProperties>(firstRPr));
+        return p;
+    }
+
     static T Copy<T>(OpenXmlElement from) where T : OpenXmlCompositeElement, new()
     {
         var t = new T();

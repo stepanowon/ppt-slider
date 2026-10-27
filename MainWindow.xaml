@@ -1,6 +1,7 @@
 <Window x:Class="PptSlider.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PptSlider"
         Title="PPT Slider" Width="1400" Height="860" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI, Malgun Gothic" FontSize="12" Background="#F3F3F3"
         AllowDrop="True" Drop="OnDrop" PreviewKeyDown="OnKey" Closing="OnClosing">
@@ -84,18 +85,18 @@
                 <StackPanel Orientation="Horizontal">
                     <HeaderedContentControl Header="파일" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE8E5;" Content="열기" Click="OnOpen" ToolTip="열기 (Ctrl+O)"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="저장" Click="OnSave" ToolTip="저장 (Ctrl+S)"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="다른 이름" Click="OnSaveAs" ToolTip="다른 이름으로 저장 (Ctrl+Shift+S)"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8E5;" Content="열기" Click="OnOpen" ToolTip="열기" local:Shortcuts.For="open"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="저장" Click="OnSave" ToolTip="저장" local:Shortcuts.For="save"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="다른 이름" Click="OnSaveAs" ToolTip="다른 이름으로 저장" local:Shortcuts.For="saveAs"/>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="편집" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="실행 취소" Click="OnUndo" ToolTip="실행 취소 (Ctrl+Z)"/>
+                        <Button Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="실행 취소" Click="OnUndo" ToolTip="실행 취소" local:Shortcuts.For="undo"/>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="슬라이드" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE710;" Content="새 슬라이드" Click="OnNewSlide" ToolTip="빈 슬라이드 추가 (Ctrl+M)"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE8C8;" Content="복제" Click="OnDuplicate" ToolTip="슬라이드 복제 (Ctrl+D)"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE710;" Content="새 슬라이드" Click="OnNewSlide" ToolTip="빈 슬라이드 추가" local:Shortcuts.For="newSlide"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8C8;" Content="복제" Click="OnDuplicate" ToolTip="슬라이드 복제" local:Shortcuts.For="duplicate"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="삭제" Click="OnDeleteSlide" ToolTip="슬라이드 삭제"/>
                         </StackPanel>
                     </HeaderedContentControl>
@@ -104,13 +105,13 @@
                             <StackPanel Orientation="Horizontal" Margin="0,2">
                                 <ComboBox x:Name="FontBox" Width="150" IsEditable="True" SelectionChanged="OnFontPicked" ToolTip="글꼴"/>
                                 <ComboBox x:Name="SizeBox" Width="58" Margin="4,0,0,0" IsEditable="True" SelectionChanged="OnSizePicked" KeyDown="OnSizeKey" ToolTip="글꼴 크기 (Enter로 적용)"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8E8;" Click="OnGrow" ToolTip="글꼴 크기 크게 (Ctrl+Shift+.)"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8E7;" Click="OnShrink" ToolTip="글꼴 크기 작게 (Ctrl+Shift+,)"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E8;" Click="OnGrow" ToolTip="글꼴 크기 크게" local:Shortcuts.For="grow"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E7;" Click="OnShrink" ToolTip="글꼴 크기 작게" local:Shortcuts.For="shrink"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,2">
-                                <Button Style="{StaticResource Small}" Tag="&#xE8DD;" Click="OnBold" ToolTip="굵게 (Ctrl+B)"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8DB;" Click="OnItalic" ToolTip="기울임꼴 (Ctrl+I)"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8DC;" Click="OnUnderline" ToolTip="밑줄 (Ctrl+U)"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8DD;" Click="OnBold" ToolTip="굵게" local:Shortcuts.For="bold"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8DB;" Click="OnItalic" ToolTip="기울임꼴" local:Shortcuts.For="italic"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8DC;" Click="OnUnderline" ToolTip="밑줄" local:Shortcuts.For="underline"/>
                                 <Button x:Name="ColorBtn" Style="{StaticResource Small}" Tag="&#xE8D3;" Click="OnFontColor" ToolTip="글꼴 색"/>
                             </StackPanel>
                         </StackPanel>
@@ -125,7 +126,7 @@
                     <HeaderedContentControl Header="삽입" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
                             <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="텍스트 상자" Click="OnAddText"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE894;" Content="개체 삭제" Click="OnDeleteShape" ToolTip="선택한 개체 삭제 (Delete)"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE894;" Content="개체 삭제" Click="OnDeleteShape" ToolTip="선택한 개체 삭제" local:Shortcuts.For="deleteShape"/>
                         </StackPanel>
                     </HeaderedContentControl>
                 </StackPanel>
@@ -134,16 +135,16 @@
                 <StackPanel Orientation="Horizontal">
                     <HeaderedContentControl Header="도구" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="ToolSelect" Style="{StaticResource Rb}" Tag="&#xE8B0;" Content="선택" Click="OnTool" ToolTip="선택/편집 (Esc)"/>
-                            <RadioButton x:Name="ToolPen" Style="{StaticResource Rb}" Tag="&#xEE56;" Content="펜" Click="OnTool" ToolTip="펜 (P)"/>
-                            <RadioButton x:Name="ToolHi" Style="{StaticResource Rb}" Tag="&#xE7E6;" Content="형광펜" Click="OnTool" ToolTip="형광펜 (H)"/>
-                            <RadioButton x:Name="ToolEraser" Style="{StaticResource Rb}" Tag="&#xED60;" Content="지우개" Click="OnTool" ToolTip="지우개 (E)"/>
+                            <RadioButton x:Name="ToolSelect" Style="{StaticResource Rb}" Tag="&#xE8B0;" Content="선택" Click="OnTool" ToolTip="선택/편집 (Esc)" local:Shortcuts.For="select"/>
+                            <RadioButton x:Name="ToolPen" Style="{StaticResource Rb}" Tag="&#xEE56;" Content="펜" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
+                            <RadioButton x:Name="ToolHi" Style="{StaticResource Rb}" Tag="&#xE7E6;" Content="형광펜" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
+                            <RadioButton x:Name="ToolEraser" Style="{StaticResource Rb}" Tag="&#xED60;" Content="지우개" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="색 (1~7)" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="색" Style="{StaticResource Grp}">
                         <WrapPanel x:Name="Swatches" Width="150" VerticalAlignment="Center"/>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="두께 ([ / ])" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="두께" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Slider x:Name="SizeSlider" Width="140" Minimum="1" Maximum="80" Focusable="False" ValueChanged="OnPenSize"/>
                             <TextBlock x:Name="SizeText" Width="30" Margin="6,0" VerticalAlignment="Center"/>
@@ -152,7 +153,7 @@
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="지우기" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="이 슬라이드" Click="OnClearInk" ToolTip="현재 슬라이드 판서 지우기 (C)"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="이 슬라이드" Click="OnClearInk" ToolTip="현재 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="모든 판서" Click="OnClearAllInk"/>
                         </StackPanel>
                     </HeaderedContentControl>
@@ -162,8 +163,8 @@
                 <StackPanel Orientation="Horizontal">
                     <HeaderedContentControl Header="슬라이드 쇼 시작" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE768;" Content="처음부터" Click="OnShowFirst" ToolTip="처음부터 (F5)"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE786;" Content="현재 슬라이드부터" Click="OnShowCurrent" ToolTip="현재 슬라이드부터 (Shift+F5)"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE768;" Content="처음부터" Click="OnShowFirst" ToolTip="처음부터" local:Shortcuts.For="showFirst"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE786;" Content="현재 슬라이드부터" Click="OnShowCurrent" ToolTip="현재 슬라이드부터" local:Shortcuts.For="showCurrent"/>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="모니터" Style="{StaticResource Grp}">
@@ -176,10 +177,13 @@
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="휴식" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE916;" Content="Break Time" Click="OnBreak" ToolTip="휴식 타이머 (T)"/>
+                        <Button Style="{StaticResource Rb}" Tag="&#xE916;" Content="Break Time" Click="OnBreak" ToolTip="휴식 타이머" local:Shortcuts.For="break"/>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="도움말" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE765;" Content="단축키" Click="OnHelp"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource Rb}" Tag="&#xE765;" Content="단축키" Click="OnHelp" ToolTip="단축키 목록" local:Shortcuts.For="help"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE713;" Content="단축키 설정" Click="OnShortcutSettings" ToolTip="단축키 바꾸기" local:Shortcuts.For="settings"/>
+                        </StackPanel>
                     </HeaderedContentControl>
                 </StackPanel>
             </TabItem>
@@ -199,7 +203,7 @@
 
         <!-- slide stage -->
         <Grid Background="#E6E6E6">
-            <TextBlock x:Name="EmptyHint" Text="PPTX 파일을 열거나 이곳으로 끌어다 놓으세요 (Ctrl+O)" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="#888"/>
+            <TextBlock x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="#888"/>
             <Viewbox Margin="28">
                 <Grid x:Name="StageFrame" Visibility="Collapsed">
                     <!-- shadow on a sibling so the effect doesn't slow down inking -->
