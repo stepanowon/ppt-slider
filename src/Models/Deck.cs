@@ -36,6 +36,15 @@ public sealed class Deck : IDisposable
         return new Deck(path, PresentationDocument.Open(ms, true));
     }
 
+    /// <summary>Opens an autosaved <paramref name="copy"/> of <paramref name="path"/>: it counts as unsaved, and saving writes <paramref name="path"/>.</summary>
+    public static Deck Recover(string path, string copy)
+    {
+        var d = Open(copy);
+        d.Path = path;
+        d.Dirty = true;
+        return d;
+    }
+
     public void Dispose() => Doc.Dispose();
 
     P.SlideIdList IdList => Pres.Presentation!.SlideIdList ??= new P.SlideIdList();
@@ -103,6 +112,14 @@ public sealed class Deck : IDisposable
             st.Draw(dc);
         }
         return dv;
+    }
+
+    /// <summary>Writes the deck as it is to <paramref name="path"/> without making it the deck's file or clearing <see cref="Dirty"/> (autosave).</summary>
+    public void SaveCopy(string path)
+    {
+        var tmp = path + ".tmp";
+        using (Doc.Clone(tmp, true)) { }
+        File.Move(tmp, path, true);
     }
 
     void AddInkPicture(SlidePart sp, StrokeCollection strokes)

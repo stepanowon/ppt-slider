@@ -1,6 +1,4 @@
 using System.IO;
-using System.Security.Cryptography;
-using System.Text;
 using System.Windows.Ink;
 
 namespace PptSlider;
@@ -13,14 +11,9 @@ public static class InkStore
 {
     static readonly Guid SlideIdKey = new("6f1c3c2e-7a4b-4f53-9a51-2b8f6c0d1e47");
 
-    /// <summary>The folder; the self-test points it elsewhere.</summary>
-    internal static string Folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PptSlider", "ink");
+    static string Folder => Path.Combine(AppPaths.Local, "ink");
 
-    public static string FileFor(string deckPath)
-    {
-        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(deckPath).ToUpperInvariant()));
-        return Path.Combine(Folder, Convert.ToHexString(hash)[..16] + ".isf");
-    }
+    public static string FileFor(string deckPath) => Path.Combine(Folder, AppPaths.Key(deckPath) + ".isf");
 
     /// <summary>Writes the strokes per slide id; no strokes at all removes the file.</summary>
     public static void Save(string deckPath, IEnumerable<(uint SlideId, StrokeCollection Strokes)> slides)

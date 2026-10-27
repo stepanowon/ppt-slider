@@ -15,7 +15,8 @@ public record ShapeHit(OpenXmlElement Element, Rect Bounds, FrameworkElement? Te
 
 /// <summary>
 /// Draws PPTX slides as WPF visuals: backgrounds, master/layout graphics, shapes, text, pictures, groups, tables.
-/// ponytail: charts, SmartArt, effects, table styles and animations are not rendered; add when decks need them.
+/// SmartArt is drawn from the shapes PowerPoint saved with it (drawing.xml).
+/// ponytail: charts, effects, table styles and animations are not rendered; add when decks need them.
 /// </summary>
 public class SlideRenderer
 {
@@ -83,7 +84,8 @@ public class SlideRenderer
         return canvas;
     }
 
-    void DrawTree(OpenXmlElement? tree, Ctx c, Map m, Panel target, bool skipPh, List<ShapeHit>? hits)
+    /// <param name="smartArt">A SmartArt drawing (dsp:spTree): shapes may put their text in a box of its own.</param>
+    void DrawTree(OpenXmlElement? tree, Ctx c, Map m, Panel target, bool skipPh, List<ShapeHit>? hits, bool smartArt = false)
     {
         if (tree == null) return;
         foreach (var child in tree.ChildElements)
@@ -98,6 +100,7 @@ public class SlideRenderer
             {
                 r = el.LocalName switch
                 {
+                    "sp" when smartArt => SplitText(el).Select(part => DrawShape(part, c, m, target)).ToList()[0],
                     "sp" or "cxnSp" or "pic" => DrawShape(el, c, m, target),
                     "grpSp" => DrawGroup(el, c, m, target),
                     "graphicFrame" => DrawFrame(el, c, m, target),
@@ -107,6 +110,41 @@ public class SlideRenderer
             catch (Exception) { /* one malformed shape must not kill the whole slide */ }
             if (r != null) hits?.Add(new ShapeHit(child, r.Value, el.LocalName == "sp" ? lastText : null));
         }
+    }
+
+    /// <summary>
+    /// SmartArt finds its saved drawing through the data part: dgm:relIds r:dm → the data model's dsp:dataModelExt relId
+    /// → the slide's DiagramPersistLayoutPart. Null when the file has no saved drawing (it is then a placeholder box).
+    /// </summary>
+    static DiagramPersistLayoutPart? SmartArtDrawing(OpenXmlElement? graphicData, Ctx c)
+    {
+        var relIds = X.Child(graphicData, "relIds");
+        if (relIds == null) return null;
+        var dm = relIds.GetAttributes().FirstOrDefault(a => a.LocalName == "dm").Value;
+        if (dm == null || !c.Part.TryGetPartById(dm, out var data)) return null;
+        var ext = data.RootElement?.Descendants().FirstOrDefault(e => e.LocalName == "dataModelExt");
+        return X.Attr(ext, "relId") is { } id && c.Part.TryGetPartById(id, out var part) ? part as DiagramPersistLayoutPart : null;
+    }
+
+    const string DrawingNs = "http://schemas.openxmlformats.org/drawingml/2006/main";
+
+    /// <summary>A SmartArt shape whose text has its own box (dsp:txXfrm) is drawn as the shape without its text, then the text alone in that box.</summary>
+    static OpenXmlElement[] SplitText(OpenXmlElement sp)
+    {
+        if (X.Child(sp, "txXfrm") is not { } box || X.Child(sp, "txBody") == null) return [sp];
+        var shape = sp.CloneNode(true);
+        X.Child(shape, "txBody")!.Remove();
+        var text = sp.CloneNode(true);
+        X.Child(text, "style")?.Remove();
+        var spPr = X.Child(text, "spPr")!;
+        spPr.RemoveAllChildren();
+        var xfrm = new OpenXmlUnknownElement("a", "xfrm", DrawingNs);
+        foreach (var a in box.GetAttributes()) xfrm.SetAttribute(a);
+        foreach (var e in box.ChildElements) xfrm.AppendChild(e.CloneNode(true));
+        var ln = new OpenXmlUnknownElement("a", "ln", DrawingNs);
+        ln.AppendChild(new OpenXmlUnknownElement("a", "noFill", DrawingNs));
+        spPr.Append(xfrm, new OpenXmlUnknownElement("a", "noFill", DrawingNs), ln);
+        return [shape, text];
     }
 
     // ---------- shapes ----------
@@ -213,6 +251,14 @@ public class SlideRenderer
         if (x == null) return null;
         var r = m.R(x);
         var data = X.Child(X.Child(el, "graphic"), "graphicData");
+        if (SmartArtDrawing(data, c) is { } drawing)
+        {
+            // the shapes PowerPoint laid out and saved (drawing.xml), positioned relative to the frame
+            var off = X.Child(x, "off");
+            var inner = m with { Ox = m.Ox + (X.Long(off, "x") ?? 0) * m.Sx, Oy = m.Oy + (X.Long(off, "y") ?? 0) * m.Sy };
+            DrawTree(X.Child(drawing.RootElement, "spTree"), c with { Part = drawing }, inner, target, false, null, smartArt: true);
+            return r;
+        }
         FrameworkElement ui;
         if (X.Child(data, "tbl") is { } tbl) ui = Table(tbl, c, m, r);
         else if (data?.Descendants().FirstOrDefault(d => d.LocalName == "blipFill") is { } blip)

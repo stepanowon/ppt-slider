@@ -86,6 +86,7 @@
                     <HeaderedContentControl Header="파일" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
                             <Button Style="{StaticResource Rb}" Tag="&#xE8E5;" Content="열기" Click="OnOpen" ToolTip="열기" local:Shortcuts.For="open"/>
+                            <Button x:Name="RecentBtn" Style="{StaticResource Small}" Tag="&#xE70D;" Click="OnRecentMenu" ToolTip="최근 파일" VerticalAlignment="Top" Margin="-6,8,0,0"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="저장" Click="OnSave" ToolTip="저장" local:Shortcuts.For="save"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="다른 이름" Click="OnSaveAs" ToolTip="다른 이름으로 저장" local:Shortcuts.For="saveAs"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xEA90;" Content="PDF" Click="OnExportPdf" ToolTip="PDF로 내보내기 (판서 포함 여부 선택)" local:Shortcuts.For="exportPdf"/>
@@ -214,7 +215,11 @@
 
         <!-- slide stage -->
         <Grid Background="#E6E6E6">
-            <TextBlock x:Name="EmptyHint" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="#888"/>
+            <StackPanel x:Name="EmptyPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="EmptyHint" HorizontalAlignment="Center" FontSize="16" Foreground="#888"/>
+                <TextBlock x:Name="RecentTitle" Text="최근 파일" FontSize="14" Foreground="#666" Margin="0,28,0,6"/>
+                <ItemsControl x:Name="RecentList" Focusable="False"/>
+            </StackPanel>
             <Viewbox Margin="28">
                 <Grid x:Name="StageFrame" Visibility="Collapsed">
                     <!-- shadow on a sibling so the effect doesn't slow down inking -->

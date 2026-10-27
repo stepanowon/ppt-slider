@@ -19,7 +19,8 @@ static partial class SelfTest
     public static int Run(string file, string outDir)
     {
         Directory.CreateDirectory(outDir);
-        InkStore.Folder = Path.Combine(outDir, "ink"); // never the user's own kept ink
+        AppPaths.Local = Path.Combine(outDir, "local"); // never the user's own kept ink, recent files or autosaves
+        if (Directory.Exists(AppPaths.Local)) Directory.Delete(AppPaths.Local, true);
         var log = new List<string>();
         void Check(bool ok, string what) { log.Add($"{(ok ? "PASS" : "FAIL")} {what}"); if (!ok) failed = true; }
         failed = false;
@@ -92,7 +93,7 @@ static partial class SelfTest
         catch (Exception ex) { Check(false, ex.ToString()); }
         try { EditorSnaps(file, outDir, Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
-        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, InkStoreTests, PdfTests })
+        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, InkStoreTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests })
         {
             try { test(file, outDir, Check); }
             catch (Exception ex) { Check(false, $"{test.Method.Name}: {ex}"); }

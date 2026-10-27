@@ -71,15 +71,28 @@ public partial class MainWindow : Window
         jumpTimer.Tick += OnJumpTimeout;
         inkSaveTimer.Tick += (_, _) => FlushInk();
         PenState.StraightenOnShift(Ink);
+        AskRecover = path => MessageBox.Show(this,
+            $"{System.IO.Path.GetFileName(path)}\n\n지난번에 저장하지 못한 편집 내용이 자동 저장되어 있습니다(파일보다 최근).\n복구할까요?\n\n[예]  자동 저장된 내용으로 열기\n[아니요]  파일 그대로 열기 (자동 저장본은 지웁니다)",
+            "자동 저장 복구", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+        autoSaveTimer.Tick += (_, _) => AutoSaveNow();
+        autoSaveTimer.Start();
+        UpdateRecent();
     }
 
     // ---------- document ----------
 
+    /// <summary>Asked when an autosaved copy newer than the file exists: true = open the copy. The self-test answers it.</summary>
+    internal Func<string, bool> AskRecover;
+
     public void Open(string path)
     {
         if (!ConfirmDiscard()) return;
+        if (Deck != null) AutoSave.Delete(Deck.Path); // just saved, or the user let the edits go
         Deck d;
-        try { d = Deck.Open(path); }
+        try
+        {
+            d = AutoSave.Recoverable(path) is { } copy && AskRecover(path) ? Deck.Recover(path, copy) : Deck.Open(path);
+        }
         catch (Exception ex)
         {
             MessageBox.Show(this, $"파일을 열 수 없습니다.\n{ex.Message}\n\n.pptx 형식만 지원합니다.", "열기", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -87,20 +100,67 @@ public partial class MainWindow : Window
         }
         show?.Close();
         FlushInk();
+        if (!d.Dirty) AutoSave.Delete(path); // no copy, or it was declined
         Deck?.Dispose();
         Deck = d;
+        RecentFiles.Add(path);
+        UpdateRecent();
         ink.Clear();
         inkLog.Clear();
         int restored = RestoreInk();
         selected = null;
         StageFrame.Visibility = Visibility.Visible;
-        EmptyHint.Visibility = Visibility.Collapsed;
+        EmptyPanel.Visibility = Visibility.Collapsed;
         Stage.Width = d.Renderer.Width;
         Stage.Height = d.Renderer.Height;
         RebuildThumbs();
         Current = -1;
         Go(0);
         if (restored > 0) StatusText.Text = $"지난번 판서 {restored}획을 복원했습니다 (모두 지우려면 [그리기] 탭의 [모든 판서])";
+        if (d.Dirty) StatusText.Text = "자동 저장된 사본에서 복구했습니다. 저장하면 원래 파일에 씁니다.";
+        UpdateTitle();
+    }
+
+    // ---------- recent files, autosave ----------
+
+    readonly DispatcherTimer autoSaveTimer = new() { Interval = TimeSpan.FromMinutes(2) };
+
+    /// <summary>Copies the deck aside when it has unsaved edits (every 2 minutes).</summary>
+    internal void AutoSaveNow()
+    {
+        if (Deck is not { Dirty: true } d) return;
+        try { AutoSave.Save(d); }
+        catch (Exception) { } // best effort; the next tick tries again
+    }
+
+    void UpdateRecent()
+    {
+        var files = RecentFiles.Load().Where(File.Exists).ToList();
+        RecentBtn.IsEnabled = files.Count > 0;
+        RecentTitle.Visibility = files.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        RecentList.ItemsSource = files.Select(f =>
+        {
+            var b = new Button
+            {
+                Content = System.IO.Path.GetFileName(f), ToolTip = f, Tag = f, Focusable = false, Cursor = Cursors.Hand,
+                Foreground = (Brush)FindResource("Accent"), Background = Brushes.Transparent, BorderThickness = new Thickness(0),
+                HorizontalAlignment = HorizontalAlignment.Left, Padding = new Thickness(0, 3, 0, 3), FontSize = 14,
+            };
+            b.Click += (_, _) => Open(f);
+            return b;
+        }).ToList();
+    }
+
+    void OnRecentMenu(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = RecentBtn, Placement = PlacementMode.Bottom };
+        foreach (var f in RecentFiles.Load().Where(File.Exists))
+        {
+            var item = new MenuItem { Header = System.IO.Path.GetFileName(f), ToolTip = f };
+            item.Click += (_, _) => Open(f);
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = menu.Items.Count > 0;
     }
 
     /// <summary>Saves; when ink exists the user picks a version with or without it.</summary>
@@ -132,7 +192,9 @@ public partial class MainWindow : Window
         }
         try
         {
+            var before = Deck.Path;
             Deck.Save(path, withInk ? ink : null);
+            if (!Deck.Dirty) AutoSave.Delete(before); // saved over (or away from) it: the copy is stale
             StatusText.Text = $"저장됨: {path}";
             UpdateTitle();
             return true;
@@ -1026,6 +1088,8 @@ public partial class MainWindow : Window
         if (!ConfirmDiscard()) { e.Cancel = true; return; }
         show?.Close();
         FlushInk();
+        if (Deck != null) AutoSave.Delete(Deck.Path); // a normal close: no copy left to recover
+        autoSaveTimer.Stop();
         Deck?.Dispose();
     }
 }
