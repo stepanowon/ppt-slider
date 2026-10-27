@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Keep build output out of src/: everything goes to <repo>/bin and <repo>/obj.
+       BaseIntermediateOutputPath must be set before the SDK props are imported, hence this file. -->
+  <PropertyGroup>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+
+</Project>
