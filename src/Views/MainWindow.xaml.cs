@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using Microsoft.Win32;
@@ -34,6 +35,7 @@ public partial class MainWindow : Window
     public event Action? SlideChanged;
 
     readonly Dictionary<SlidePart, StrokeCollection> ink = new();
+    readonly InkHistory inkLog = new();
     List<ShapeHit> hits = [];
     OpenXmlElement? selected;
     RichTextBox? editBox;
@@ -66,6 +68,7 @@ public partial class MainWindow : Window
         UpdateStatus();
         UpdateHint();
         Shortcuts.Changed += UpdateHint;
+        jumpTimer.Tick += OnJumpTimeout;
     }
 
     // ---------- document ----------
@@ -84,6 +87,7 @@ public partial class MainWindow : Window
         Deck?.Dispose();
         Deck = d;
         ink.Clear();
+        inkLog.Clear();
         selected = null;
         StageFrame.Visibility = Visibility.Visible;
         EmptyHint.Visibility = Visibility.Collapsed;
@@ -164,7 +168,11 @@ public partial class MainWindow : Window
 
     public StrokeCollection StrokesOf(SlidePart sp)
     {
-        if (!ink.TryGetValue(sp, out var s)) ink[sp] = s = new StrokeCollection();
+        if (!ink.TryGetValue(sp, out var s))
+        {
+            ink[sp] = s = new StrokeCollection();
+            inkLog.Track(s);
+        }
         return s;
     }
 
@@ -572,6 +580,8 @@ public partial class MainWindow : Window
     void OnUndo(object? sender, RoutedEventArgs? e)
     {
         CommitEdit();
+        // ink first: Ctrl+Z right after drawing takes back the stroke, not an earlier edit
+        if (CurrentSlide is { } cur && inkLog.Undo(StrokesOf(cur))) { StatusText.Text = "판서를 되돌렸습니다"; return; }
         if (Deck?.Undo() is not { } part) { StatusText.Text = "더 이상 실행 취소할 내용이 없습니다"; return; }
         selected = null;
         int i = Deck.Slides.IndexOf(part);
@@ -605,6 +615,7 @@ public partial class MainWindow : Window
             Tool.Pen => $"펜 · 두께 {Pen.PenSize:0}",
             Tool.Highlighter => $"형광펜 · 두께 {Pen.HiSize:0}",
             Tool.Eraser => "지우개",
+            Tool.Laser => "레이저 포인터",
             _ => "선택",
         };
     }
@@ -638,14 +649,25 @@ public partial class MainWindow : Window
 
     MonitorInfo SelectedMonitor => MonitorBox.SelectedItem as MonitorInfo ?? Monitors.All()[0];
 
-    void StartShow(int from)
+    internal ShowWindow? ShowView => show;
+
+    /// <param name="test">Self-test: a small window off screen instead of full screen.</param>
+    internal void StartShow(int from, bool test = false)
     {
         if (Deck == null) return;
         CommitEdit();
         show?.Close();
         Go(from);
-        show = new ShowWindow(this, SelectedMonitor);
-        show.Closed += (_, _) => { show = null; Activate(); };
+        ShowStart = DateTime.Now;
+        show = new ShowWindow(this, SelectedMonitor, test);
+        show.Closed += (_, _) =>
+        {
+            show = null;
+            SetJump("");
+            SetBlank(Blank.None);
+            if (Pen.Tool == Tool.Laser) Pen.SetTool(Tool.Select);
+            Activate();
+        };
         show.Show();
     }
 
@@ -668,6 +690,7 @@ public partial class MainWindow : Window
 
             [고정]
                 Esc : 텍스트 편집 취소 / 선택 도구로 (쇼에서는 한 번 더 누르면 종료)
+                쇼에서 숫자 + Enter : 해당 번호 슬라이드로 이동 (숫자만 누르면 1초 뒤 펜 색)
                 더블클릭 : 텍스트 편집    드래그 : 이동, 오른쪽 아래 모서리 : 크기
 
             단축키는 [슬라이드 쇼] 탭의 [단축키 설정]에서 바꿀 수 있습니다.
@@ -678,6 +701,110 @@ public partial class MainWindow : Window
 
     void UpdateHint() =>
         EmptyHint.Text = "PPTX 파일을 열거나 이곳으로 끌어다 놓으세요" + (Shortcuts.Text("open") is { Length: > 0 } k ? $" ({k})" : "");
+
+    // ---------- slide show keys and state (shared by the show window and the presenter view) ----------
+
+    public Blank Blanked { get; private set; }
+    /// <summary>Ink drawn on the black / white screen; a new blank screen starts empty.</summary>
+    public StrokeCollection BlankInk { get; private set; } = new();
+    /// <summary>The slide number being typed in the show ("" when none).</summary>
+    public string Jump { get; private set; } = "";
+    public DateTime ShowStart { get; private set; }
+    /// <summary>Raised when the blank screen or the typed slide number changes.</summary>
+    public event Action? ShowStateChanged;
+    readonly DispatcherTimer jumpTimer = new();
+    Gesture? jumpKey; // a lone digit: runs its own command (a pen color) if no Enter / second digit follows
+
+    /// <summary>The strokes the show draws on: the blank screen's while blanked, otherwise the slide's.</summary>
+    public StrokeCollection ShowInk => Blanked != Blank.None ? BlankInk : StrokesOf(CurrentSlide!);
+
+    public void SetBlank(Blank b)
+    {
+        if (b == Blanked) return;
+        Blanked = b;
+        BlankInk = new StrokeCollection();
+        inkLog.Track(BlankInk);
+        ShowStateChanged?.Invoke();
+    }
+
+    static string? Digit(Gesture g) => g.Mods != ModifierKeys.None ? null : g.Key switch
+    {
+        >= Key.D0 and <= Key.D9 => ((int)(g.Key - Key.D0)).ToString(),
+        >= Key.NumPad0 and <= Key.NumPad9 => ((int)(g.Key - Key.NumPad0)).ToString(),
+        _ => null,
+    };
+
+    /// <summary>
+    /// A key in the slide show. Digits type a slide number and Enter goes there; a lone digit with nothing after it
+    /// for a second runs its own command instead (a pen color by default). Returns false when the key did nothing.
+    /// </summary>
+    public bool ShowKey(Gesture g)
+    {
+        if (Digit(g) is { } d)
+        {
+            jumpKey = Jump == "" ? g : null;
+            SetJump(Jump.Length < 4 ? Jump + d : Jump);
+            return true;
+        }
+        if (Jump != "")
+        {
+            var typed = Jump;
+            switch (g)
+            {
+                case { Key: Key.Enter, Mods: ModifierKeys.None }:
+                    SetJump("");
+                    SetBlank(Blank.None);
+                    if (int.TryParse(typed, out var n) && n >= 1) Go(n - 1);
+                    return true;
+                case { Key: Key.Back, Mods: ModifierKeys.None }:
+                    jumpKey = null;
+                    SetJump(typed[..^1]);
+                    return true;
+                case { Key: Key.Escape, Mods: ModifierKeys.None }:
+                    SetJump("");
+                    return true;
+            }
+            SetJump(""); // any other key drops the number and does its own thing
+        }
+        switch (Shortcuts.Find(g, inShow: true))
+        {
+            case null: return false;
+            case "black": SetBlank(Blanked == Blank.Black ? Blank.None : Blank.Black); return true;
+            case "white": SetBlank(Blanked == Blank.White ? Blank.None : Blank.White); return true;
+            case "next" or "prev" or "first" or "last" when Blanked != Blank.None: SetBlank(Blank.None); return true; // like PowerPoint: back to the same slide
+            case "laser": Pen.SetTool(Pen.Tool == Tool.Laser ? Tool.Select : Tool.Laser); return true;
+            case "undo": inkLog.Undo(ShowInk); return true;
+            case "clearInk": ShowInk.Clear(); return true;
+            case { } id: return Run(id);
+        }
+    }
+
+    void SetJump(string s)
+    {
+        Jump = s;
+        jumpTimer.Stop();
+        jumpTimer.Interval = TimeSpan.FromSeconds(jumpKey != null ? 1 : 4);
+        if (s != "") jumpTimer.Start();
+        ShowStateChanged?.Invoke();
+    }
+
+    void OnJumpTimeout(object? sender, EventArgs e)
+    {
+        var lone = jumpKey;
+        jumpKey = null;
+        SetJump("");
+        if (lone is { } k && Shortcuts.Find(k, inShow: true) is { } id) Run(id);
+    }
+
+    /// <summary>Self-test: drops the document without asking to save, then closes.</summary>
+    internal void CloseForTest()
+    {
+        show?.Close();
+        ink.Clear();
+        Deck?.Dispose();
+        Deck = null;
+        Close();
+    }
 
     // ---------- keyboard ----------
 

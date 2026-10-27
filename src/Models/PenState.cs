@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace PptSlider;
 
-public enum Tool { Select, Pen, Highlighter, Eraser }
+public enum Tool { Select, Pen, Highlighter, Eraser, Laser }
 
 /// <summary>Current inking tool, shared by the editor and the slide show window.</summary>
 public class PenState
@@ -44,7 +44,7 @@ public class PenState
 
     public void Apply(InkCanvas ic)
     {
-        ic.IsHitTestVisible = Tool != Tool.Select;
+        ic.IsHitTestVisible = Tool is Tool.Pen or Tool.Highlighter or Tool.Eraser;
         ic.EditingMode = Tool switch
         {
             Tool.Pen or Tool.Highlighter => InkCanvasEditingMode.Ink,

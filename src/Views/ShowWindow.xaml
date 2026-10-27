@@ -24,22 +24,30 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Grid x:Name="Root" Background="Black" MouseLeftButtonDown="OnClick">
+    <Grid x:Name="Root" Background="Black" MouseLeftButtonDown="OnClick" MouseMove="OnMouseMove" MouseLeave="OnMouseLeave">
         <Viewbox>
             <Grid x:Name="Stage" ClipToBounds="True">
                 <ContentControl x:Name="Host" Focusable="False"/>
+                <!-- black / white screen; ink still goes on top -->
+                <Rectangle x:Name="Cover" Visibility="Collapsed" IsHitTestVisible="False"/>
                 <InkCanvas x:Name="Ink" Background="Transparent"/>
+                <Canvas IsHitTestVisible="False">
+                    <Ellipse x:Name="LaserDot" Fill="#FFFF2A1A" Visibility="Collapsed">
+                        <Ellipse.Effect><DropShadowEffect Color="Red" ShadowDepth="0" BlurRadius="10" Opacity="0.9"/></Ellipse.Effect>
+                    </Ellipse>
+                </Canvas>
             </Grid>
         </Viewbox>
 
         <!-- PowerPoint-style faint toolbar, bottom left -->
-        <Border x:Name="Bar" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Padding="4"
+        <Border x:Name="Bar" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Padding="4" Cursor="Arrow"
                 Background="#D0202020" CornerRadius="8" Opacity="0.25" MouseEnter="OnBarEnter" MouseLeave="OnBarLeave">
             <StackPanel Orientation="Horizontal">
                 <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="이전" local:Shortcuts.For="prev"/>
                 <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="다음" local:Shortcuts.For="next"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
                 <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="포인터 (Esc)" local:Shortcuts.For="select"/>
+                <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="레이저 포인터" local:Shortcuts.For="laser"/>
                 <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
                 <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
                 <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
@@ -55,6 +63,19 @@
                 <Button Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="쇼 마침 (Esc)"/>
             </StackPanel>
         </Border>
-        <TextBlock x:Name="Page" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16" Foreground="#80FFFFFF" FontSize="14" IsHitTestVisible="False"/>
+        <!-- faint, but on its own dark backing so it reads on white slides too -->
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16" Padding="10,4" CornerRadius="6"
+                Background="#30000000" IsHitTestVisible="False">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="Clock" FontSize="14" Foreground="#A0FFFFFF" Margin="0,0,16,0"/>
+                <TextBlock x:Name="Page" FontSize="14" Foreground="#C0FFFFFF"/>
+            </StackPanel>
+        </Border>
+
+        <!-- slide number being typed (digits + Enter) -->
+        <Border x:Name="JumpBox" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30,14" CornerRadius="10"
+                Background="#D0202020" Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock x:Name="JumpText" Foreground="White" FontSize="40"/>
+        </Border>
     </Grid>
 </Window>

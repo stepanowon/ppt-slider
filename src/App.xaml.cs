@@ -8,6 +8,7 @@ public partial class App : Application
     {
         if (e.Args is ["--selftest", var file, var outDir])
         {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown; // the test's own windows closing must not end it with code 0
             Shutdown(SelfTest.Run(file, outDir));
             return;
         }

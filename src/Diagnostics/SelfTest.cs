@@ -14,7 +14,7 @@ namespace PptSlider;
 /// `PptSlider.exe --selftest deck.pptx outDir`: renders every slide to PNG, then checks the
 /// edit → save (with / without ink) → reopen round trip. Writes outDir/selftest.txt, exit code 0 = pass.
 /// </summary>
-static class SelfTest
+static partial class SelfTest
 {
     public static int Run(string file, string outDir)
     {
@@ -85,6 +85,8 @@ static class SelfTest
         {
             Check(false, ex.ToString());
         }
+        try { ShowTests(file, outDir, Check); }
+        catch (Exception ex) { Check(false, ex.ToString()); }
         File.WriteAllLines(Path.Combine(outDir, "selftest.txt"), log);
         return failed ? 1 : 0;
     }
