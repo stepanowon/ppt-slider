@@ -5,20 +5,33 @@
         Title="슬라이드 쇼" Background="Black" Topmost="True"
         FontFamily="Segoe UI, Malgun Gothic" InputMethod.IsInputMethodEnabled="False"
         PreviewKeyDown="OnKey" MouseWheel="OnWheel">
-    <Grid x:Name="Root" Background="Black" MouseLeftButtonDown="OnClick" MouseMove="OnMouseMove" MouseLeave="OnMouseLeave">
+    <Grid x:Name="Root" Background="Black" MouseLeftButtonDown="OnClick" MouseMove="OnMouseMove" MouseLeave="OnMouseLeave"
+          PreviewMouseLeftButtonDown="OnPickDown" PreviewMouseMove="OnPickMove" PreviewMouseLeftButtonUp="OnPickUp">
         <Viewbox>
-            <Grid x:Name="Stage" ClipToBounds="True">
-                <ContentControl x:Name="Host" Focusable="False"/>
-                <!-- black / white screen; ink still goes on top -->
-                <Rectangle x:Name="Cover" Visibility="Collapsed" IsHitTestVisible="False"/>
-                <InkCanvas x:Name="Ink" Background="Transparent"/>
-                <Canvas IsHitTestVisible="False">
-                    <Ellipse x:Name="LaserDot" Fill="#FFFF2A1A" Visibility="Collapsed">
-                        <Ellipse.Effect><DropShadowEffect Color="Red" ShadowDepth="0" BlurRadius="10" Opacity="0.9"/></Ellipse.Effect>
-                    </Ellipse>
-                </Canvas>
+            <!-- the frame clips; the stage inside it is scaled when zoomed (Z) -->
+            <Grid x:Name="Frame" ClipToBounds="True">
+                <Grid x:Name="Stage">
+                    <ContentControl x:Name="Host" Focusable="False"/>
+                    <!-- black / white screen; ink still goes on top -->
+                    <Rectangle x:Name="Cover" Visibility="Collapsed" IsHitTestVisible="False"/>
+                    <InkCanvas x:Name="Ink" Background="Transparent"/>
+                    <Canvas IsHitTestVisible="False">
+                        <Ellipse x:Name="LaserDot" Fill="#FFFF2A1A" Visibility="Collapsed">
+                            <Ellipse.Effect><DropShadowEffect Color="Red" ShadowDepth="0" BlurRadius="10" Opacity="0.9"/></Ellipse.Effect>
+                        </Ellipse>
+                    </Canvas>
+                </Grid>
             </Grid>
         </Viewbox>
+
+        <!-- zoom: the area being dragged, and what to do -->
+        <Canvas IsHitTestVisible="False">
+            <Rectangle x:Name="PickBox" Visibility="Collapsed" Stroke="#FFFFA040" StrokeThickness="2" StrokeDashArray="4 2" Fill="#22FFA040"/>
+        </Canvas>
+        <Border x:Name="ZoomHint" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" Padding="18,8" CornerRadius="8"
+                Background="#D0202020" Visibility="Collapsed" IsHitTestVisible="False">
+            <TextBlock Foreground="White" FontSize="18" Text="확대할 영역을 드래그하세요   (Esc: 취소)"/>
+        </Border>
 
         <!-- PowerPoint-style faint toolbar, bottom left -->
         <Border x:Name="Bar" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Padding="4" Cursor="Arrow"

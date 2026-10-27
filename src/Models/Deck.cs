@@ -86,24 +86,30 @@ public sealed class Deck : IDisposable
         if (ink == null) { Path = path; Dirty = false; }
     }
 
+    /// <summary>The strokes drawn as they look on screen, for baking into a picture or a PDF page.</summary>
+    public static DrawingVisual InkVisual(StrokeCollection strokes)
+    {
+        var dv = new DrawingVisual();
+        using var dc = dv.RenderOpen();
+        foreach (var s in strokes)
+        {
+            var st = s.Clone();
+            if (st.DrawingAttributes.IsHighlighter) // bake highlighter transparency into the color
+            {
+                st.DrawingAttributes.IsHighlighter = false;
+                var c = st.DrawingAttributes.Color;
+                st.DrawingAttributes.Color = Color.FromArgb(0x70, c.R, c.G, c.B);
+            }
+            st.Draw(dc);
+        }
+        return dv;
+    }
+
     void AddInkPicture(SlidePart sp, StrokeCollection strokes)
     {
         double w = Renderer.Width, h = Renderer.Height;
-        var dv = new DrawingVisual();
-        using (var dc = dv.RenderOpen())
-            foreach (var s in strokes)
-            {
-                var st = s.Clone();
-                if (st.DrawingAttributes.IsHighlighter) // bake highlighter transparency into the color
-                {
-                    st.DrawingAttributes.IsHighlighter = false;
-                    var c = st.DrawingAttributes.Color;
-                    st.DrawingAttributes.Color = Color.FromArgb(0x70, c.R, c.G, c.B);
-                }
-                st.Draw(dc);
-            }
         var bmp = new RenderTargetBitmap((int)(w * 2), (int)(h * 2), 192, 192, PixelFormats.Pbgra32);
-        bmp.Render(dv);
+        bmp.Render(InkVisual(strokes));
         var enc = new PngBitmapEncoder();
         enc.Frames.Add(BitmapFrame.Create(bmp));
         var img = sp.AddImagePart(ImagePartType.Png);
@@ -392,9 +398,18 @@ public sealed class Deck : IDisposable
 
     // ---------- slide edits ----------
 
-    public SlidePart NewSlide(int after)
+    /// <summary>The slide's p:sldId id: stable while the deck is edited and across saves, unlike its position.</summary>
+    public uint IdOf(SlidePart sp) =>
+        IdList.Elements<P.SlideId>().FirstOrDefault(s => s.RelationshipId == Pres.GetIdOfPart(sp))?.Id?.Value ?? 0;
+
+    /// <param name="blank">An empty page to draw on: the master's "Blank" layout when it has one.</param>
+    public SlidePart NewSlide(int after, bool blank = false)
     {
-        var layout = Slides.ElementAtOrDefault(after)?.SlideLayoutPart ?? Pres.SlideMasterParts.First().SlideLayoutParts.First();
+        var near = Slides.ElementAtOrDefault(after)?.SlideLayoutPart;
+        var blankLayout = blank
+            ? (near?.SlideMasterPart ?? Pres.SlideMasterParts.First()).SlideLayoutParts.FirstOrDefault(l => l.SlideLayout?.Type?.Value == P.SlideLayoutValues.Blank)
+            : null;
+        var layout = blankLayout ?? near ?? Pres.SlideMasterParts.First().SlideLayoutParts.First();
         var part = Pres.AddNewPart<SlidePart>();
         part.Slide = new P.Slide($"""
             <p:sld {Ns}><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld>

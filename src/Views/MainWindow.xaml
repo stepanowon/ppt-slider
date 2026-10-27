@@ -88,6 +88,7 @@
                             <Button Style="{StaticResource Rb}" Tag="&#xE8E5;" Content="열기" Click="OnOpen" ToolTip="열기" local:Shortcuts.For="open"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="저장" Click="OnSave" ToolTip="저장" local:Shortcuts.For="save"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="다른 이름" Click="OnSaveAs" ToolTip="다른 이름으로 저장" local:Shortcuts.For="saveAs"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xEA90;" Content="PDF" Click="OnExportPdf" ToolTip="PDF로 내보내기 (판서 포함 여부 선택)" local:Shortcuts.For="exportPdf"/>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="편집" Style="{StaticResource Grp}">
@@ -156,6 +157,9 @@
                             <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="이 슬라이드" Click="OnClearInk" ToolTip="현재 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="모든 판서" Click="OnClearAllInk"/>
                         </StackPanel>
+                    </HeaderedContentControl>
+                    <HeaderedContentControl Header="페이지" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE7C3;" Content="빈 판서 페이지" Click="OnBlankPage" ToolTip="현재 슬라이드 뒤에 빈 슬라이드를 넣고 이동" local:Shortcuts.For="blankPage"/>
                     </HeaderedContentControl>
                 </StackPanel>
             </TabItem>

@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using System.Windows.Ink;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace PptSlider;
@@ -41,6 +42,16 @@ public class PenState
     }
 
     public void Grow(int dir) => SetSize(Size + dir * (IsHighlighter ? 4 : 1));
+
+    /// <summary>Strokes drawn with Shift held become a straight line from where they started to where they ended.</summary>
+    public static void StraightenOnShift(InkCanvas ic) =>
+        ic.StrokeCollected += (_, e) => { if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) Straighten(e.Stroke); };
+
+    public static void Straighten(Stroke s)
+    {
+        var pts = s.StylusPoints;
+        if (pts.Count > 2) s.StylusPoints = new StylusPointCollection { pts[0], pts[^1] };
+    }
 
     public void Apply(InkCanvas ic)
     {

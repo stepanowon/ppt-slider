@@ -40,6 +40,7 @@ public partial class PresenterWindow : Window
         Stage.Width = main.Deck!.Renderer.Width;
         Stage.Height = main.Deck.Renderer.Height;
         LaserDot.Width = LaserDot.Height = Stage.Width / 80;
+        PenState.StraightenOnShift(Ink);
         main.SlideChanged += Refresh;
         main.Pen.Changed += OnPen;
         main.ShowStateChanged += OnShowState;

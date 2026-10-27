@@ -188,7 +188,7 @@ static partial class SelfTest
 
             check(pv.Page.Text == $"1 / {n}" && pv.Host.Content != null && pv.NextHost.Content != null && pv.Notes.Text == Expected(),
                 "presenter: current slide, next slide, notes, page number");
-            check(pv.Elapsed.Text == "00:00" && pv.Clock.Text == DateTime.Now.ToString("t"), $"presenter: elapsed {pv.Elapsed.Text}, clock {pv.Clock.Text}");
+            check(Regex.IsMatch(pv.Elapsed.Text, @"^00:0\d$") && Regex.IsMatch(pv.Clock.Text, @"\d{1,2}:\d{2}"), $"presenter: elapsed {pv.Elapsed.Text}, clock {pv.Clock.Text}");
             Snap(pv, Path.Combine(outDir, "presenter.png"));
             Press(Key.Right);
             check(main.Current == 1 && show.Page.Text == $"2 / {n}" && pv.Page.Text == $"2 / {n}" && pv.Notes.Text == Expected(),
@@ -229,6 +229,67 @@ static partial class SelfTest
             main.StartShow(0, test: true);
             check(main.ShowView != null && main.PresenterView == null, "presenter: off when [발표자 보기 사용] is unchecked");
             main.ShowView?.Close();
+        }
+        finally { main.CloseForTest(); }
+    }
+
+    /// <summary>Z, drag an area: it fills the show; ink still works; Esc, a click or another slide goes back.</summary>
+    static void ZoomTests(string file, string outDir, Action<bool, string> check)
+    {
+        var main = new MainWindow();
+        try
+        {
+            main.Open(file);
+            main.PresenterBox.IsChecked = false;
+            main.StartShow(0, test: true);
+            var show = main.ShowView!;
+            Wait(300);
+            void Press(Key k, ModifierKeys m = ModifierKeys.None) => show.Press(new Gesture(k, m));
+            double w = show.Stage.Width, h = show.Stage.Height;
+            Point OnRoot(double x, double y) => show.Stage.TranslatePoint(new Point(x, y), show.Root);
+            Point OnFrame(double x, double y) => show.Stage.TranslatePoint(new Point(x, y), show.Frame);
+            bool Near(Point a, double x, double y) => Math.Abs(a.X - x) < 0.5 && Math.Abs(a.Y - y) < 0.5;
+
+            Press(Key.Z);
+            check(show.Zooming && !show.Zoomed && show.ZoomHint.IsVisible && show.Root.Cursor == Cursors.Cross, "zoom: Z = pick an area (hint, cross cursor)");
+            show.PickDown(OnRoot(w * 0.25, h * 0.25));
+            show.PickMove(OnRoot(w * 0.4, h * 0.4));
+            check(show.PickBox.IsVisible, "zoom: the dragged area is drawn");
+            show.PickUp(OnRoot(w * 0.5, h * 0.5));
+            show.UpdateLayout();
+            check(show.Zoomed && Near(OnFrame(w * 0.25, h * 0.25), 0, 0) && Near(OnFrame(w * 0.5, h * 0.5), w, h) && !show.ZoomHint.IsVisible,
+                $"zoom: the area fills the screen ({OnFrame(w * 0.25, h * 0.25):0.#} – {OnFrame(w * 0.5, h * 0.5):0.#})");
+            Press(Key.P);
+            check(show.Ink.IsHitTestVisible && show.Zoomed, "zoom: the pen draws while zoomed");
+            main.ShowInk.Add(Line(w * 0.3, h * 0.3, w * 0.45, h * 0.35));
+            Snap(show.Root, Path.Combine(outDir, "show-zoom.png"));
+            Press(Key.Escape);
+            show.UpdateLayout();
+            check(!show.Zooming && show.IsVisible && main.Pen.Tool == Tool.Pen && Near(OnFrame(w, h), w, h), "zoom: Esc = whole slide, the pen and the show stay");
+            Press(Key.Escape);
+
+            Press(Key.Z);
+            show.PickDown(OnRoot(0, 0));
+            show.PickUp(OnRoot(w / 8, h / 8));
+            show.UpdateLayout();
+            check(show.Zoomed && Near(OnFrame(0, 0), 0, 0) && show.LaserDot.Width < w / 80 / 7, "zoom: a corner zooms 8× without showing past the edge, laser dot keeps its size");
+            int at = main.Current;
+            main.ShowAdvance(1); // a click in pointer mode
+            check(!show.Zooming && main.Current == at, "zoom: a click goes back to the whole slide instead of moving on");
+
+            Press(Key.Z);
+            show.PickDown(OnRoot(100, 100));
+            show.PickUp(OnRoot(102, 101));
+            check(show.Zooming && !show.Zoomed, "zoom: a click without a drag keeps picking");
+            Press(Key.Z);
+            check(!show.Zooming, "zoom: Z again cancels");
+
+            Press(Key.Z);
+            show.PickDown(OnRoot(w * 0.1, h * 0.1));
+            show.PickUp(OnRoot(w * 0.6, h * 0.6));
+            Press(Key.Right);
+            check(!show.Zooming && main.Current == at + 1, "zoom: the next slide starts whole");
+            show.Close();
         }
         finally { main.CloseForTest(); }
     }

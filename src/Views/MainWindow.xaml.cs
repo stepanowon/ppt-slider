@@ -69,6 +69,8 @@ public partial class MainWindow : Window
         UpdateHint();
         Shortcuts.Changed += UpdateHint;
         jumpTimer.Tick += OnJumpTimeout;
+        inkSaveTimer.Tick += (_, _) => FlushInk();
+        PenState.StraightenOnShift(Ink);
     }
 
     // ---------- document ----------
@@ -84,10 +86,12 @@ public partial class MainWindow : Window
             return;
         }
         show?.Close();
+        FlushInk();
         Deck?.Dispose();
         Deck = d;
         ink.Clear();
         inkLog.Clear();
+        int restored = RestoreInk();
         selected = null;
         StageFrame.Visibility = Visibility.Visible;
         EmptyHint.Visibility = Visibility.Collapsed;
@@ -96,6 +100,7 @@ public partial class MainWindow : Window
         RebuildThumbs();
         Current = -1;
         Go(0);
+        if (restored > 0) StatusText.Text = $"지난번 판서 {restored}획을 복원했습니다 (모두 지우려면 [그리기] 탭의 [모든 판서])";
     }
 
     /// <summary>Saves; when ink exists the user picks a version with or without it.</summary>
@@ -139,10 +144,44 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Asks to save edits; ink needs no asking, it is kept by <see cref="InkStore"/> and comes back with the file.</summary>
+    void OnExportPdf(object? sender, RoutedEventArgs? e)
+    {
+        if (Deck == null) return;
+        CommitEdit();
+        bool withInk = false;
+        if (ink.Values.Any(s => s.Count > 0))
+        {
+            var r = MessageBox.Show(this, "판서한 내용이 있습니다. PDF에 판서를 포함할까요?\n\n[예]  판서 포함\n[아니요]  판서 없이\n[취소]  내보내지 않음",
+                "PDF로 내보내기", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (r == MessageBoxResult.Cancel) return;
+            withInk = r == MessageBoxResult.Yes;
+        }
+        var name = System.IO.Path.GetFileNameWithoutExtension(Deck.Path);
+        var dlg = new SaveFileDialog
+        {
+            Filter = "PDF 문서 (*.pdf)|*.pdf",
+            InitialDirectory = System.IO.Path.GetDirectoryName(Deck.Path),
+            FileName = name + (withInk ? "_판서" : "") + ".pdf",
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            Cursor = Cursors.Wait;
+            PdfExport.Export(Deck, dlg.FileName, withInk ? ink : null);
+            StatusText.Text = $"PDF로 내보냄: {dlg.FileName}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"PDF를 만들지 못했습니다.\n{ex.Message}", "PDF로 내보내기", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally { Cursor = null; }
+    }
+
     bool ConfirmDiscard()
     {
-        if (Deck == null || (!Deck.Dirty && !ink.Values.Any(s => s.Count > 0))) return true;
-        var r = MessageBox.Show(this, "저장하지 않은 변경 내용(또는 판서)이 있습니다. 저장할까요?", "PPT Slider",
+        if (Deck == null || !Deck.Dirty) return true;
+        var r = MessageBox.Show(this, "저장하지 않은 변경 내용이 있습니다. 저장할까요?", "PPT Slider",
             MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
         return r == MessageBoxResult.No || (r == MessageBoxResult.Yes && Save(false));
     }
@@ -168,12 +207,42 @@ public partial class MainWindow : Window
 
     public StrokeCollection StrokesOf(SlidePart sp)
     {
-        if (!ink.TryGetValue(sp, out var s))
-        {
-            ink[sp] = s = new StrokeCollection();
-            inkLog.Track(s);
-        }
+        return ink.TryGetValue(sp, out var s) ? s : NewInk(sp, new StrokeCollection());
+    }
+
+    StrokeCollection NewInk(SlidePart sp, StrokeCollection s)
+    {
+        ink[sp] = s;
+        inkLog.Track(s);
+        s.StrokesChanged += (_, _) => { inkSaveTimer.Stop(); inkSaveTimer.Start(); };
         return s;
+    }
+
+    // ---------- ink kept outside the deck (InkStore) ----------
+
+    readonly DispatcherTimer inkSaveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+
+    /// <summary>Puts back the ink kept for this file; returns the number of strokes. Not undoable: it is where we left off.</summary>
+    int RestoreInk()
+    {
+        var kept = InkStore.Load(Deck!.Path);
+        int n = 0;
+        foreach (var sp in Deck.Slides)
+            if (kept.TryGetValue(Deck.IdOf(sp), out var s))
+            {
+                NewInk(sp, s);
+                n += s.Count;
+            }
+        return n;
+    }
+
+    /// <summary>Writes the ink now (it is also written a second after each change).</summary>
+    internal void FlushInk()
+    {
+        inkSaveTimer.Stop();
+        if (Deck == null) return;
+        try { InkStore.Save(Deck.Path, Deck.Slides.Where(ink.ContainsKey).Select(sp => (Deck.IdOf(sp), ink[sp]))); }
+        catch (Exception) { StatusText.Text = "판서를 보관하지 못했습니다"; } // the ink is still here; saving the deck with ink keeps it too
     }
 
     void RenderCurrent()
@@ -555,6 +624,17 @@ public partial class MainWindow : Window
         Go(Current + 1);
     }
 
+    /// <summary>An empty slide after the current one to draw on, in the editor or the show; it is a real slide in the file.</summary>
+    void OnBlankPage(object? sender, RoutedEventArgs? e)
+    {
+        if (Deck == null) return;
+        CommitEdit();
+        Deck.NewSlide(Current, blank: true);
+        RebuildThumbs();
+        Go(Current + 1);
+        if (Pen.Tool is Tool.Select or Tool.Laser) Pen.SetTool(Tool.Pen);
+    }
+
     void OnDuplicate(object? sender, RoutedEventArgs? e)
     {
         if (Deck == null) return;
@@ -571,6 +651,7 @@ public partial class MainWindow : Window
                 MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
         ink.Remove(CurrentSlide!);
         Deck.DeleteSlide(Current);
+        FlushInk();
         RebuildThumbs();
         int i = Math.Min(Current, Count - 1);
         Current = -1;
@@ -704,6 +785,7 @@ public partial class MainWindow : Window
             [고정]
                 Esc : 텍스트 편집 취소 / 선택 도구로 (쇼에서는 한 번 더 누르면 종료)
                 쇼에서 숫자 + Enter : 해당 번호 슬라이드로 이동 (숫자만 누르면 1초 뒤 펜 색)
+                Shift + 드래그 : 판서를 직선으로    쇼에서 확대 중 Esc / 클릭 : 원래 크기
                 더블클릭 : 텍스트 편집    드래그 : 이동, 오른쪽 아래 모서리 : 크기
 
             단축키는 [슬라이드 쇼] 탭의 [단축키 설정]에서 바꿀 수 있습니다.
@@ -797,6 +879,7 @@ public partial class MainWindow : Window
             case "white": SetBlank(Blanked == Blank.White ? Blank.None : Blank.White); return true;
             case "next" or "prev" or "first" or "last" when Blanked != Blank.None: SetBlank(Blank.None); return true; // like PowerPoint: back to the same slide
             case "laser": Pen.SetTool(Pen.Tool == Tool.Laser ? Tool.Select : Tool.Laser); return true;
+            case "zoom": show?.ToggleZoom(); return true;
             case "undo": inkLog.Undo(ShowInk); return true;
             case "clearInk": ShowInk.Clear(); return true;
             case { } id: return Run(id);
@@ -808,7 +891,8 @@ public partial class MainWindow : Window
     {
         if (ShowKey(g)) return true;
         if (g is not { Key: Key.Escape, Mods: ModifierKeys.None }) return false;
-        if (Pen.Tool != Tool.Select) Pen.SetTool(Tool.Select);
+        if (show?.Zooming == true) show.ResetZoom();
+        else if (Pen.Tool != Tool.Select) Pen.SetTool(Tool.Select);
         else show?.Close();
         return true;
     }
@@ -816,7 +900,8 @@ public partial class MainWindow : Window
     /// <summary>A click (or wheel) on the slide in pointer mode: brings a blanked slide back, otherwise moves on like PowerPoint.</summary>
     public void ShowAdvance(int dir)
     {
-        if (Blanked != Blank.None) SetBlank(Blank.None);
+        if (show?.Zooming == true) show.ResetZoom(); // a click while zoomed goes back to the whole slide
+        else if (Blanked != Blank.None) SetBlank(Blank.None);
         else Go(Current + dir);
     }
 
@@ -873,6 +958,8 @@ public partial class MainWindow : Window
             case "thinner": Pen.Grow(-1); break;
             case "thicker": Pen.Grow(1); break;
             case "clearInk": ClearInk(); break;
+            case "blankPage": OnBlankPage(null, null); break;
+            case "exportPdf": OnExportPdf(null, null); break;
             case "break": OpenBreak(); break;
             case "showFirst": StartShow(0); break;
             case "showCurrent": StartShow(Current); break;
@@ -938,6 +1025,7 @@ public partial class MainWindow : Window
     {
         if (!ConfirmDiscard()) { e.Cancel = true; return; }
         show?.Close();
+        FlushInk();
         Deck?.Dispose();
     }
 }

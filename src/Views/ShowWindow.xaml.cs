@@ -45,7 +45,8 @@ public partial class ShowWindow : Window
         }
         Stage.Width = main.Deck!.Renderer.Width;
         Stage.Height = main.Deck.Renderer.Height;
-        LaserDot.Width = LaserDot.Height = Stage.Width / 80;
+        LaserDot.Width = LaserDot.Height = laserSize = Stage.Width / 80;
+        PenState.StraightenOnShift(Ink);
         main.SlideChanged += Refresh;
         main.Pen.Changed += OnPen;
         main.ShowStateChanged += OnShowState;
@@ -70,6 +71,7 @@ public partial class ShowWindow : Window
     void Refresh()
     {
         if (main.CurrentSlide is not { } slide) { Close(); return; }
+        if (Zooming) ResetZoom(); // another slide starts whole
         Host.Content = main.Deck!.Renderer.Render(slide);
         Page.Text = $"{main.Current + 1} / {main.Count}";
         OnShowState();
@@ -88,6 +90,7 @@ public partial class ShowWindow : Window
     void OnPen()
     {
         main.Pen.Apply(Ink);
+        if (zoom == ZoomMode.Picking) Ink.IsHitTestVisible = false; // the drag picks the area, it doesn't draw
         TSelect.IsChecked = main.Pen.Tool == Tool.Select;
         TLaser.IsChecked = main.Pen.Tool == Tool.Laser;
         TPen.IsChecked = main.Pen.Tool == Tool.Pen;
@@ -98,6 +101,102 @@ public partial class ShowWindow : Window
         DrawLaser();
     }
 
+    // ---------- zoom: Z, then drag the area that should fill the screen ----------
+
+    enum ZoomMode { None, Picking, Zoomed }
+    ZoomMode zoom;
+    Point? pickStart; // on Root
+    double laserSize;
+
+    /// <summary>Picking an area or zoomed in; Esc or a click goes back to the whole slide.</summary>
+    public bool Zooming => zoom != ZoomMode.None;
+    internal bool Zoomed => zoom == ZoomMode.Zoomed;
+
+    public void ToggleZoom()
+    {
+        if (Zooming) ResetZoom();
+        else SetZoom(ZoomMode.Picking);
+    }
+
+    public void ResetZoom()
+    {
+        Stage.RenderTransform = Transform.Identity;
+        LaserDot.Width = LaserDot.Height = laserSize;
+        SetZoom(ZoomMode.None);
+    }
+
+    void SetZoom(ZoomMode z)
+    {
+        zoom = z;
+        pickStart = null;
+        PickBox.Visibility = Visibility.Collapsed;
+        ZoomHint.Visibility = z == ZoomMode.Picking ? Visibility.Visible : Visibility.Collapsed;
+        OnPen();
+        DrawLaser();
+    }
+
+    /// <summary>Scales the slide so <paramref name="r"/> (slide coordinates) fills the screen, up to 8×, never showing past the slide's edge.</summary>
+    internal void ZoomTo(Rect r)
+    {
+        double w = Stage.Width, h = Stage.Height;
+        r.Intersect(new Rect(0, 0, w, h));
+        if (r.IsEmpty || r.Width < w / 50 || r.Height < h / 50) { SetZoom(ZoomMode.Picking); return; } // a click, not a drag: keep picking
+        double s = Math.Min(8, Math.Min(w / r.Width, h / r.Height));
+        double hw = w / (2 * s), hh = h / (2 * s);
+        double cx = Math.Clamp(r.X + r.Width / 2, hw, w - hw), cy = Math.Clamp(r.Y + r.Height / 2, hh, h - hh);
+        var m = Matrix.Identity;
+        m.Translate(-cx, -cy);
+        m.Scale(s, s);
+        m.Translate(w / 2, h / 2);
+        Stage.RenderTransform = new MatrixTransform(m);
+        LaserDot.Width = LaserDot.Height = laserSize / s; // the dot stays its size on screen
+        SetZoom(ZoomMode.Zoomed);
+    }
+
+    void OnPickDown(object sender, MouseButtonEventArgs e)
+    {
+        if (zoom != ZoomMode.Picking || Bar.IsMouseOver) return;
+        PickDown(e.GetPosition(Root));
+        Root.CaptureMouse();
+        e.Handled = true;
+    }
+
+    void OnPickMove(object sender, MouseEventArgs e)
+    {
+        if (pickStart != null) PickMove(e.GetPosition(Root));
+    }
+
+    void OnPickUp(object sender, MouseButtonEventArgs e)
+    {
+        if (pickStart == null) return;
+        Root.ReleaseMouseCapture();
+        PickUp(e.GetPosition(Root));
+        e.Handled = true;
+    }
+
+    /// <param name="p">On <see cref="Root"/>, like the other Pick methods.</param>
+    internal void PickDown(Point p)
+    {
+        pickStart = p;
+        PickMove(p);
+        PickBox.Visibility = Visibility.Visible;
+    }
+
+    internal void PickMove(Point p)
+    {
+        var r = new Rect(pickStart!.Value, p);
+        Canvas.SetLeft(PickBox, r.X);
+        Canvas.SetTop(PickBox, r.Y);
+        PickBox.Width = r.Width;
+        PickBox.Height = r.Height;
+    }
+
+    internal void PickUp(Point p)
+    {
+        var a = Root.TranslatePoint(pickStart!.Value, Stage);
+        ZoomTo(new Rect(a, Root.TranslatePoint(p, Stage)));
+    }
+
     /// <summary>"12:34" or "1:02:03".</summary>
     internal static string Elapsed(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes:00}:{t.Seconds:00}";
@@ -106,7 +205,7 @@ public partial class ShowWindow : Window
 
     // ---------- pointer: laser dot, cursor hidden after 3 seconds still ----------
 
-    void UpdateCursor() => Root.Cursor = main.Pen.Tool switch
+    void UpdateCursor() => Root.Cursor = zoom == ZoomMode.Picking ? Cursors.Cross : main.Pen.Tool switch
     {
         Tool.Laser => Cursors.None,
         Tool.Select => cursorHidden ? Cursors.None : Cursors.Arrow,
