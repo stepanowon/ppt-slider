@@ -123,6 +123,15 @@ public sealed class Deck : IDisposable
 
     // ---------- shape edits ----------
 
+    /// <summary>The speaker notes: the text of the notes page's body placeholder ("" when there are none).</summary>
+    public static string Notes(SlidePart sp)
+    {
+        var shapes = sp.NotesSlidePart?.NotesSlide?.CommonSlideData?.ShapeTree?.Elements<P.Shape>() ?? [];
+        var body = shapes.FirstOrDefault(s =>
+            s.NonVisualShapeProperties?.ApplicationNonVisualDrawingProperties?.PlaceholderShape?.Type?.Value == P.PlaceholderValues.Body);
+        return body == null ? "" : GetText(body).Trim();
+    }
+
     public static bool HasText(OpenXmlElement shape) => shape.LocalName == "sp";
 
     public static string GetText(OpenXmlElement shape) =>

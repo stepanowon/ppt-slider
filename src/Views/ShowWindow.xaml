@@ -5,25 +5,6 @@
         Title="슬라이드 쇼" Background="Black" Topmost="True"
         FontFamily="Segoe UI, Malgun Gothic" InputMethod.IsInputMethodEnabled="False"
         PreviewKeyDown="OnKey" MouseWheel="OnWheel">
-    <Window.Resources>
-        <Style x:Key="Tb" TargetType="ButtonBase">
-            <Setter Property="Focusable" Value="False"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ButtonBase">
-                        <Border x:Name="bd" Background="Transparent" CornerRadius="4" Width="38" Height="34">
-                            <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe MDL2 Assets" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="bd" Property="Background" Value="#55FFFFFF"/></Trigger>
-                            <Trigger Property="ToggleButton.IsChecked" Value="True"><Setter TargetName="bd" Property="Background" Value="#88C43E1C"/></Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-    </Window.Resources>
     <Grid x:Name="Root" Background="Black" MouseLeftButtonDown="OnClick" MouseMove="OnMouseMove" MouseLeave="OnMouseLeave">
         <Viewbox>
             <Grid x:Name="Stage" ClipToBounds="True">

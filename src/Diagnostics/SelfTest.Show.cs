@@ -141,6 +141,117 @@ static partial class SelfTest
         finally { main.CloseForTest(); }
     }
 
+    /// <summary>Speaker notes come from the notes page's body placeholder only (not the slide image or number placeholders).</summary>
+    /// <returns>The deck saved with that notes page on slide 2, for the presenter view test.</returns>
+    static string NotesTest(string file, string outDir, Action<bool, string> check)
+    {
+        using var deck = Deck.Open(file);
+        var withNotes = deck.Slides.Count(s => Deck.Notes(s) != "");
+        var slide = deck.Duplicate(0); // a copy has no notes page yet
+        check(Deck.Notes(slide) == "", "notes: a slide without a notes page has none");
+        var notes = slide.AddNewPart<DocumentFormat.OpenXml.Packaging.NotesSlidePart>();
+        static string Ph(int id, string type, string text) =>
+            $"""<p:sp><p:nvSpPr><p:cNvPr id="{id}" name="{type}"/><p:cNvSpPr/><p:nvPr><p:ph type="{type}"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/>{text}</p:txBody></p:sp>""";
+        notes.NotesSlide = new P.NotesSlide($"""
+            <p:notes xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+            <p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>
+            {Ph(2, "sldImg", "<a:p/>")}
+            {Ph(3, "body", "<a:p><a:r><a:t>첫 줄</a:t></a:r></a:p><a:p><a:r><a:t>둘째 </a:t></a:r><a:r><a:rPr b=\"1\"/><a:t>줄</a:t></a:r></a:p>")}
+            {Ph(4, "sldNum", "<a:p><a:r><a:t>4</a:t></a:r></a:p>")}
+            </p:spTree></p:cSld></p:notes>
+            """);
+        check(Deck.Notes(slide) == "첫 줄\n둘째 줄", $"notes: body placeholder text, one line per paragraph [{Deck.Notes(slide).Replace("\n", "\\n")}]");
+        check(true, $"notes: {withNotes} of {deck.Slides.Count - 1} slides in the deck have notes");
+        var path = Path.Combine(outDir, "notes.pptx");
+        deck.Save(path, null);
+        using var saved = Deck.Open(path);
+        check(Deck.Notes(saved.Slides[1]) == "첫 줄\n둘째 줄", "notes: kept after save and reopen");
+        return path;
+    }
+
+    /// <summary>The presenter view follows the show and drives it: keys, blank screen, laser, shared ink.</summary>
+    static void PresenterTests(string file, string outDir, Action<bool, string> check)
+    {
+        var main = new MainWindow();
+        try
+        {
+            main.Open(file);
+            int n = main.Count;
+            main.StartShow(0, test: true);
+            var show = main.ShowView!;
+            var pv = main.PresenterView;
+            check(pv != null, "presenter: opens with the show");
+            if (pv == null) return;
+            Wait(300);
+            void Press(Key k, ModifierKeys m = ModifierKeys.None) => pv.Press(new Gesture(k, m));
+            string Expected() => Deck.Notes(main.CurrentSlide!) is { Length: > 0 } t ? t : "(노트 없음)";
+
+            check(pv.Page.Text == $"1 / {n}" && pv.Host.Content != null && pv.NextHost.Content != null && pv.Notes.Text == Expected(),
+                "presenter: current slide, next slide, notes, page number");
+            check(pv.Elapsed.Text == "00:00" && pv.Clock.Text == DateTime.Now.ToString("t"), $"presenter: elapsed {pv.Elapsed.Text}, clock {pv.Clock.Text}");
+            Snap(pv, Path.Combine(outDir, "presenter.png"));
+            Press(Key.Right);
+            check(main.Current == 1 && show.Page.Text == $"2 / {n}" && pv.Page.Text == $"2 / {n}" && pv.Notes.Text == Expected(),
+                "presenter: → moves the show and updates the notes");
+            if (main.Deck!.Slides.FindIndex(s => Deck.Notes(s) != "") is >= 0 and var k)
+            {
+                main.Go(k);
+                check(pv.Notes.Text == Deck.Notes(main.CurrentSlide!), $"presenter: slide {k + 1}'s notes shown");
+                Snap(pv, Path.Combine(outDir, "presenter-notes.png"));
+            }
+
+            main.ShowInk.Add(Line(50, 50, 300, 120));
+            check(pv.Ink.Strokes == show.Ink.Strokes && show.Ink.Strokes.Count > 0, "presenter: same ink as the show");
+            Press(Key.B);
+            check(show.Cover.IsVisible && pv.Cover.IsVisible && pv.TBlack.IsChecked == true && pv.State.Text.Contains("검은"), "presenter: B blanks the show, presenter says so");
+            Snap(pv, Path.Combine(outDir, "presenter-black.png"));
+            Press(Key.B);
+            check(!show.Cover.IsVisible && !pv.Cover.IsVisible && pv.State.Text == "", "presenter: B again brings it back");
+
+            Press(Key.L, ModifierKeys.Control);
+            pv.PointerMoved(new Point(100, 50));
+            show.UpdateLayout();
+            check(main.LaserAt == new Point(100, 50) && show.LaserDot.IsVisible && pv.LaserDot.IsVisible
+                  && Math.Abs(System.Windows.Controls.Canvas.GetLeft(show.LaserDot) + show.LaserDot.Width / 2 - 100) < 0.01,
+                "presenter: the laser on the presenter's slide shows on the show at the same place");
+            pv.PointerMoved(new Point(-5, 10));
+            check(main.LaserAt == null && !show.LaserDot.IsVisible, "presenter: off the slide = no laser dot");
+            Press(Key.L, ModifierKeys.Control);
+
+            Press(Key.D2); Press(Key.Enter);
+            check(main.Current == 1 && pv.Page.Text == $"2 / {n}", "presenter: number + Enter works here too");
+            Press(Key.End);
+            check(pv.NextEnd.IsVisible && !pv.NextHost.IsVisible, "presenter: last slide says there is no next one");
+            Press(Key.Escape);
+            check(main.ShowView == null && main.PresenterView == null, "presenter: Esc ends the show and closes the presenter view");
+
+            main.PresenterBox.IsChecked = false;
+            main.StartShow(0, test: true);
+            check(main.ShowView != null && main.PresenterView == null, "presenter: off when [발표자 보기 사용] is unchecked");
+            main.ShowView?.Close();
+        }
+        finally { main.CloseForTest(); }
+    }
+
+    /// <summary>Screenshots of the editor with each ribbon tab, off screen: outDir/editor-tab*.png.</summary>
+    static void EditorSnaps(string file, string outDir, Action<bool, string> check)
+    {
+        var main = new MainWindow { WindowStartupLocation = WindowStartupLocation.Manual, Left = -20000, Top = 0, Width = 1400, Height = 860, ShowActivated = false };
+        try
+        {
+            main.Show();
+            main.Open(file);
+            for (int i = 0; i < main.Ribbon.Items.Count; i++)
+            {
+                main.Ribbon.SelectedIndex = i;
+                Wait(150);
+                Snap(main, Path.Combine(outDir, $"editor-tab{i + 1}.png"));
+            }
+            check(true, $"editor: {main.Ribbon.Items.Count} ribbon tabs captured");
+        }
+        finally { main.CloseForTest(); }
+    }
+
     static Stroke Line(double x1, double y1, double x2, double y2) =>
         new(new StylusPointCollection { new StylusPoint(x1, y1), new StylusPoint(x2, y2) })
         {

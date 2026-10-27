@@ -49,6 +49,7 @@ public partial class ShowWindow : Window
         main.SlideChanged += Refresh;
         main.Pen.Changed += OnPen;
         main.ShowStateChanged += OnShowState;
+        main.LaserMoved += DrawLaser;
         clock.Tick += (_, _) => UpdateClock();
         idle.Tick += (_, _) => { idle.Stop(); cursorHidden = true; UpdateCursor(); };
         Closed += (_, _) =>
@@ -58,6 +59,7 @@ public partial class ShowWindow : Window
             main.SlideChanged -= Refresh;
             main.Pen.Changed -= OnPen;
             main.ShowStateChanged -= OnShowState;
+            main.LaserMoved -= DrawLaser;
         };
         Refresh();
         OnPen();
@@ -93,7 +95,7 @@ public partial class ShowWindow : Window
         TEraser.IsChecked = main.Pen.Tool == Tool.Eraser;
         SizeText.Text = main.Pen.Size.ToString("0");
         UpdateCursor();
-        MoveLaser(lastMouse);
+        DrawLaser();
     }
 
     /// <summary>"12:34" or "1:02:03".</summary>
@@ -113,7 +115,7 @@ public partial class ShowWindow : Window
 
     void OnMouseMove(object sender, MouseEventArgs e) => PointerMoved(e.GetPosition(Root));
 
-    void OnMouseLeave(object sender, MouseEventArgs e) { lastMouse = null; MoveLaser(null); }
+    void OnMouseLeave(object sender, MouseEventArgs e) { lastMouse = null; main.SetLaser(null); }
 
     /// <param name="p">Mouse position on <see cref="Root"/>.</param>
     internal void PointerMoved(Point p)
@@ -124,17 +126,20 @@ public partial class ShowWindow : Window
         idle.Stop();
         idle.Start();
         UpdateCursor();
-        MoveLaser(p);
+        if (main.Pen.Tool != Tool.Laser) return;
+        var s = Root.TranslatePoint(p, Stage);
+        main.SetLaser(!Bar.IsMouseOver && new Rect(0, 0, Stage.Width, Stage.Height).Contains(s) ? s : null);
     }
 
-    void MoveLaser(Point? onRoot)
+    /// <summary>The dot follows <see cref="MainWindow.LaserAt"/>, which the presenter view's mouse can move too.</summary>
+    void DrawLaser() => PlaceLaser(LaserDot, main);
+
+    internal static void PlaceLaser(FrameworkElement dot, MainWindow main)
     {
-        var s = onRoot is { } p ? Root.TranslatePoint(p, Stage) : default;
-        bool on = main.Pen.Tool == Tool.Laser && onRoot != null && !Bar.IsMouseOver
-                  && s.X >= 0 && s.Y >= 0 && s.X <= Stage.Width && s.Y <= Stage.Height;
-        LaserDot.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
-        Canvas.SetLeft(LaserDot, s.X - LaserDot.Width / 2);
-        Canvas.SetTop(LaserDot, s.Y - LaserDot.Height / 2);
+        dot.Visibility = main.Pen.Tool == Tool.Laser && main.LaserAt != null ? Visibility.Visible : Visibility.Collapsed;
+        if (main.LaserAt is not { } p) return;
+        Canvas.SetLeft(dot, p.X - dot.Width / 2);
+        Canvas.SetTop(dot, p.Y - dot.Height / 2);
     }
 
     // ---------- input ----------
@@ -142,29 +147,14 @@ public partial class ShowWindow : Window
     void OnKey(object sender, KeyEventArgs e) => e.Handled = Press(Gesture.From(e));
 
     /// <summary>Handles a key press; false when it did nothing.</summary>
-    internal bool Press(Gesture g)
-    {
-        if (main.ShowKey(g)) return true;
-        if (g is not { Key: Key.Escape, Mods: ModifierKeys.None }) return false;
-        if (main.Pen.Tool != Tool.Select) main.Pen.SetTool(Tool.Select);
-        else Close();
-        return true;
-    }
-
-    bool Pointing => main.Pen.Tool is Tool.Select or Tool.Laser;
+    internal bool Press(Gesture g) => main.ShowPress(g);
 
     void OnClick(object sender, MouseButtonEventArgs e)
     {
-        if (!Pointing || Bar.IsMouseOver) return;
-        if (main.Blanked != Blank.None) main.SetBlank(Blank.None);
-        else main.Go(main.Current + 1); // click advances like PowerPoint
+        if (main.Pen.Tool is Tool.Select or Tool.Laser && !Bar.IsMouseOver) main.ShowAdvance(1);
     }
 
-    void OnWheel(object sender, MouseWheelEventArgs e)
-    {
-        if (main.Blanked != Blank.None) main.SetBlank(Blank.None);
-        else main.Go(main.Current + (e.Delta < 0 ? 1 : -1));
-    }
+    void OnWheel(object sender, MouseWheelEventArgs e) => main.ShowAdvance(e.Delta < 0 ? 1 : -1);
 
     void OnBarEnter(object sender, MouseEventArgs e) => Bar.Opacity = 1;
     void OnBarLeave(object sender, MouseEventArgs e) => Bar.Opacity = 0.25;

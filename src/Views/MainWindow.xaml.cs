@@ -650,8 +650,10 @@ public partial class MainWindow : Window
     MonitorInfo SelectedMonitor => MonitorBox.SelectedItem as MonitorInfo ?? Monitors.All()[0];
 
     internal ShowWindow? ShowView => show;
+    internal PresenterWindow? PresenterView => presenter;
+    PresenterWindow? presenter;
 
-    /// <param name="test">Self-test: a small window off screen instead of full screen.</param>
+    /// <param name="test">Self-test: small windows off screen instead of full screen, the presenter view even with one monitor.</param>
     internal void StartShow(int from, bool test = false)
     {
         if (Deck == null) return;
@@ -659,16 +661,27 @@ public partial class MainWindow : Window
         show?.Close();
         Go(from);
         ShowStart = DateTime.Now;
-        show = new ShowWindow(this, SelectedMonitor, test);
+        var shown = SelectedMonitor;
+        show = new ShowWindow(this, shown, test);
         show.Closed += (_, _) =>
         {
             show = null;
+            presenter?.Close();
             SetJump("");
             SetBlank(Blank.None);
+            SetLaser(null);
             if (Pen.Tool == Tool.Laser) Pen.SetTool(Tool.Select);
             Activate();
         };
         show.Show();
+        // the presenter view goes on another monitor (the laptop screen, usually the primary one)
+        var other = test ? shown : Monitors.All().Where(m => m.Bounds != shown.Bounds).OrderByDescending(m => m.Primary).FirstOrDefault();
+        if (PresenterBox.IsChecked == true && other != null)
+        {
+            presenter = new PresenterWindow(this, other, test);
+            presenter.Closed += (_, _) => presenter = null;
+            presenter.Show();
+        }
     }
 
     void OnShowFirst(object sender, RoutedEventArgs e) => StartShow(0);
@@ -714,6 +727,17 @@ public partial class MainWindow : Window
     public event Action? ShowStateChanged;
     readonly DispatcherTimer jumpTimer = new();
     Gesture? jumpKey; // a lone digit: runs its own command (a pen color) if no Enter / second digit follows
+
+    /// <summary>The laser dot in slide coordinates, null when the mouse is off the slide; set by the show or the presenter view.</summary>
+    public Point? LaserAt { get; private set; }
+    public event Action? LaserMoved;
+
+    public void SetLaser(Point? p)
+    {
+        if (p == LaserAt) return;
+        LaserAt = p;
+        LaserMoved?.Invoke();
+    }
 
     /// <summary>The strokes the show draws on: the blank screen's while blanked, otherwise the slide's.</summary>
     public StrokeCollection ShowInk => Blanked != Blank.None ? BlankInk : StrokesOf(CurrentSlide!);
@@ -777,6 +801,23 @@ public partial class MainWindow : Window
             case "clearInk": ShowInk.Clear(); return true;
             case { } id: return Run(id);
         }
+    }
+
+    /// <summary>A key in the show or presenter window: <see cref="ShowKey"/>, then Esc = pointer, Esc again = end of the show.</summary>
+    public bool ShowPress(Gesture g)
+    {
+        if (ShowKey(g)) return true;
+        if (g is not { Key: Key.Escape, Mods: ModifierKeys.None }) return false;
+        if (Pen.Tool != Tool.Select) Pen.SetTool(Tool.Select);
+        else show?.Close();
+        return true;
+    }
+
+    /// <summary>A click (or wheel) on the slide in pointer mode: brings a blanked slide back, otherwise moves on like PowerPoint.</summary>
+    public void ShowAdvance(int dir)
+    {
+        if (Blanked != Blank.None) SetBlank(Blank.None);
+        else Go(Current + dir);
     }
 
     void SetJump(string s)

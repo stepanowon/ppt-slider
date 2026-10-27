@@ -87,6 +87,10 @@ static partial class SelfTest
         }
         try { ShowTests(file, outDir, Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
+        try { PresenterTests(NotesTest(file, outDir, Check), outDir, Check); }
+        catch (Exception ex) { Check(false, ex.ToString()); }
+        try { EditorSnaps(file, outDir, Check); }
+        catch (Exception ex) { Check(false, ex.ToString()); }
         File.WriteAllLines(Path.Combine(outDir, "selftest.txt"), log);
         return failed ? 1 : 0;
     }
