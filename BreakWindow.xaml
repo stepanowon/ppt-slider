@@ -1,0 +1,36 @@
+<Window x:Class="PptSlider.BreakWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Break Time" Background="#14181F" Topmost="True" Foreground="White"
+        FontFamily="Segoe UI, Malgun Gothic" InputMethod.IsInputMethodEnabled="False"
+        PreviewKeyDown="OnKey">
+    <Grid x:Name="Root">
+        <!-- 1. choose minutes -->
+        <StackPanel x:Name="Setup" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <TextBlock Text="Break Time" FontSize="44" FontWeight="Light" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,30">
+                <Button Content="−" Width="90" Height="90" FontSize="40" Click="OnMinus" Focusable="False"/>
+                <TextBlock x:Name="MinutesText" FontSize="120" FontWeight="Light" Width="480" TextAlignment="Center" VerticalAlignment="Center"/>
+                <Button Content="+" Width="90" Height="90" FontSize="40" Click="OnPlus" Focusable="False"/>
+            </StackPanel>
+            <Slider x:Name="Minutes" Minimum="5" Maximum="120" TickFrequency="5" IsSnapToTickEnabled="True" TickPlacement="BottomRight"
+                    Value="10" Width="640" Focusable="False" ValueChanged="OnMinutes"/>
+            <DockPanel Width="640" Margin="0,4,0,0">
+                <TextBlock Text="5분" Foreground="#999"/>
+                <TextBlock Text="2시간" Foreground="#999" HorizontalAlignment="Right"/>
+            </DockPanel>
+            <Button Content="시작" Width="220" Height="60" FontSize="24" Margin="0,36,0,0" Click="OnStart" Focusable="False"/>
+            <TextBlock Text="← → ↑ ↓ : 5분씩 조정    Enter : 시작    Esc : 닫기" Foreground="#888" FontSize="16" HorizontalAlignment="Center" Margin="0,24,0,0"/>
+        </StackPanel>
+
+        <!-- 2. countdown -->
+        <StackPanel x:Name="Running" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+            <TextBlock x:Name="Heading" Text="쉬는 시간입니다" FontSize="56" FontWeight="Light" HorizontalAlignment="Center"/>
+            <Viewbox Height="340" Margin="0,10">
+                <TextBlock x:Name="Remain" FontWeight="Light" FontFamily="Segoe UI Light"/>
+            </Viewbox>
+            <TextBlock x:Name="Until" FontSize="34" Foreground="#BBB" HorizontalAlignment="Center"/>
+            <TextBlock Text="Space : 일시 정지/계속    Esc : 닫기" Foreground="#777" FontSize="16" HorizontalAlignment="Center" Margin="0,40,0,0"/>
+        </StackPanel>
+    </Grid>
+</Window>
