@@ -14,10 +14,13 @@ namespace PptSlider;
 /// </summary>
 public static class PdfExport
 {
-    public static void Export(Deck deck, string path, IReadOnlyDictionary<SlidePart, StrokeCollection>? ink)
+    /// <param name="ink">strokes per slide, in slide coordinates (null = without ink)</param>
+    /// <param name="onlyInked">lecture notes: only the slides that have ink</param>
+    public static void Export(Deck deck, string path, IReadOnlyDictionary<SlidePart, StrokeCollection>? ink, bool onlyInked = false)
     {
         double w = deck.Renderer.Width, h = deck.Renderer.Height;
-        var pages = deck.Slides.Select(sp =>
+        var slides = onlyInked ? deck.Slides.Where(sp => ink != null && ink.TryGetValue(sp, out var s) && s.Count > 0) : deck.Slides;
+        var pages = slides.Select(sp =>
         {
             var el = deck.Renderer.Render(sp);
             el.Measure(new Size(w, h));

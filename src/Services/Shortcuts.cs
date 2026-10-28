@@ -82,6 +82,8 @@ public static class Shortcuts
         new("save", L.T("g.file"), L.T("save"), false, [K(Key.S, Ctrl)]),
         new("saveAs", L.T("g.file"), L.T("saveAs"), false, [K(Key.S, CtrlShift)]),
         new("exportPdf", L.T("g.file"), L.T("exportPdf"), false, []),
+        new("inkNotes", L.T("g.file"), L.T("inkNotes"), false, []),
+        new("picture", L.T("g.edit"), L.T("picture"), false, []),
         new("undo", L.T("g.edit"), L.T("undoInkFirst"), true, [K(Key.Z, Ctrl)]),
         new("editText", L.T("g.edit"), L.T("editText"), false, [K(Key.F2)]),
         new("deleteShape", L.T("g.edit"), L.T("deleteShape"), false, [K(Key.Delete)]),

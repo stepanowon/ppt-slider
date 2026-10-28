@@ -76,26 +76,15 @@ public sealed class Deck : IDisposable
 
     // ---------- save ----------
 
-    /// <summary>Writes the deck to <paramref name="path"/>; when <paramref name="ink"/> is given each slide's strokes are baked in as a transparent picture.</summary>
-    public void Save(string path, IReadOnlyDictionary<SlidePart, StrokeCollection>? ink)
+    /// <summary>Writes the deck to <paramref name="path"/>, which becomes its file.</summary>
+    public void Save(string path)
     {
-        var tmp = path + ".tmp";
-        using (var clone = (PresentationDocument)Doc.Clone(tmp, true))
-        {
-            if (ink != null)
-            {
-                var src = Slides;
-                var dst = SlidesOf(clone.PresentationPart!);
-                for (int i = 0; i < src.Count; i++)
-                    if (ink.TryGetValue(src[i], out var strokes) && strokes.Count > 0)
-                        AddInkPicture(dst[i], strokes);
-            }
-        }
-        File.Move(tmp, path, true); // never leave a half-written file in place of the original
-        if (ink == null) { Path = path; Dirty = false; }
+        SaveCopy(path);
+        Path = path;
+        Dirty = false;
     }
 
-    /// <summary>The strokes drawn as they look on screen, for baking into a picture or a PDF page.</summary>
+    /// <summary>The strokes drawn as they look on screen, for a PDF page.</summary>
     public static DrawingVisual InkVisual(StrokeCollection strokes)
     {
         var dv = new DrawingVisual();
@@ -119,26 +108,32 @@ public sealed class Deck : IDisposable
     {
         var tmp = path + ".tmp";
         using (Doc.Clone(tmp, true)) { }
-        File.Move(tmp, path, true);
+        File.Move(tmp, path, true); // never leave a half-written file in place of the original
     }
 
-    void AddInkPicture(SlidePart sp, StrokeCollection strokes)
+    /// <summary>Picture formats <see cref="AddPicture"/> takes, by file extension.</summary>
+    public static PartTypeInfo? PictureType(string ext) => ext.ToLowerInvariant() switch
     {
-        double w = Renderer.Width, h = Renderer.Height;
-        var bmp = new RenderTargetBitmap((int)(w * 2), (int)(h * 2), 192, 192, PixelFormats.Pbgra32);
-        bmp.Render(InkVisual(strokes));
-        var enc = new PngBitmapEncoder();
-        enc.Frames.Add(BitmapFrame.Create(bmp));
-        var img = sp.AddImagePart(ImagePartType.Png);
-        using (var s = img.GetStream(FileMode.Create)) enc.Save(s);
+        ".png" => ImagePartType.Png,
+        ".jpg" or ".jpeg" => ImagePartType.Jpeg,
+        ".gif" => ImagePartType.Gif,
+        ".bmp" => ImagePartType.Bmp,
+        _ => null,
+    };
 
-        var tree = sp.Slide!.CommonSlideData!.ShapeTree!;
-        long cx = (long)(w * SlideRenderer.Emu), cy = (long)(h * SlideRenderer.Emu);
-        tree.Append(new P.Picture($"""
-            <p:pic {Ns}><p:nvPicPr><p:cNvPr id="{NextId(sp)}" name="판서"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+    /// <summary>Adds a picture shape showing <paramref name="image"/> at <paramref name="r"/> (slide coordinates).</summary>
+    public static OpenXmlElement AddPicture(SlidePart sp, byte[] image, PartTypeInfo type, Rect r)
+    {
+        var img = sp.AddImagePart(type);
+        using (var s = img.GetStream(FileMode.Create)) s.Write(image);
+        var pic = new P.Picture($"""
+            <p:pic {Ns}><p:nvPicPr><p:cNvPr id="{NextId(sp)}" name="Picture"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
             <p:blipFill><a:blip r:embed="{sp.GetIdOfPart(img)}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
-            <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
-            """));
+            <p:spPr><a:xfrm><a:off x="{(long)(r.X * SlideRenderer.Emu)}" y="{(long)(r.Y * SlideRenderer.Emu)}"/><a:ext cx="{(long)(r.Width * SlideRenderer.Emu)}" cy="{(long)(r.Height * SlideRenderer.Emu)}"/></a:xfrm>
+            <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
+            """);
+        sp.Slide!.CommonSlideData!.ShapeTree!.Append(pic);
+        return pic;
     }
 
     static uint NextId(SlidePart sp) =>
@@ -250,7 +245,8 @@ public sealed class Deck : IDisposable
     /// <paramref name="fmt"/> (per character of <paramref name="text"/>) and <paramref name="oldFmt"/> (per character of the
     /// original text) are what the editor showed after and before: where they differ, bold / italic / underline / font / size is set on the run.
     /// </summary>
-    public static void SetEditText(OpenXmlElement shape, string text, IReadOnlyList<Fmt>? fmt = null, IReadOnlyList<Fmt>? oldFmt = null)
+    /// <param name="scale">The font scale the editor showed the text at; default: the shape's <see cref="FontScale"/>.</param>
+    public static void SetEditText(OpenXmlElement shape, string text, IReadOnlyList<Fmt>? fmt = null, IReadOnlyList<Fmt>? oldFmt = null, double? scale = null)
     {
         var tx = X.Child(shape, "txBody");
         var paras = tx?.Elements<A.Paragraph>().ToList() ?? [];
@@ -272,7 +268,7 @@ public sealed class Deck : IDisposable
             .Concat(old.Skip(n - suf)).ToList();
         if (fmt != null && oldFmt != null)
         {
-            double scale = FontScale(shape);
+            double s = scale ?? FontScale(shape);
             for (int k = 0; k < items.Count; k++)
             {
                 int was = k < pre ? k : k >= text.Length - suf ? k - text.Length + n : styleAt; // the original character it compares to
@@ -280,7 +276,7 @@ public sealed class Deck : IDisposable
                 // font and size only against a real character: an empty box's editor defaults are not a choice
                 bool font = was >= 0 && b.Font != null && a.Font != b.Font, size = was >= 0 && b.Size > 0 && Math.Abs(a.Size - b.Size) > 0.01;
                 items[k] = items[k] with { O = new Ovr(a.B != b.B ? b.B : null, a.I != b.I ? b.I : null, a.U != b.U ? b.U : null,
-                    font ? b.Font : null, size ? b.Size / scale : null) };
+                    font ? b.Font : null, size ? b.Size / s : null) };
             }
         }
         var counts = paras.Select((_, i) => old.Count(c => c.Para == i && c.Src != null)).ToList();
@@ -484,6 +480,27 @@ public sealed class Deck : IDisposable
 
     OpenXmlElement? SectionEntry(uint id) =>
         Pres.Presentation!.Descendants().FirstOrDefault(e => e.LocalName == "sldId" && e.Parent?.Parent?.LocalName == "section" && X.Attr(e, "id") == id.ToString());
+
+    /// <summary>Moves slide <paramref name="from"/> so it ends up at index <paramref name="to"/> (both in the order before the move).</summary>
+    public void MoveSlide(int from, int to)
+    {
+        var ids = IdList.Elements<P.SlideId>().ToList();
+        to = Math.Clamp(to, 0, ids.Count - 1);
+        if (from == to || from < 0 || from >= ids.Count) return;
+        var sid = ids[from];
+        var entry = SectionEntry(sid.Id!.Value);
+        sid.Remove();
+        ids.RemoveAt(from);
+        if (to == 0) ids[0].InsertBeforeSelf(sid); else ids[to - 1].InsertAfterSelf(sid);
+        // sections list slides in order: the entry goes after the one of the slide now before it
+        if (entry != null)
+        {
+            entry.Remove();
+            if (to > 0 && SectionEntry(ids[to - 1].Id!.Value) is { } prev) prev.InsertAfterSelf(entry);
+            else if (to == 0 && SectionEntry(ids[0].Id!.Value) is { } next) next.InsertBeforeSelf(entry);
+        }
+        Dirty = true;
+    }
 
     public void DeleteSlide(int i)
     {

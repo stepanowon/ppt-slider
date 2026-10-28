@@ -90,6 +90,7 @@
                             <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="{local:Loc save}" Click="OnSave" ToolTip="{local:Loc save}" local:Shortcuts.For="save"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="{local:Loc saveAsShort}" Click="OnSaveAs" ToolTip="{local:Loc saveAs}" local:Shortcuts.For="saveAs"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xEA90;" Content="PDF" Click="OnExportPdf" ToolTip="{local:Loc exportPdfTip}" local:Shortcuts.For="exportPdf"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE70B;" Content="{local:Loc inkNotes}" Click="OnInkNotes" ToolTip="{local:Loc inkNotesTip}" local:Shortcuts.For="inkNotes"/>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.edit}" Style="{StaticResource Grp}">
@@ -128,6 +129,7 @@
                     <HeaderedContentControl Header="{local:Loc grp.insert}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
                             <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="{local:Loc textBox}" Click="OnAddText"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xEB9F;" Content="{local:Loc picture}" Click="OnAddPicture" ToolTip="{local:Loc pictureTip}" local:Shortcuts.For="picture"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE894;" Content="{local:Loc deleteShape}" Click="OnDeleteShape" ToolTip="{local:Loc deleteShapeTip}" local:Shortcuts.For="deleteShape"/>
                         </StackPanel>
                     </HeaderedContentControl>
@@ -158,6 +160,7 @@
                             <Button x:Name="UndoInkBtn" Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="{local:Loc undoInkShort}" Click="OnUndoInk" ToolTip="{local:Loc undoInk}" local:Shortcuts.For="undo"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="{local:Loc thisSlide}" Click="OnClearInk" ToolTip="{local:Loc clearInk}" local:Shortcuts.For="clearInk"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="{local:Loc allInk}" Click="OnClearAllInk"/>
+                            <ToggleButton x:Name="InkShownBtn" Style="{StaticResource Rb}" Tag="&#xE7B3;" Content="{local:Loc inkShown}" Click="OnInkShown" ToolTip="{local:Loc inkShownTip}" IsChecked="True"/>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.page}" Style="{StaticResource Grp}">
@@ -222,7 +225,8 @@
 
         <!-- thumbnails -->
         <ListBox x:Name="Thumbs" DockPanel.Dock="Left" Width="220" Background="#F3F3F3" BorderThickness="0,0,1,0" BorderBrush="#D6D6D6"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="OnThumbSelected" Focusable="False"/>
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionChanged="OnThumbSelected" Focusable="False"
+                 AllowDrop="True" DragOver="OnThumbsDragOver" DragLeave="OnThumbsDragLeave" Drop="OnThumbsDrop"/>
 
         <!-- slide stage -->
         <Grid Background="#E6E6E6">
@@ -233,13 +237,12 @@
             </StackPanel>
             <Viewbox Margin="28">
                 <Grid x:Name="StageFrame" Visibility="Collapsed">
-                    <!-- shadow on a sibling so the effect doesn't slow down inking -->
+                    <!-- shadow on a sibling so the effect doesn't slow down rendering; ink is drawn on the screen above (InkOverlay) -->
                     <Border Background="White"><Border.Effect><DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.25"/></Border.Effect></Border>
                     <Grid x:Name="Stage" ClipToBounds="True"
                           MouseLeftButtonDown="OnStageDown" MouseMove="OnStageMove" MouseLeftButtonUp="OnStageUp">
                         <ContentControl x:Name="SlideHost" Focusable="False"/>
                         <Canvas x:Name="Overlay" Background="Transparent"/>
-                        <InkCanvas x:Name="Ink" Background="Transparent"/>
                     </Grid>
                 </Grid>
             </Viewbox>

@@ -70,6 +70,10 @@ public static class L
         ["saveAs"] = ["다른 이름으로 저장", "名前を付けて保存", "Save As"],
         ["exportPdf"] = ["PDF로 내보내기", "PDF にエクスポート", "Export to PDF"],
         ["exportPdfTip"] = ["PDF로 내보내기 (판서 포함 여부 선택)", "PDF にエクスポート (手書きを含めるか選択)", "Export to PDF (with or without ink)"],
+        ["inkNotes"] = ["판서 노트", "手書きノート", "Ink Notes"],
+        ["inkNotesTip"] = ["판서한 슬라이드만 판서와 함께 PDF로 (강의 노트)", "手書きしたスライドだけを手書きと一緒に PDF に (講義ノート)", "Only the slides you drew on, with their ink, as a PDF (lecture notes)"],
+        ["inkNotesSuffix"] = ["_판서노트", "_手書きノート", "_ink-notes"],
+        ["noInkedSlides"] = ["판서한 슬라이드가 없습니다", "手書きしたスライドがありません", "No slide has ink"],
         ["grp.edit"] = ["편집", "編集", "Edit"],
         ["undo"] = ["실행 취소", "元に戻す", "Undo"],
         ["grp.slides"] = ["슬라이드", "スライド", "Slides"],
@@ -93,6 +97,11 @@ public static class L
         ["alignRight"] = ["오른쪽 맞춤", "右揃え", "Align right"],
         ["grp.insert"] = ["삽입", "挿入", "Insert"],
         ["textBox"] = ["텍스트 상자", "テキスト ボックス", "Text Box"],
+        ["picture"] = ["그림", "画像", "Picture"],
+        ["pictureTip"] = ["그림 삽입 (붙여넣기 Ctrl+V, 파일을 끌어다 놓아도 됩니다)", "画像の挿入 (Ctrl+V で貼り付け、ファイルのドラッグも可)", "Insert a picture (or paste with Ctrl+V, or drop a file)"],
+        ["pictureFilter"] = ["그림 (*.png;*.jpg;*.jpeg;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp", "画像 (*.png;*.jpg;*.jpeg;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp",
+            "Pictures (*.png;*.jpg;*.jpeg;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp"],
+        ["pictureFail"] = ["그림을 넣지 못했습니다.\n{0}", "画像を挿入できませんでした。\n{0}", "Could not insert the picture.\n{0}"],
         ["deleteShape"] = ["개체 삭제", "オブジェクトの削除", "Delete object"],
         ["deleteShapeTip"] = ["선택한 개체 삭제", "選択したオブジェクトを削除", "Delete the selected object"],
 
@@ -114,6 +123,11 @@ public static class L
         ["thisSlide"] = ["이 슬라이드", "このスライド", "This Slide"],
         ["clearInk"] = ["현재 슬라이드 판서 지우기", "このスライドの手書きを消去", "Clear ink on this slide"],
         ["allInk"] = ["모든 판서", "すべての手書き", "All Ink"],
+        ["inkShown"] = ["판서 보기", "手書きを表示", "Show Ink"],
+        ["inkShownTip"] = ["화면 위 판서 보이기/숨기기", "画面上の手書きの表示/非表示", "Show or hide the ink on the screen"],
+        ["hideInk"] = ["판서 숨기기 (펜을 고르면 다시 보입니다)", "手書きを隠す (ペンを選ぶと再表示)", "Hide the ink (pick a pen to show it again)"],
+        ["inkPointer"] = ["포인터 — 판서는 그대로 두고 아래 화면을 클릭 (Esc)", "ポインター — 手書きを残したまま下の画面をクリック (Esc)", "Pointer — keep the ink and click the screen underneath (Esc)"],
+        ["moveBar"] = ["끌어서 도구 모음 옮기기", "ドラッグでツールバーを移動", "Drag to move the toolbar"],
         ["grp.page"] = ["페이지", "ページ", "Page"],
         ["blankPage"] = ["빈 판서 페이지", "空白の手書きページ", "Blank Ink Page"],
         ["blankPageTip"] = ["현재 슬라이드 뒤에 빈 슬라이드를 넣고 이동", "現在のスライドの後に空のスライドを挿入して移動", "Insert a blank slide after this one and go to it"],
@@ -158,13 +172,8 @@ public static class L
         ["recoverTitle"] = ["자동 저장 복구", "自動保存の復元", "Recover autosave"],
         ["deleteSlideAsk"] = ["슬라이드 {0}을(를) 삭제할까요? 실행 취소할 수 없습니다.", "スライド {0} を削除しますか? 元に戻すことはできません。", "Delete slide {0}? This cannot be undone."],
         ["openFail"] = ["파일을 열 수 없습니다.\n{0}\n\n.pptx 형식만 지원합니다.", "ファイルを開けません。\n{0}\n\n.pptx 形式のみ対応しています。", "Cannot open the file.\n{0}\n\nOnly .pptx files are supported."],
-        ["inkRestored"] = ["지난번 판서 {0}획을 복원했습니다 (모두 지우려면 [그리기] 탭의 [모든 판서])", "前回の手書き {0} 本を復元しました (すべて消すには [描画] タブの [すべての手書き])",
-            "Restored {0} ink strokes from last time (to clear them: [Draw] tab → [All Ink])"],
         ["recovered"] = ["자동 저장된 사본에서 복구했습니다. 저장하면 원래 파일에 씁니다.", "自動保存されたコピーから復元しました。保存すると元のファイルに書き込みます。",
             "Recovered from the autosaved copy. Saving writes to the original file."],
-        ["saveWithInk"] = ["판서한 내용이 있습니다. 어떤 버전으로 저장할까요?\n\n[예]  판서를 포함하여 저장 (새 파일)\n[아니요]  판서 없이 저장\n[취소]  저장하지 않음",
-            "手書きがあります。どちらで保存しますか?\n\n[はい]  手書きを含めて保存 (新しいファイル)\n[いいえ]  手書きなしで保存\n[キャンセル]  保存しない",
-            "There is ink on the slides. How do you want to save?\n\n[Yes]  Save with the ink (new file)\n[No]  Save without the ink\n[Cancel]  Don't save"],
         ["pptxFilter"] = ["PowerPoint 프레젠테이션 (*.pptx)|*.pptx", "PowerPoint プレゼンテーション (*.pptx)|*.pptx", "PowerPoint Presentation (*.pptx)|*.pptx"],
         ["inkSuffix"] = ["_판서", "_手書き", "_ink"],
         ["saved"] = ["저장됨: {0}", "保存しました: {0}", "Saved: {0}"],
@@ -176,7 +185,6 @@ public static class L
         ["pdfDone"] = ["PDF로 내보냄: {0}", "PDF にエクスポートしました: {0}", "Exported to PDF: {0}"],
         ["pdfFail"] = ["PDF를 만들지 못했습니다.\n{0}", "PDF を作成できませんでした。\n{0}", "Could not create the PDF.\n{0}"],
         ["unsaved"] = ["저장하지 않은 변경 내용이 있습니다. 저장할까요?", "保存されていない変更があります。保存しますか?", "You have unsaved changes. Save them?"],
-        ["inkKeepFail"] = ["판서를 보관하지 못했습니다", "手書きを保管できませんでした", "Could not keep the ink"],
         ["openAFile"] = ["파일을 열어 주세요", "ファイルを開いてください", "Open a file"],
         ["slideOf"] = ["슬라이드 {0} / {1}", "スライド {0} / {1}", "Slide {0} of {1}"],
         ["editingText"] = ["텍스트 편집 중 — 바깥을 클릭하면 적용, Esc는 취소, Shift+Enter는 줄 바꿈", "テキストを編集中 — 外側をクリックで適用、Esc でキャンセル、Shift+Enter で改行",
@@ -197,6 +205,7 @@ public static class L
                 쇼에서 숫자 + Enter : 해당 번호 슬라이드로 이동 (숫자만 누르면 1초 뒤 펜 색)
                 Shift + 드래그 : 판서를 직선으로    쇼에서 확대 중 Esc / 클릭 : 원래 크기
                 더블클릭 : 텍스트 편집    드래그 : 이동, 오른쪽 아래 모서리 : 크기
+                Ctrl + V : 그림 붙여넣기    썸네일 드래그 : 슬라이드 순서 바꾸기
 
             단축키는 [설정] 탭의 [단축키 설정]에서 바꿀 수 있습니다.
             """, """
@@ -205,6 +214,7 @@ public static class L
                 スライド ショーで数字 + Enter : その番号のスライドへ移動 (数字だけなら 1 秒後にペンの色)
                 Shift + ドラッグ : 手書きを直線に    スライド ショーの拡大中に Esc / クリック : 元のサイズ
                 ダブルクリック : テキストの編集    ドラッグ : 移動、右下の角 : サイズ変更
+                Ctrl + V : 画像の貼り付け    サムネイルのドラッグ : スライドの順序の変更
 
             ショートカットは [設定] タブの [ショートカットの設定] で変更できます。
             """, """
@@ -213,6 +223,7 @@ public static class L
                 Number + Enter in the show : go to that slide (a number alone sets the pen color after 1 s)
                 Shift + drag : straight ink line    Esc / click while zoomed in the show : normal size
                 Double-click : edit text    Drag : move, bottom-right corner : resize
+                Ctrl + V : paste a picture    Drag a thumbnail : change the slide order
 
             Shortcuts can be changed in [Settings] tab → [Shortcut Settings].
             """],

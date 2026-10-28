@@ -12,14 +12,15 @@ namespace PptSlider;
 
 /// <summary>
 /// `PptSlider.exe --selftest deck.pptx outDir`: renders every slide to PNG, then checks the
-/// edit → save (with / without ink) → reopen round trip. Writes outDir/selftest.txt, exit code 0 = pass.
+/// edit → save → reopen round trip, then the windows off screen. Writes outDir/selftest.txt, exit code 0 = pass.
 /// </summary>
 static partial class SelfTest
 {
     public static int Run(string file, string outDir)
     {
         Directory.CreateDirectory(outDir);
-        AppPaths.Local = Path.Combine(outDir, "local"); // never the user's own kept ink, recent files or autosaves
+        AppPaths.Local = Path.Combine(outDir, "local"); // never the user's own recent files or autosaves
+        InkOverlay.OffScreen = true;
         if (Directory.Exists(AppPaths.Local)) Directory.Delete(AppPaths.Local, true);
         var log = new List<string>();
         void Check(bool ok, string what) { log.Add($"{(ok ? "PASS" : "FAIL")} {what}"); if (!ok) failed = true; }
@@ -50,34 +51,33 @@ static partial class SelfTest
                 Deck.EditRuns(shape, r => Deck.SetAttr(r, "sz", "4000"));
                 Check(Deck.GetText(shape) == "수정됨\n둘째 줄", "SetText/GetText");
 
-                var ink = new Dictionary<SlidePart, StrokeCollection>
-                {
-                    [slides[0]] = new StrokeCollection { new Stroke(new StylusPointCollection { new StylusPoint(10, 10), new StylusPoint(300, 200), new StylusPoint(500, 100) }) },
-                };
-                deck.Save(Path.Combine(outDir, "with-ink.pptx"), ink);
-                deck.Save(Path.Combine(outDir, "plain.pptx"), null);
+                Deck.AddPicture(slides[0], TinyPng(), Deck.PictureType(".png")!.Value, new Rect(40, 30, 200, 100));
+                deck.Save(Path.Combine(outDir, "with-picture.pptx"));
                 Check(!deck.Dirty, "save clears dirty");
 
                 deck.Duplicate(0);
                 deck.NewSlide(0);
                 deck.DeleteSlide(1);
-                deck.Save(Path.Combine(outDir, "slides.pptx"), null);
+                deck.Save(Path.Combine(outDir, "slides.pptx"));
                 Check(deck.Undo() != null, "undo available");
             }
 
             int n = Slides(file);
-            using (var d = PresentationDocument.Open(Path.Combine(outDir, "with-ink.pptx"), false))
+            using (var d = PresentationDocument.Open(Path.Combine(outDir, "with-picture.pptx"), false))
             {
                 var s0 = (SlidePart)d.PresentationPart!.GetPartById(d.PresentationPart.Presentation!.SlideIdList!.Elements<P.SlideId>().First().RelationshipId!);
-                Check(s0.Slide!.Descendants<P.Picture>().Any(p => p.NonVisualPictureProperties?.NonVisualDrawingProperties?.Name == "판서"), "ink picture baked in");
-                Check(s0.Slide!.InnerText.Contains("수정됨"), "edited text saved (ink version)");
+                var pic = s0.Slide!.Descendants<P.Picture>().LastOrDefault();
+                var blip = pic?.Descendants<A.Blip>().FirstOrDefault()?.Embed?.Value;
+                Check(blip != null && s0.GetPartById(blip) is ImagePart ip && ip.ContentType == "image/png", "picture: saved as p:pic with its PNG part");
+                Check(s0.Slide!.InnerText.Contains("수정됨"), "edited text saved");
                 var edited = s0.Slide!.Descendants<P.Shape>().First(s => s.InnerText.Contains("수정됨"));
                 Check(edited.Descendants<A.RunProperties>().All(r => r.FontSize?.Value == 4000), "font size saved");
             }
-            using (var d = PresentationDocument.Open(Path.Combine(outDir, "plain.pptx"), false))
+            using (var deck = Deck.Open(Path.Combine(outDir, "with-picture.pptx")))
             {
-                var slide0 = d.PresentationPart!.SlideParts.First(sp => sp.Slide!.InnerText.Contains("수정됨"));
-                Check(!slide0.Slide!.Descendants<P.Picture>().Any(p => p.NonVisualPictureProperties?.NonVisualDrawingProperties?.Name == "판서"), "plain version has no ink");
+                var hits = new List<ShapeHit>();
+                Png(deck.Renderer.Render(deck.Slides[0], hits), Path.Combine(outDir, "picture.png"));
+                Check(hits.Any(h => h.Element is P.Picture && Math.Abs(h.Bounds.Width - 200) < 1 && Math.Abs(h.Bounds.X - 40) < 1), "picture: reopened, drawn where it was put");
             }
             Check(Slides(Path.Combine(outDir, "slides.pptx")) == n + 1, "duplicate + new - delete = +1 slide");
             using (var deck = Deck.Open(Path.Combine(outDir, "slides.pptx")))
@@ -94,7 +94,7 @@ static partial class SelfTest
         catch (Exception ex) { Check(false, ex.ToString()); }
         try { EditorSnaps(file, outDir, Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
-        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, InkStoreTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests, ThumbMenuTests })
+        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, OverlayTests, PictureTests, ReorderTests, AutofitTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests, ThumbMenuTests })
         {
             try { test(file, outDir, Check); }
             catch (Exception ex) { Check(false, $"{test.Method.Name}: {ex}"); }

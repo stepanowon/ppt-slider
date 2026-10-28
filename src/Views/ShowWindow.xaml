@@ -12,9 +12,8 @@
             <Grid x:Name="Frame" ClipToBounds="True">
                 <Grid x:Name="Stage">
                     <ContentControl x:Name="Host" Focusable="False"/>
-                    <!-- black / white screen; ink still goes on top -->
+                    <!-- black / white screen; ink is drawn on the screen above (InkOverlay) -->
                     <Rectangle x:Name="Cover" Visibility="Collapsed" IsHitTestVisible="False"/>
-                    <InkCanvas x:Name="Ink" Background="Transparent"/>
                     <Canvas IsHitTestVisible="False">
                         <Ellipse x:Name="LaserDot" Fill="#FFFF2A1A" Visibility="Collapsed">
                             <Ellipse.Effect><DropShadowEffect Color="Red" ShadowDepth="0" BlurRadius="10" Opacity="0.9"/></Ellipse.Effect>

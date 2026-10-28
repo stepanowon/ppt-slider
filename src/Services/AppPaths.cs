@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PptSlider;
 
-/// <summary>Where the app keeps its own files: kept ink, recent files, autosaved copies.</summary>
+/// <summary>Where the app keeps its own files: recent files, autosaved copies.</summary>
 public static class AppPaths
 {
     /// <summary>%LOCALAPPDATA%\PptSlider; the self-test points it at its output folder.</summary>

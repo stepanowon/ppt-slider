@@ -46,7 +46,6 @@ public partial class ShowWindow : Window
         Stage.Width = main.Deck!.Renderer.Width;
         Stage.Height = main.Deck.Renderer.Height;
         LaserDot.Width = LaserDot.Height = laserSize = Stage.Width / 80;
-        PenState.StraightenOnShift(Ink);
         main.SlideChanged += Refresh;
         main.Pen.Changed += OnPen;
         main.ShowStateChanged += OnShowState;
@@ -82,15 +81,12 @@ public partial class ShowWindow : Window
         var b = main.Blanked;
         Cover.Visibility = b == Blank.None ? Visibility.Collapsed : Visibility.Visible;
         Cover.Fill = Root.Background = b == Blank.White ? Brushes.White : Brushes.Black;
-        Ink.Strokes = main.ShowInk; // the slide's: the same collection as the editor, so ink shows in both
         JumpBox.Visibility = main.Jump == "" ? Visibility.Collapsed : Visibility.Visible;
         JumpText.Text = L.F("slideN", main.Jump);
     }
 
     void OnPen()
     {
-        main.Pen.Apply(Ink);
-        if (zoom == ZoomMode.Picking) Ink.IsHitTestVisible = false; // the drag picks the area, it doesn't draw
         TSelect.IsChecked = main.Pen.Tool == Tool.Select;
         TLaser.IsChecked = main.Pen.Tool == Tool.Laser;
         TPen.IsChecked = main.Pen.Tool == Tool.Pen;
@@ -115,7 +111,11 @@ public partial class ShowWindow : Window
     public void ToggleZoom()
     {
         if (Zooming) ResetZoom();
-        else SetZoom(ZoomMode.Picking);
+        else
+        {
+            if (main.Drawing) main.Pen.SetTool(Tool.Select); // the drag picks the area, it doesn't draw
+            SetZoom(ZoomMode.Picking);
+        }
     }
 
     public void ResetZoom()
@@ -209,7 +209,7 @@ public partial class ShowWindow : Window
     {
         Tool.Laser => Cursors.None,
         Tool.Select => cursorHidden ? Cursors.None : Cursors.Arrow,
-        _ => null, // the ink canvas' own pen / eraser cursor
+        _ => null,
     };
 
     void OnMouseMove(object sender, MouseEventArgs e) => PointerMoved(e.GetPosition(Root));
@@ -259,7 +259,7 @@ public partial class ShowWindow : Window
     void OnBarLeave(object sender, MouseEventArgs e) => Bar.Opacity = 0.25;
     void OnPrev(object sender, RoutedEventArgs e) => main.Go(main.Current - 1);
     void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
-    void OnClear(object sender, RoutedEventArgs e) => main.ShowInk.Clear();
+    void OnClear(object sender, RoutedEventArgs e) => main.OverlayInk.Clear();
     void OnUndoInk(object sender, RoutedEventArgs e) => main.UndoShowInk();
     void OnThinner(object sender, RoutedEventArgs e) => main.Pen.Grow(-1);
     void OnThicker(object sender, RoutedEventArgs e) => main.Pen.Grow(1);

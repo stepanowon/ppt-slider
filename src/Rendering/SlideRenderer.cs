@@ -223,7 +223,13 @@ public class SlideRenderer
             else { lists.Add(c.DefaultText); lists.Add(X.Child(c.TxStyles, "otherStyle")); }
             var bodies = all.Select(s => X.Child(X.Child(s, "txBody"), "bodyPr")).ToList();
             var fontRef = ColorOf(X.Child(style, "fontRef"), c);
-            if (Text(tx, lists, bodies, c, fontRef) is { } text) host.Children.Add(lastText = text);
+            if (Text(tx, lists, bodies, c, fontRef) is { } text)
+            {
+                // "shrink text on overflow": the first bodyPr that says how to fit decides
+                var fit = bodies.Select(b => b?.ChildElements.FirstOrDefault(e => e.LocalName is "normAutofit" or "spAutoFit" or "noAutofit")).FirstOrDefault(e => e != null);
+                if (fit?.LocalName == "normAutofit") text = Fit(text, new Size(r.Width, r.Height), s => Text(tx, lists, bodies, c, fontRef, s)!);
+                host.Children.Add(lastText = text);
+            }
         }
         target.Children.Add(host);
         return r;
@@ -325,17 +331,42 @@ public class SlideRenderer
 
     // ---------- text ----------
 
-    FrameworkElement? Text(OpenXmlElement? tx, List<OpenXmlElement?> lists, List<OpenXmlElement?> bodies, Ctx c, Color? fontRef)
+    /// <summary>
+    /// The text at the largest size (down to a quarter) that fits <paramref name="box"/>, like PowerPoint's "shrink text on overflow".
+    /// The file's own fontScale is where it starts; <paramref name="build"/> makes the text at a further scale.
+    /// </summary>
+    static FrameworkElement Fit(FrameworkElement text, Size box, Func<double, FrameworkElement> build)
+    {
+        bool Fits(FrameworkElement t)
+        {
+            t.Measure(new Size(box.Width, double.PositiveInfinity));
+            return t.DesiredSize.Height <= box.Height + 0.5;
+        }
+        if (Fits(text)) return text;
+        double lo = 0.25, hi = 1;
+        var best = build(lo);
+        for (int i = 0; i < 7; i++)
+        {
+            double mid = (lo + hi) / 2;
+            var t = build(mid);
+            if (Fits(t)) { lo = mid; best = t; } else hi = mid;
+        }
+        return best;
+    }
+
+    /// <summary>The text of a shape or cell; the panel's Tag is the font scale it was drawn at (see <see cref="Fit"/>).</summary>
+    FrameworkElement? Text(OpenXmlElement? tx, List<OpenXmlElement?> lists, List<OpenXmlElement?> bodies, Ctx c, Color? fontRef, double shrink = 1)
     {
         if (tx == null) return null;
         string? B(string n) => bodies.Select(b => X.Attr(b, n)).FirstOrDefault(v => v != null);
         // bodyPr uses lIns/tIns/..., table cells (tcPr) use marL/marT/...
         double Ins(string n, long d) => (long.TryParse(B(n) ?? B("mar" + char.ToUpper(n[0])), out var v) ? v : d) / Emu;
-        double fontScale = (X.Long(X.Child(X.Child(tx, "bodyPr"), "normAutofit"), "fontScale") ?? 100000) / 100000.0;
+        double fontScale = (X.Long(X.Child(X.Child(tx, "bodyPr"), "normAutofit"), "fontScale") ?? 100000) / 100000.0 * shrink;
         bool wrap = B("wrap") != "none";
 
         var panel = new StackPanel
         {
+            Tag = fontScale,
             Margin = new Thickness(Ins("lIns", 91440), Ins("tIns", 45720), Ins("rIns", 91440), Ins("bIns", 45720)),
             VerticalAlignment = B("anchor") switch { "ctr" => VerticalAlignment.Center, "b" => VerticalAlignment.Bottom, _ => VerticalAlignment.Top },
         };

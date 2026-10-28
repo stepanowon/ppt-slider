@@ -50,7 +50,6 @@
                     <Grid x:Name="Stage" ClipToBounds="True" MouseLeftButtonDown="OnStageClick" MouseMove="OnStageMove" MouseLeave="OnStageLeave" MouseWheel="OnWheel">
                         <ContentControl x:Name="Host" Focusable="False"/>
                         <Rectangle x:Name="Cover" Visibility="Collapsed" IsHitTestVisible="False"/>
-                        <InkCanvas x:Name="Ink" Background="Transparent"/>
                         <Canvas IsHitTestVisible="False">
                             <Ellipse x:Name="LaserDot" Fill="#FFFF2A1A" Visibility="Collapsed"/>
                         </Canvas>

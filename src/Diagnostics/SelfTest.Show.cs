@@ -38,12 +38,12 @@ static partial class SelfTest
             Press(Key.W);
             var slideInk = main.StrokesOf(main.CurrentSlide!);
             int before = slideInk.Count;
-            main.ShowInk.Add(Line(100, 100, 500, 300));
-            check(main.Blanked == Blank.White && show.Ink.Strokes == main.BlankInk && main.BlankInk.Count == 1 && slideInk.Count == before,
-                "show: W = white screen, ink goes on the white screen, not the slide");
+            main.OverlayInk.Add(Line(100, 100, 500, 300));
+            check(main.Blanked == Blank.White && main.InkView is { IsVisible: true } ov && ov.Strokes == main.BlankInk && ov.Over == show && main.BlankInk.Count == 1 && slideInk.Count == before,
+                "show: W = white screen, ink goes on the white screen (on the overlay over the show), not the slide");
             Snap(show.Root, Path.Combine(outDir, "show-white-ink.png"));
             Press(Key.Right);
-            check(main.Blanked == Blank.None && main.Current == 0 && show.Ink.Strokes == slideInk, "show: → on a blank screen only brings the slide back");
+            check(main.Blanked == Blank.None && main.Current == 0 && main.InkView?.Strokes == slideInk, "show: → on a blank screen only brings the slide back");
             Press(Key.OemPeriod);
             check(main.Blanked == Blank.Black, "show: . = black screen");
             Press(Key.OemComma);
@@ -54,7 +54,7 @@ static partial class SelfTest
             // laser pointer
             Press(Key.L, Ctrl);
             show.PointerMoved(new Point(640, 360));
-            check(main.Pen.Tool == Tool.Laser && show.LaserDot.IsVisible && show.Root.Cursor == Cursors.None && !show.Ink.IsHitTestVisible,
+            check(main.Pen.Tool == Tool.Laser && show.LaserDot.IsVisible && show.Root.Cursor == Cursors.None && main.InkView?.Ink.IsHitTestVisible != true,
                 "show: Ctrl+L = laser dot, cursor hidden, no inking");
             show.UpdateLayout();
             var dot = show.LaserDot.TranslatePoint(new Point(show.LaserDot.Width / 2, show.LaserDot.Height / 2), show.Root);
@@ -93,7 +93,7 @@ static partial class SelfTest
                 "show: a lone 3 = pen color 3 after a second");
 
             // ink undo
-            var s = main.ShowInk;
+            var s = main.OverlayInk;
             s.Add(Line(10, 10, 200, 200));
             s.Add(Line(50, 300, 500, 320));
             Press(Key.Z, Ctrl);
@@ -179,7 +179,7 @@ static partial class SelfTest
         check(Deck.Notes(slide) == "첫 줄\n둘째 줄", $"notes: body placeholder text, one line per paragraph [{Deck.Notes(slide).Replace("\n", "\\n")}]");
         check(true, $"notes: {withNotes} of {deck.Slides.Count - 1} slides in the deck have notes");
         var path = Path.Combine(outDir, "notes.pptx");
-        deck.Save(path, null);
+        deck.Save(path);
         using var saved = Deck.Open(path);
         check(Deck.Notes(saved.Slides[1]) == "첫 줄\n둘째 줄", "notes: kept after save and reopen");
         return path;
@@ -216,12 +216,12 @@ static partial class SelfTest
                 Snap(pv, Path.Combine(outDir, "presenter-notes.png"));
             }
 
-            main.ShowInk.Add(Line(50, 50, 300, 120));
-            check(pv.Ink.Strokes == show.Ink.Strokes && show.Ink.Strokes.Count > 0, "presenter: same ink as the show");
-            int before = main.ShowInk.Count;
-            main.ShowInk.Add(Line(60, 200, 400, 220));
+            main.OverlayInk.Add(Line(50, 50, 300, 120));
+            check(main.InkView is { IsVisible: true } ov && ov.Over == show && ov.Strokes.Count > 0, "presenter: ink drawn goes on the show's screen");
+            int before = main.OverlayInk.Count;
+            main.OverlayInk.Add(Line(60, 200, 400, 220));
             Click(pv.TUndo);
-            check(main.ShowInk.Count == before && show.Ink.Strokes.Count == before, "presenter: the undo button takes back the last stroke on both screens");
+            check(main.OverlayInk.Count == before && main.InkView!.Strokes.Count == before, "presenter: the undo button takes back the last stroke");
             Press(Key.B);
             check(show.Cover.IsVisible && pv.Cover.IsVisible && pv.TBlack.IsChecked == true && pv.State.Text.Contains("검은"), "presenter: B blanks the show, presenter says so");
             Snap(pv, Path.Combine(outDir, "presenter-black.png"));
@@ -280,8 +280,8 @@ static partial class SelfTest
             check(show.Zoomed && Near(OnFrame(w * 0.25, h * 0.25), 0, 0) && Near(OnFrame(w * 0.5, h * 0.5), w, h) && !show.ZoomHint.IsVisible,
                 $"zoom: the area fills the screen ({OnFrame(w * 0.25, h * 0.25):0.#} – {OnFrame(w * 0.5, h * 0.5):0.#})");
             Press(Key.P);
-            check(show.Ink.IsHitTestVisible && show.Zoomed, "zoom: the pen draws while zoomed");
-            main.ShowInk.Add(Line(w * 0.3, h * 0.3, w * 0.45, h * 0.35));
+            check(main.InkView is { IsVisible: true } iv && iv.Ink.IsHitTestVisible && show.Zoomed, "zoom: the pen draws while zoomed");
+            main.OverlayInk.Add(Line(w * 0.3, h * 0.3, w * 0.45, h * 0.35));
             Snap(show.Root, Path.Combine(outDir, "show-zoom.png"));
             Press(Key.Escape);
             show.UpdateLayout();

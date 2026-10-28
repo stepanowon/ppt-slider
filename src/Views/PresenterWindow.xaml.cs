@@ -7,8 +7,9 @@ using System.Windows.Threading;
 namespace PptSlider;
 
 /// <summary>
-/// The presenter's own screen during a show: current slide (with the show's ink), next slide, speaker notes and the time.
-/// Like <see cref="ShowWindow"/> it is only a view: keys, ink and the laser go through the main window.
+/// The presenter's own screen during a show: current slide, next slide, speaker notes and the time.
+/// Like <see cref="ShowWindow"/> it is only a view: keys, ink tools and the laser go through the main window
+/// (the pen draws on the show's screen, see <see cref="InkOverlay"/>).
 /// </summary>
 public partial class PresenterWindow : Window
 {
@@ -40,7 +41,6 @@ public partial class PresenterWindow : Window
         Stage.Width = main.Deck!.Renderer.Width;
         Stage.Height = main.Deck.Renderer.Height;
         LaserDot.Width = LaserDot.Height = Stage.Width / 80;
-        PenState.StraightenOnShift(Ink);
         main.SlideChanged += Refresh;
         main.Pen.Changed += OnPen;
         main.ShowStateChanged += OnShowState;
@@ -83,7 +83,6 @@ public partial class PresenterWindow : Window
         Cover.Fill = b == Blank.White ? Brushes.White : Brushes.Black;
         TBlack.IsChecked = b == Blank.Black;
         TWhite.IsChecked = b == Blank.White;
-        Ink.Strokes = main.ShowInk;
         State.Text = main.Jump != "" ? L.F("goToSlide", main.Jump)
             : b == Blank.Black ? L.T("audienceBlack")
             : b == Blank.White ? L.T("audienceWhite")
@@ -92,7 +91,6 @@ public partial class PresenterWindow : Window
 
     void OnPen()
     {
-        main.Pen.Apply(Ink);
         TSelect.IsChecked = main.Pen.Tool == Tool.Select;
         TLaser.IsChecked = main.Pen.Tool == Tool.Laser;
         TPen.IsChecked = main.Pen.Tool == Tool.Pen;
@@ -134,7 +132,7 @@ public partial class PresenterWindow : Window
 
     void OnPrev(object sender, RoutedEventArgs e) => main.Go(main.Current - 1);
     void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
-    void OnClear(object sender, RoutedEventArgs e) => main.ShowInk.Clear();
+    void OnClear(object sender, RoutedEventArgs e) => main.OverlayInk.Clear();
     void OnUndoInk(object sender, RoutedEventArgs e) => main.UndoShowInk();
     void OnBlack(object sender, RoutedEventArgs e) => main.SetBlank(main.Blanked == Blank.Black ? Blank.None : Blank.Black);
     void OnWhite(object sender, RoutedEventArgs e) => main.SetBlank(main.Blanked == Blank.White ? Blank.None : Blank.White);

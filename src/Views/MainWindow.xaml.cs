@@ -34,13 +34,19 @@ public partial class MainWindow : Window
     /// <summary>Raised when the current slide changes or its content is edited.</summary>
     public event Action? SlideChanged;
 
+    /// <summary>Screen ink per slide (screen coordinates of the overlay, see <see cref="InkOverlay"/>).</summary>
     readonly Dictionary<SlidePart, StrokeCollection> ink = new();
+    /// <summary>Screen ink while no file is open.</summary>
+    readonly StrokeCollection desktopInk = new();
     readonly InkHistory inkLog = new();
+    InkOverlay? overlay;
+    bool inkHidden;
     List<ShapeHit> hits = [];
     OpenXmlElement? selected;
     RichTextBox? editBox;
     FrameworkElement? editHidden; // the drawn text the editor covers
     List<Deck.Fmt> editStart = []; // bold / italic / underline per character when editing began
+    double editScale = 1; // the font scale the editor shows the text at
     ShowWindow? show;
     bool syncing;
     // dragging a selected shape
@@ -69,8 +75,9 @@ public partial class MainWindow : Window
         UpdateHint();
         Shortcuts.Changed += UpdateHint;
         jumpTimer.Tick += OnJumpTimeout;
-        inkSaveTimer.Tick += (_, _) => FlushInk();
-        PenState.StraightenOnShift(Ink);
+        inkLog.Track(desktopInk);
+        desktopInk.StrokesChanged += (_, _) => UpdateOverlay();
+        LocationChanged += (_, _) => { if (show == null && overlay?.IsVisible == true) UpdateOverlay(); };
         AskRecover = path => MessageBox.Show(this,
             L.F("recover", System.IO.Path.GetFileName(path)), L.T("recoverTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
         FillLanguages();
@@ -104,7 +111,6 @@ public partial class MainWindow : Window
             return;
         }
         show?.Close();
-        FlushInk();
         if (!d.Dirty) AutoSave.Delete(path); // no copy, or it was declined
         Deck?.Dispose();
         Deck = d;
@@ -112,7 +118,7 @@ public partial class MainWindow : Window
         UpdateRecent();
         ink.Clear();
         inkLog.Clear();
-        int restored = RestoreInk();
+        inkLog.Track(desktopInk);
         selected = null;
         StageFrame.Visibility = Visibility.Visible;
         EmptyPanel.Visibility = Visibility.Collapsed;
@@ -121,7 +127,6 @@ public partial class MainWindow : Window
         RebuildThumbs();
         Current = -1;
         Go(0);
-        if (restored > 0) StatusText.Text = L.F("inkRestored", restored);
         if (d.Dirty) StatusText.Text = L.T("recovered");
         UpdateTitle();
     }
@@ -168,28 +173,19 @@ public partial class MainWindow : Window
         menu.IsOpen = menu.Items.Count > 0;
     }
 
-    /// <summary>Saves; when ink exists the user picks a version with or without it.</summary>
+    /// <summary>Saves the slides; screen ink is not part of the file (see <see cref="OnInkNotes"/> to keep it as a PDF).</summary>
     bool Save(bool saveAs)
     {
         if (Deck == null) return true;
         CommitEdit();
-        bool withInk = false;
-        if (ink.Values.Any(s => s.Count > 0))
-        {
-            var r = MessageBox.Show(this,
-                L.T("saveWithInk"), L.T("save"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-            if (r == MessageBoxResult.Cancel) return false;
-            withInk = r == MessageBoxResult.Yes;
-        }
         var path = Deck.Path;
-        if (saveAs || withInk)
+        if (saveAs)
         {
-            var name = System.IO.Path.GetFileNameWithoutExtension(Deck.Path);
             var dlg = new SaveFileDialog
             {
                 Filter = L.T("pptxFilter"),
                 InitialDirectory = System.IO.Path.GetDirectoryName(Deck.Path),
-                FileName = withInk ? name + L.T("inkSuffix") + ".pptx" : name + ".pptx",
+                FileName = System.IO.Path.GetFileName(Deck.Path),
             };
             if (dlg.ShowDialog(this) != true) return false;
             path = dlg.FileName;
@@ -197,8 +193,8 @@ public partial class MainWindow : Window
         try
         {
             var before = Deck.Path;
-            Deck.Save(path, withInk ? ink : null);
-            if (!Deck.Dirty) AutoSave.Delete(before); // saved over (or away from) it: the copy is stale
+            Deck.Save(path);
+            AutoSave.Delete(before); // saved over (or away from) it: the copy is stale
             StatusText.Text = L.F("saved", path);
             UpdateTitle();
             return true;
@@ -210,30 +206,46 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>Asks to save edits; ink needs no asking, it is kept by <see cref="InkStore"/> and comes back with the file.</summary>
+    /// <summary>Every slide as a PDF page; with ink drawn on slides the user picks a version with or without it.</summary>
     void OnExportPdf(object? sender, RoutedEventArgs? e)
     {
         if (Deck == null) return;
         CommitEdit();
         bool withInk = false;
-        if (ink.Values.Any(s => s.Count > 0))
+        var slideInk = SlideInk();
+        if (slideInk.Count > 0)
         {
             var r = MessageBox.Show(this, L.T("pdfWithInk"), L.T("exportPdf"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (r == MessageBoxResult.Cancel) return;
             withInk = r == MessageBoxResult.Yes;
         }
-        var name = System.IO.Path.GetFileNameWithoutExtension(Deck.Path);
+        ExportPdf(withInk ? slideInk : null, withInk ? L.T("inkSuffix") : "", onlyInked: false);
+    }
+
+    /// <summary>Lecture notes: only the slides that were drawn on, each with its ink.</summary>
+    void OnInkNotes(object? sender, RoutedEventArgs? e)
+    {
+        if (Deck == null) return;
+        CommitEdit();
+        var slideInk = SlideInk();
+        if (slideInk.Count == 0) { StatusText.Text = L.T("noInkedSlides"); return; }
+        ExportPdf(slideInk, L.T("inkNotesSuffix"), onlyInked: true);
+    }
+
+    void ExportPdf(IReadOnlyDictionary<SlidePart, StrokeCollection>? slideInk, string suffix, bool onlyInked)
+    {
+        var name = System.IO.Path.GetFileNameWithoutExtension(Deck!.Path);
         var dlg = new SaveFileDialog
         {
             Filter = L.T("pdfFilter"),
             InitialDirectory = System.IO.Path.GetDirectoryName(Deck.Path),
-            FileName = name + (withInk ? L.T("inkSuffix") : "") + ".pdf",
+            FileName = name + suffix + ".pdf",
         };
         if (dlg.ShowDialog(this) != true) return;
         try
         {
             Cursor = Cursors.Wait;
-            PdfExport.Export(Deck, dlg.FileName, withInk ? ink : null);
+            PdfExport.Export(Deck, dlg.FileName, slideInk, onlyInked);
             StatusText.Text = L.F("pdfDone", dlg.FileName);
         }
         catch (Exception ex)
@@ -265,9 +277,9 @@ public partial class MainWindow : Window
         Thumbs.SelectedIndex = i;
         Thumbs.ScrollIntoView(Thumbs.SelectedItem);
         syncing = false;
-        Ink.Strokes = StrokesOf(CurrentSlide!);
         UpdateStatus();
         SlideChanged?.Invoke();
+        UpdateOverlay(); // the new slide's own ink
     }
 
     public StrokeCollection StrokesOf(SlidePart sp)
@@ -279,35 +291,8 @@ public partial class MainWindow : Window
     {
         ink[sp] = s;
         inkLog.Track(s);
-        s.StrokesChanged += (_, _) => { inkSaveTimer.Stop(); inkSaveTimer.Start(); };
+        s.StrokesChanged += (_, _) => UpdateOverlay();
         return s;
-    }
-
-    // ---------- ink kept outside the deck (InkStore) ----------
-
-    readonly DispatcherTimer inkSaveTimer = new() { Interval = TimeSpan.FromSeconds(1) };
-
-    /// <summary>Puts back the ink kept for this file; returns the number of strokes. Not undoable: it is where we left off.</summary>
-    int RestoreInk()
-    {
-        var kept = InkStore.Load(Deck!.Path);
-        int n = 0;
-        foreach (var sp in Deck.Slides)
-            if (kept.TryGetValue(Deck.IdOf(sp), out var s))
-            {
-                NewInk(sp, s);
-                n += s.Count;
-            }
-        return n;
-    }
-
-    /// <summary>Writes the ink now (it is also written a second after each change).</summary>
-    internal void FlushInk()
-    {
-        inkSaveTimer.Stop();
-        if (Deck == null) return;
-        try { InkStore.Save(Deck.Path, Deck.Slides.Where(ink.ContainsKey).Select(sp => (Deck.IdOf(sp), ink[sp]))); }
-        catch (Exception) { StatusText.Text = L.T("inkKeepFail"); } // the ink is still here; saving the deck with ink keeps it too
     }
 
     void RenderCurrent()
@@ -336,7 +321,8 @@ public partial class MainWindow : Window
         {
             var item = new ListBoxItem { Content = ThumbContent(i), Focusable = false };
             // a ListBoxItem only selects itself on click by taking focus, which a non-focusable one can't: handle the click here
-            item.PreviewMouseLeftButtonDown += (_, e) => { Go(Thumbs.Items.IndexOf(item)); e.Handled = true; };
+            item.PreviewMouseLeftButtonDown += (_, e) => { Go(Thumbs.Items.IndexOf(item)); thumbDrag = e.GetPosition(Thumbs); e.Handled = true; };
+            item.PreviewMouseMove += (_, e) => OnThumbDrag(item, e);
             // right-click: go to that slide, then the menu acts on it
             item.PreviewMouseRightButtonDown += (_, _) => Go(Thumbs.Items.IndexOf(item));
             item.ContextMenu = ThumbMenu();
@@ -344,6 +330,71 @@ public partial class MainWindow : Window
         }
         syncing = false;
         UpdateTitle();
+    }
+
+    // ---------- thumbnails: drag to change the slide order ----------
+
+    const string SlideFormat = "PptSlider.Slide";
+    Point? thumbDrag; // where the button went down on a thumbnail
+
+    void OnThumbDrag(ListBoxItem item, MouseEventArgs e)
+    {
+        if (thumbDrag is not { } start || e.LeftButton != MouseButtonState.Pressed) { thumbDrag = null; return; }
+        var d = e.GetPosition(Thumbs) - start;
+        if (Math.Abs(d.Y) < SystemParameters.MinimumVerticalDragDistance && Math.Abs(d.X) < SystemParameters.MinimumHorizontalDragDistance) return;
+        thumbDrag = null;
+        DragDrop.DoDragDrop(item, new DataObject(SlideFormat, Thumbs.Items.IndexOf(item)), DragDropEffects.Move);
+        ShowDropMark(-1);
+    }
+
+    /// <summary>Where a slide dropped at <paramref name="p"/> (on the list) goes: 0 .. Count, before the slide at that index.</summary>
+    internal int DropIndex(Point p)
+    {
+        for (int i = 0; i < Thumbs.Items.Count; i++)
+            if (Thumbs.Items[i] is ListBoxItem it && it.IsVisible && p.Y < it.TranslatePoint(new Point(0, it.ActualHeight / 2), Thumbs).Y) return i;
+        return Thumbs.Items.Count;
+    }
+
+    /// <summary>A line above thumbnail <paramref name="at"/> (below the last one for Count; -1 = none).</summary>
+    void ShowDropMark(int at)
+    {
+        for (int i = 0; i < Thumbs.Items.Count; i++)
+            if (Thumbs.Items[i] is ListBoxItem it)
+            {
+                it.BorderBrush = (Brush)FindResource("Accent");
+                it.BorderThickness = new Thickness(0, i == at ? 3 : 0, 0, i == Thumbs.Items.Count - 1 && at == Thumbs.Items.Count ? 3 : 0);
+            }
+    }
+
+    void OnThumbsDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(SlideFormat)) return;
+        e.Effects = DragDropEffects.Move;
+        ShowDropMark(DropIndex(e.GetPosition(Thumbs)));
+        e.Handled = true;
+    }
+
+    void OnThumbsDragLeave(object sender, DragEventArgs e) => ShowDropMark(-1);
+
+    void OnThumbsDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(SlideFormat) is not int from) return;
+        e.Handled = true;
+        ShowDropMark(-1);
+        MoveSlide(from, DropIndex(e.GetPosition(Thumbs)));
+    }
+
+    /// <summary>Moves slide <paramref name="from"/> to before the slide now at <paramref name="before"/> (Count = the end).</summary>
+    internal void MoveSlide(int from, int before)
+    {
+        if (Deck == null || from < 0 || from >= Count) return;
+        int to = before > from ? before - 1 : before;
+        if (to == from) return;
+        CommitEdit();
+        Deck.MoveSlide(from, to);
+        RebuildThumbs();
+        Current = -1;
+        Go(to);
     }
 
     ContextMenu ThumbMenu()
@@ -384,6 +435,7 @@ public partial class MainWindow : Window
     // ---------- selection, move, resize, in-place text edit ----------
 
     ShapeHit? SelectedHit => hits.FirstOrDefault(h => h.Element == selected);
+    internal OpenXmlElement? SelectedElement => selected;
 
     /// <summary>One screen pixel in slide units, so handles keep their size at any zoom.</summary>
     double Px
@@ -471,6 +523,7 @@ public partial class MainWindow : Window
         if (h.Text is { } panel && panel.IsVisible)
         {
             doc = SlideRenderer.EditDocument(panel);
+            editScale = panel.Tag as double? ?? Deck.FontScale(h.Element); // shrunk to fit: the editor shows it that size
             pad = panel.Margin;
             origin = panel.TranslatePoint(new Point(-pad.Left, -pad.Top), Stage);
             origin.X = h.Bounds.X; // the panel stretches to the shape's width
@@ -480,6 +533,7 @@ public partial class MainWindow : Window
         else
         {
             doc = new FlowDocument { PagePadding = new Thickness(0) };
+            editScale = 1;
             foreach (var line in Deck.GetEditText(h.Element).Split('\n'))
                 doc.Blocks.Add(new Paragraph(new Run(line.Replace('\v', '\n'))) { Margin = default });
             doc.FontSize = (double.TryParse(Deck.FirstRun(h.Element, "sz"), out var sz) ? sz / 100 : 18) * 96 / 72;
@@ -598,7 +652,7 @@ public partial class MainWindow : Window
         var (text, fmt) = EditText(box.Document);
         if (cancel || (text == Deck.GetEditText(el) && fmt.SequenceEqual(editStart))) return;
         Deck!.Snapshot(CurrentSlide!);
-        Deck.SetEditText(el, text, fmt, editStart);
+        Deck.SetEditText(el, text, fmt, editStart, editScale);
         Changed();
     }
 
@@ -623,7 +677,7 @@ public partial class MainWindow : Window
     {
         if (editBox is { } box)
         {
-            box.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, pt * Deck.FontScale((OpenXmlElement)box.Tag) * 96 / 72);
+            box.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, pt * editScale * 96 / 72);
             BackToEditor();
         }
         else EditSelected(s => Deck.EditRuns(s, r => Deck.SetAttr(r, "sz", ((int)Math.Round(pt * 100)).ToString())));
@@ -656,7 +710,7 @@ public partial class MainWindow : Window
 
     /// <summary>Points of the editor's selection as stored in the file (null: mixed sizes).</summary>
     double? EditorSize(TextRange sel) =>
-        sel.GetPropertyValue(TextElement.FontSizeProperty) is double px ? Math.Round(px * 72 / 96 / Deck.FontScale((OpenXmlElement)editBox!.Tag), 1) : null;
+        sel.GetPropertyValue(TextElement.FontSizeProperty) is double px ? Math.Round(px * 72 / 96 / editScale, 1) : null;
 
     double SelectedSize => editBox is { } box
         ? EditorSize(box.Selection) ?? EditorSize(new TextRange(box.Selection.Start, box.Selection.Start)) ?? 18 // mixed: the size where it starts
@@ -736,6 +790,53 @@ public partial class MainWindow : Window
         BeginEdit();
     }
 
+    void OnAddPicture(object? sender, RoutedEventArgs? e)
+    {
+        if (Deck == null) return;
+        var dlg = new OpenFileDialog { Filter = L.T("pictureFilter") };
+        if (dlg.ShowDialog(this) == true) InsertPictureFile(dlg.FileName);
+    }
+
+    internal bool InsertPictureFile(string path)
+    {
+        if (Deck.PictureType(System.IO.Path.GetExtension(path)) is not { } type) return false;
+        try { return InsertPicture(File.ReadAllBytes(path), type); }
+        catch (Exception ex) { MessageBox.Show(this, L.F("pictureFail", ex.Message), L.T("picture"), MessageBoxButton.OK, MessageBoxImage.Warning); return false; }
+    }
+
+    /// <summary>Ctrl+V: a picture on the clipboard (copied image, or an image file copied in Explorer) goes on the slide.</summary>
+    internal bool PastePicture()
+    {
+        if (Deck == null) return false;
+        if (Clipboard.ContainsFileDropList() && Clipboard.GetFileDropList().Cast<string>().FirstOrDefault(f => Deck.PictureType(System.IO.Path.GetExtension(f)) != null) is { } f)
+            return InsertPictureFile(f);
+        if (!Clipboard.ContainsImage() || Clipboard.GetImage() is not { } img) return false;
+        var enc = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        enc.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(img));
+        using var ms = new MemoryStream();
+        enc.Save(ms);
+        return InsertPicture(ms.ToArray(), Deck.PictureType(".png")!.Value);
+    }
+
+    /// <summary>Centered on the current slide at its own size, shrunk to fit 60% of the slide; selected afterwards.</summary>
+    internal bool InsertPicture(byte[] image, DocumentFormat.OpenXml.Packaging.PartTypeInfo type)
+    {
+        if (Deck == null || CurrentSlide == null) return false;
+        System.Windows.Media.Imaging.BitmapFrame frame;
+        try { frame = System.Windows.Media.Imaging.BitmapDecoder.Create(new MemoryStream(image), System.Windows.Media.Imaging.BitmapCreateOptions.None, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad).Frames[0]; }
+        catch (Exception ex) { MessageBox.Show(this, L.F("pictureFail", ex.Message), L.T("picture"), MessageBoxButton.OK, MessageBoxImage.Warning); return false; }
+        CommitEdit();
+        Pen.SetTool(Tool.Select);
+        double sw = Deck.Renderer.Width, sh = Deck.Renderer.Height;
+        double w = frame.PixelWidth, h = frame.PixelHeight;
+        double s = Math.Min(1, Math.Min(sw * 0.6 / w, sh * 0.6 / h));
+        w *= s; h *= s;
+        Deck.Snapshot(CurrentSlide);
+        selected = Deck.AddPicture(CurrentSlide, image, type, new Rect((sw - w) / 2, (sh - h) / 2, w, h));
+        Changed();
+        return true;
+    }
+
     void OnDeleteShape(object? sender, RoutedEventArgs? e)
     {
         if (Deck == null || selected == null) return;
@@ -779,7 +880,6 @@ public partial class MainWindow : Window
         if (!ConfirmDeleteSlide(Current + 1)) return;
         ink.Remove(CurrentSlide!);
         Deck.DeleteSlide(Current);
-        FlushInk();
         RebuildThumbs();
         int i = Math.Min(Current, Count - 1);
         Current = -1;
@@ -790,7 +890,7 @@ public partial class MainWindow : Window
     {
         CommitEdit();
         // ink first: Ctrl+Z right after drawing takes back the stroke, not an earlier edit
-        if (CurrentSlide is { } cur && inkLog.Undo(StrokesOf(cur))) { StatusText.Text = L.T("inkUndone"); return; }
+        if (inkLog.Undo(OverlayInk)) { StatusText.Text = L.T("inkUndone"); return; }
         if (Deck?.Undo() is not { } part) { StatusText.Text = L.T("nothingToUndo"); return; }
         selected = null;
         int i = Deck.Slides.IndexOf(part);
@@ -800,12 +900,110 @@ public partial class MainWindow : Window
         UpdateTitle();
     }
 
-    // ---------- ink ----------
+    // ---------- screen ink (InkOverlay) ----------
+
+    /// <summary>The strokes on the screen now: the blank screen's in the show while blanked, else the current slide's (or, with no file, the desktop's).</summary>
+    public StrokeCollection OverlayInk => show != null && Blanked != Blank.None ? BlankInk : CurrentSlide is { } s ? StrokesOf(s) : desktopInk;
+
+    /// <summary>A drawing tool is picked: the overlay takes the mouse.</summary>
+    public bool Drawing => Pen.Tool is Tool.Pen or Tool.Highlighter or Tool.Eraser;
+
+    internal InkOverlay? InkView => overlay;
+    internal bool InkHidden => inkHidden;
+
+    /// <summary>
+    /// Shows the overlay while drawing or while the current slide has ink (unless hidden), over the show's monitor during a show,
+    /// otherwise over the editor's.
+    /// </summary>
+    internal void UpdateOverlay()
+    {
+        if (closing) return;
+        if (Drawing) inkHidden = false;
+        var strokes = OverlayInk;
+        InkShownBtn.IsChecked = !inkHidden;
+        if (overlay != null) overlay.Strokes = strokes;
+        if (inkHidden || !(Drawing || strokes.Count > 0)) { overlay?.Hide(); return; }
+        var target = show?.Monitor ?? Monitors.Of(this);
+        if (overlay != null && (overlay.Monitor != target || overlay.Over != show)) { overlay.Close(); overlay = null; }
+        overlay ??= new InkOverlay(this, target, show);
+        overlay.Strokes = strokes;
+        bool wasDrawing = overlay.IsVisible && overlay.Ink.IsHitTestVisible;
+        if (!overlay.IsVisible) overlay.Show();
+        if (Drawing && !wasDrawing && !InkOverlay.OffScreen) overlay.Activate(); // its keys: next slide, Esc...
+    }
+
+    /// <summary>The overlay's ✕: hides the ink and goes back to the pointer; picking a drawing tool shows it again.</summary>
+    internal void HideInk()
+    {
+        inkHidden = true;
+        Pen.SetTool(Tool.Select);
+        UpdateOverlay();
+        if (show == null) Activate();
+    }
+
+    void OnInkShown(object sender, RoutedEventArgs e)
+    {
+        inkHidden = InkShownBtn.IsChecked != true;
+        if (inkHidden && Drawing) Pen.SetTool(Tool.Select);
+        UpdateOverlay();
+    }
+
+    /// <summary>A key on the overlay: the show's keys during a show, otherwise the editor's commands; Esc = pointer.</summary>
+    internal bool InkPress(Gesture g)
+    {
+        if (show != null) return ShowPress(g);
+        if (g is { Key: Key.Escape, Mods: ModifierKeys.None }) { Pen.SetTool(Tool.Select); return true; }
+        return Shortcuts.Find(g, inShow: false) is { } id && Run(id);
+    }
+
+    static readonly Guid FrameId = new("6E3B1C2A-4F4D-4E8B-9C1A-2D7B5E0F9A31");
+
+    /// <summary>
+    /// Remembers where the slide was on the overlay when <paramref name="s"/> was drawn (the show's slide, or the editor's),
+    /// so <see cref="SlideInk"/> can put the stroke on the slide for a PDF.
+    /// </summary>
+    internal void TagStroke(Stroke s, InkOverlay on)
+    {
+        FrameworkElement? stage = show != null ? (Blanked == Blank.None ? show.Stage : null) : IsVisible && StageFrame.IsVisible && WindowState != WindowState.Minimized ? Stage : null;
+        if (stage is not { IsVisible: true } || PresentationSource.FromVisual(on) == null) return;
+        var a = on.PointFromScreen(stage.PointToScreen(new Point(0, 0)));
+        var b = on.PointFromScreen(stage.PointToScreen(new Point(stage.Width, stage.Height)));
+        if (b.X - a.X < 1 || b.Y - a.Y < 1) return;
+        s.AddPropertyData(FrameId, new[] { a.X, a.Y, b.X - a.X, b.Y - a.Y });
+    }
+
+    /// <summary>Each slide's strokes that were drawn over the slide, moved onto it (slide coordinates); slides without any are left out.</summary>
+    internal Dictionary<SlidePart, StrokeCollection> SlideInk()
+    {
+        var result = new Dictionary<SlidePart, StrokeCollection>();
+        if (Deck == null) return result;
+        double w = Deck.Renderer.Width, h = Deck.Renderer.Height;
+        foreach (var sp in Deck.Slides)
+        {
+            if (!ink.TryGetValue(sp, out var strokes)) continue;
+            var on = new StrokeCollection();
+            foreach (var st in strokes)
+            {
+                if (!st.ContainsPropertyData(FrameId) || st.GetPropertyData(FrameId) is not double[] { Length: 4 } f) continue;
+                double sx = w / f[2], sy = h / f[3];
+                var c = st.Clone();
+                var m = Matrix.Identity;
+                m.Translate(-f[0], -f[1]);
+                m.Scale(sx, sy);
+                c.Transform(m, false);
+                c.DrawingAttributes.Width *= sx;
+                c.DrawingAttributes.Height *= sy;
+                on.Add(c);
+            }
+            if (on.Count > 0) result[sp] = on;
+        }
+        return result;
+    }
 
     void OnPenChanged()
     {
-        Pen.Apply(Ink);
         if (Pen.Tool != Tool.Select) { CommitEdit(); selected = null; DrawSelection(); }
+        UpdateOverlay();
         ToolSelect.IsChecked = Pen.Tool == Tool.Select;
         ToolPen.IsChecked = Pen.Tool == Tool.Pen;
         ToolHi.IsChecked = Pen.Tool == Tool.Highlighter;
@@ -837,7 +1035,7 @@ public partial class MainWindow : Window
         if (!syncing) Pen.SetSize(Math.Round(e.NewValue));
     }
 
-    public void ClearInk() { if (CurrentSlide is { } s) StrokesOf(s).Clear(); }
+    public void ClearInk() => OverlayInk.Clear();
 
     void OnClearInk(object sender, RoutedEventArgs e) => ClearInk();
 
@@ -845,19 +1043,23 @@ public partial class MainWindow : Window
     public void UndoInk()
     {
         CommitEdit();
-        if (CurrentSlide is not { } cur) return;
-        StatusText.Text = inkLog.Undo(StrokesOf(cur)) ? L.T("inkUndone") : L.T("noInkToUndo");
+        StatusText.Text = inkLog.Undo(OverlayInk) ? L.T("inkUndone") : L.T("noInkToUndo");
     }
 
     void OnUndoInk(object sender, RoutedEventArgs e) => UndoInk();
 
     /// <summary>The show's and presenter's undo button: the last stroke on the slide being shown.</summary>
-    internal void UndoShowInk() => inkLog.Undo(ShowInk);
+    internal void UndoShowInk() => inkLog.Undo(OverlayInk);
 
     void OnClearAllInk(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, L.T("clearAllAsk"), L.T("clearInkTitle"), MessageBoxButton.OKCancel) == MessageBoxResult.OK)
-            foreach (var s in ink.Values) s.Clear();
+        if (MessageBox.Show(this, L.T("clearAllAsk"), L.T("clearInkTitle"), MessageBoxButton.OKCancel) == MessageBoxResult.OK) ClearAllInk();
+    }
+
+    internal void ClearAllInk()
+    {
+        foreach (var s in ink.Values) s.Clear();
+        desktopInk.Clear();
     }
 
     // ---------- slide show, monitors, break timer ----------
@@ -893,9 +1095,11 @@ public partial class MainWindow : Window
             SetBlank(Blank.None);
             SetLaser(null);
             if (Pen.Tool == Tool.Laser) Pen.SetTool(Tool.Select);
+            UpdateOverlay(); // back over the editor
             Activate();
         };
         show.Show();
+        UpdateOverlay(); // over the show now
         // the presenter view goes on another monitor (the laptop screen, usually the primary one)
         var other = test ? shown : Monitors.All().Where(m => m.Bounds != shown.Bounds).OrderByDescending(m => m.Primary).FirstOrDefault();
         if (PresenterBox.IsChecked == true && other != null)
@@ -990,16 +1194,15 @@ public partial class MainWindow : Window
         LaserMoved?.Invoke();
     }
 
-    /// <summary>The strokes the show draws on: the blank screen's while blanked, otherwise the slide's.</summary>
-    public StrokeCollection ShowInk => Blanked != Blank.None ? BlankInk : StrokesOf(CurrentSlide!);
-
     public void SetBlank(Blank b)
     {
         if (b == Blanked) return;
         Blanked = b;
         BlankInk = new StrokeCollection();
         inkLog.Track(BlankInk);
+        BlankInk.StrokesChanged += (_, _) => UpdateOverlay();
         ShowStateChanged?.Invoke();
+        UpdateOverlay();
     }
 
     static string? Digit(Gesture g) => g.Mods != ModifierKeys.None ? null : g.Key switch
@@ -1050,7 +1253,7 @@ public partial class MainWindow : Window
             case "laser": Pen.SetTool(Pen.Tool == Tool.Laser ? Tool.Select : Tool.Laser); return true;
             case "zoom": show?.ToggleZoom(); return true;
             case "undo": UndoShowInk(); return true;
-            case "clearInk": ShowInk.Clear(); return true;
+            case "clearInk": OverlayInk.Clear(); return true;
             case { } id: return Run(id);
         }
     }
@@ -1096,6 +1299,7 @@ public partial class MainWindow : Window
     {
         show?.Close();
         ink.Clear();
+        desktopInk.Clear();
         Deck?.Dispose();
         Deck = null;
         Close();
@@ -1129,6 +1333,8 @@ public partial class MainWindow : Window
             case "clearInk": ClearInk(); break;
             case "blankPage": OnBlankPage(null, null); break;
             case "exportPdf": OnExportPdf(null, null); break;
+            case "inkNotes": OnInkNotes(null, null); break;
+            case "picture": OnAddPicture(null, null); break;
             case "break": OpenBreak(); break;
             case "showFirst": StartShow(0); break;
             case "showCurrent": StartShow(Current); break;
@@ -1169,6 +1375,7 @@ public partial class MainWindow : Window
         }
         if (Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes
         var g = Gesture.From(e);
+        if (g is { Key: Key.V, Mods: ModifierKeys.Control } && PastePicture()) { e.Handled = true; return; }
         if (g is { Key: Key.Escape, Mods: ModifierKeys.None })
         {
             Pen.SetTool(Tool.Select); selected = null; DrawSelection();
@@ -1190,15 +1397,19 @@ public partial class MainWindow : Window
 
     void OnDrop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.FirstOrDefault(f => f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase)) is { } f)
-            Open(f);
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] files) return;
+        if (files.FirstOrDefault(f => f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase)) is { } f) Open(f);
+        else if (Deck != null && files.FirstOrDefault(p => Deck.PictureType(System.IO.Path.GetExtension(p)) != null) is { } pic) InsertPictureFile(pic);
     }
+
+    bool closing;
 
     void OnClosing(object? sender, CancelEventArgs e)
     {
         if (!restarting && !ConfirmDiscard()) { e.Cancel = true; return; }
+        closing = true;
         show?.Close();
-        FlushInk();
+        overlay?.Close();
         if (Deck != null) AutoSave.Delete(Deck.Path); // a normal close: no copy left to recover
         autoSaveTimer.Stop();
         Deck?.Dispose();

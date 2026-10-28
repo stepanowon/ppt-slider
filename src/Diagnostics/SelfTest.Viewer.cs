@@ -94,7 +94,7 @@ static partial class SelfTest
         check(TextOf(deck.Renderer.Render(bare)).Contains("SmartArt는 표시되지 않습니다"), "smartart: no saved drawing = the placeholder box as before");
 
         var saved = Path.Combine(outDir, "smartart.pptx");
-        deck.Save(saved, null);
+        deck.Save(saved);
         using var reopened = Deck.Open(saved);
         int again = Paths(reopened.Renderer.Render(reopened.Slides[deck.Slides.IndexOf(smart)])) - baseline;
         check(again == 3, $"smartart: still drawn after save and reopen ({again})");

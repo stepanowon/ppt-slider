@@ -28,6 +28,17 @@ public static class Monitors
         return list;
     }
 
+    /// <summary>The monitor most of <paramref name="w"/> is on (the first one when it has no window handle yet).</summary>
+    public static MonitorInfo Of(Window w)
+    {
+        var all = All();
+        var h = new WindowInteropHelper(w).Handle;
+        var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (h == IntPtr.Zero || !GetMonitorInfo(MonitorFromWindow(h, 2), ref mi)) return all[0];
+        var r = mi.rcMonitor;
+        return all.FirstOrDefault(m => m.Bounds == new Int32Rect(r.L, r.T, r.R - r.L, r.B - r.T)) ?? all[0];
+    }
+
     /// <summary>Makes <paramref name="w"/> a borderless full-screen window on monitor <paramref name="m"/>.</summary>
     public static void PlaceFullScreen(Window w, MonitorInfo m)
     {
@@ -49,5 +60,6 @@ public static class Monitors
 
     [DllImport("user32.dll")] static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc cb, IntPtr data);
     [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO mi);
+    [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
 }
