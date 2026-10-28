@@ -1,10 +1,10 @@
 # Draws the MSIX logo PNGs in Package\Assets: an orange rounded tile with a white slide and a pen stroke.
-# Run again after changing the design; the PNGs are committed so a normal build does not need this.
+# Also the Store's 1:1 icons (300, 150, 71) in Package\StoreArt. Run again after changing the design; the PNGs are committed so a normal build does not need this.
 Add-Type -AssemblyName System.Drawing
 $dir = Join-Path $PSScriptRoot 'Assets'
 New-Item -ItemType Directory -Force $dir | Out-Null
 
-function Draw([string]$name, [int]$w, [int]$h) {
+function Draw([string]$name, [int]$w, [int]$h, [string]$to = $dir) {
     $bmp = New-Object System.Drawing.Bitmap $w, $h
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = 'AntiAlias'
@@ -33,7 +33,7 @@ function Draw([string]$name, [int]$w, [int]$h) {
     $pts = @((0.28, 0.6), (0.4, 0.5), (0.5, 0.58), (0.7, 0.46)) | ForEach-Object { New-Object System.Drawing.PointF ([float]($x0 + $_[0] * $s)), ([float]($y0 + $_[1] * $s)) }
     $g.DrawCurve($pen, [System.Drawing.PointF[]]$pts)
     $g.Dispose()
-    $bmp.Save((Join-Path $dir $name), [System.Drawing.Imaging.ImageFormat]::Png)
+    $bmp.Save((Join-Path $to $name), [System.Drawing.Imaging.ImageFormat]::Png)
     $bmp.Dispose()
 }
 
@@ -41,4 +41,7 @@ Draw 'Square44x44Logo.png' 44 44
 Draw 'Square150x150Logo.png' 150 150
 Draw 'Wide310x150Logo.png' 310 150
 Draw 'StoreLogo.png' 50 50
+$store = Join-Path $PSScriptRoot 'StoreArt'
+New-Item -ItemType Directory -Force $store | Out-Null
+foreach ($n in 300, 150, 71) { Draw "StoreIcon-${n}x$n.png" $n $n $store }
 Get-ChildItem $dir *.png | ForEach-Object { "$($_.Name)" }
