@@ -153,8 +153,9 @@
                             <Ellipse x:Name="PenPreview" VerticalAlignment="Center"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="지우기" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="되돌리기 · 지우기" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
+                            <Button x:Name="UndoInkBtn" Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="되돌리기" Click="OnUndoInk" ToolTip="판서 되돌리기" local:Shortcuts.For="undo"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="이 슬라이드" Click="OnClearInk" ToolTip="현재 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="모든 판서" Click="OnClearAllInk"/>
                         </StackPanel>

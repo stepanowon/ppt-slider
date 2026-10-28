@@ -107,6 +107,11 @@ static partial class SelfTest
             check(s.Count == 0, "show: C clears the slide's ink");
             Press(Key.Z, Ctrl);
             check(s.Count == 2, "show: Ctrl+Z after C brings it all back");
+            s.Add(Line(100, 500, 600, 520));
+            Click(show.TUndo);
+            check(s.Count == 2, "show: the undo button takes back the last stroke");
+            Click(show.TUndo); Click(show.TUndo); Click(show.TUndo);
+            check(s.Count == 0, "show: pressing it again goes further back, and stops at none");
 
             // cursor hides after 3 seconds still (pointer mode)
             Press(Key.Escape);
@@ -137,6 +142,17 @@ static partial class SelfTest
             check(ed.Count == strokes && Deck.GetText(Text()) == "편집됨", "editor: Ctrl+Z takes back the new stroke, not the edit");
             for (int i = 0; i < strokes + 1; i++) main.Run("undo");
             check(ed.Count == 0 && Deck.GetText(Text()) == original, $"editor: then the older strokes, then the edit ({ed.Count} strokes left)");
+
+            // editor: the 그리기 tab's undo button takes back strokes only, never the edit
+            main.Deck!.Snapshot(slide);
+            Deck.SetText(Text(), "편집됨");
+            ed.Add(Line(20, 400, 400, 420));
+            ed.Add(Line(20, 450, 400, 470));
+            Click(main.UndoInkBtn);
+            check(ed.Count == 1 && main.StatusText.Text == "판서를 되돌렸습니다", "editor: the undo-ink button takes back the last stroke");
+            Click(main.UndoInkBtn); Click(main.UndoInkBtn);
+            check(ed.Count == 0 && Deck.GetText(Text()) == "편집됨" && main.StatusText.Text == "되돌릴 판서가 없습니다",
+                "editor: with no strokes left it says so and leaves the edit alone");
         }
         finally { main.CloseForTest(); }
     }
@@ -202,6 +218,10 @@ static partial class SelfTest
 
             main.ShowInk.Add(Line(50, 50, 300, 120));
             check(pv.Ink.Strokes == show.Ink.Strokes && show.Ink.Strokes.Count > 0, "presenter: same ink as the show");
+            int before = main.ShowInk.Count;
+            main.ShowInk.Add(Line(60, 200, 400, 220));
+            Click(pv.TUndo);
+            check(main.ShowInk.Count == before && show.Ink.Strokes.Count == before, "presenter: the undo button takes back the last stroke on both screens");
             Press(Key.B);
             check(show.Cover.IsVisible && pv.Cover.IsVisible && pv.TBlack.IsChecked == true && pv.State.Text.Contains("검은"), "presenter: B blanks the show, presenter says so");
             Snap(pv, Path.Combine(outDir, "presenter-black.png"));
@@ -318,6 +338,9 @@ static partial class SelfTest
         {
             DrawingAttributes = { Color = Colors.Red, Width = 6, Height = 6 },
         };
+
+    /// <summary>A button click as the user makes it (the Click handler runs; no mouse needed).</summary>
+    static void Click(System.Windows.Controls.Button b) => b.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
 
     /// <summary>Lets timers and layout run for <paramref name="ms"/> milliseconds.</summary>
     static void Wait(int ms)

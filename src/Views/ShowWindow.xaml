@@ -45,6 +45,7 @@
                 <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
                 <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
                 <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
+                <Button x:Name="TUndo" Style="{StaticResource Tb}" Tag="&#xE7A7;" Click="OnUndoInk" ToolTip="판서 되돌리기" local:Shortcuts.For="undo"/>
                 <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="이 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
                 <StackPanel x:Name="Swatches" Orientation="Horizontal" VerticalAlignment="Center"/>

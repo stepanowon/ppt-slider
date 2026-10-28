@@ -74,6 +74,8 @@ public partial class MainWindow : Window
         AskRecover = path => MessageBox.Show(this,
             $"{System.IO.Path.GetFileName(path)}\n\n지난번에 저장하지 못한 편집 내용이 자동 저장되어 있습니다(파일보다 최근).\n복구할까요?\n\n[예]  자동 저장된 내용으로 열기\n[아니요]  파일 그대로 열기 (자동 저장본은 지웁니다)",
             "자동 저장 복구", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+        ConfirmDeleteSlide = n => MessageBox.Show(this, $"슬라이드 {n}을(를) 삭제할까요? 실행 취소할 수 없습니다.", "슬라이드 삭제",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK;
         autoSaveTimer.Tick += (_, _) => AutoSaveNow();
         autoSaveTimer.Start();
         UpdateRecent();
@@ -83,6 +85,9 @@ public partial class MainWindow : Window
 
     /// <summary>Asked when an autosaved copy newer than the file exists: true = open the copy. The self-test answers it.</summary>
     internal Func<string, bool> AskRecover;
+
+    /// <summary>Asked before deleting slide n (1-based): true = delete. The self-test answers it.</summary>
+    internal Func<int, bool> ConfirmDeleteSlide;
 
     public void Open(string path)
     {
@@ -334,10 +339,22 @@ public partial class MainWindow : Window
             var item = new ListBoxItem { Content = ThumbContent(i), Focusable = false };
             // a ListBoxItem only selects itself on click by taking focus, which a non-focusable one can't: handle the click here
             item.PreviewMouseLeftButtonDown += (_, e) => { Go(Thumbs.Items.IndexOf(item)); e.Handled = true; };
+            // right-click: go to that slide, then the menu acts on it
+            item.PreviewMouseRightButtonDown += (_, _) => Go(Thumbs.Items.IndexOf(item));
+            item.ContextMenu = ThumbMenu();
             Thumbs.Items.Add(item);
         }
         syncing = false;
         UpdateTitle();
+    }
+
+    ContextMenu ThumbMenu()
+    {
+        var delete = new MenuItem { Header = "슬라이드 삭제", Icon = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets") } };
+        delete.Click += OnDeleteSlide;
+        var menu = new ContextMenu { Items = { delete } };
+        menu.Opened += (_, _) => delete.IsEnabled = Count > 1;
+        return menu;
     }
 
     FrameworkElement ThumbContent(int i)
@@ -494,9 +511,12 @@ public partial class MainWindow : Window
         Canvas.SetLeft(box, origin.X - bt); Canvas.SetTop(box, origin.Y - bt);
         editBox = box;
         editStart = EditText(doc).Fmt;
-        box.LostKeyboardFocus += (_, _) => CommitEdit();
+        // picking a font or size for the selection moves focus to the boxes: the edit goes on
+        box.LostKeyboardFocus += (_, e) => { if (!InFormatBoxes(e.NewFocus as DependencyObject)) CommitEdit(); };
+        box.SelectionChanged += (_, _) => { if (editBox == box) SyncFormatUi(); };
         Overlay.Children.Add(box);
         box.Focus();
+        SyncFormatUi();
         if (caretAt is { } pt)
             Dispatcher.BeginInvoke(() =>
             {
@@ -506,7 +526,7 @@ public partial class MainWindow : Window
         StatusText.Text = "텍스트 편집 중 — 바깥을 클릭하면 적용, Esc는 취소, Shift+Enter는 줄 바꿈";
     }
 
-    /// <summary>The editor's text in <see cref="Deck.GetEditText"/> form, with each character's bold / italic / underline.</summary>
+    /// <summary>The editor's text in <see cref="Deck.GetEditText"/> form, with each character's bold / italic / underline / font / size.</summary>
     internal static (string Text, List<Deck.Fmt> Fmt) EditText(FlowDocument doc)
     {
         var sb = new System.Text.StringBuilder();
@@ -524,7 +544,7 @@ public partial class MainWindow : Window
                         for (DependencyObject? e = r; e is TextElement te && !u; e = te.Parent)
                             u = (e as Inline)?.TextDecorations?.Any(d => d.Location == TextDecorationLocation.Underline) == true
                                 || (e as Paragraph)?.TextDecorations?.Any(d => d.Location == TextDecorationLocation.Underline) == true;
-                        var f = new Deck.Fmt(r.FontWeight >= FontWeights.Bold, r.FontStyle == FontStyles.Italic, u);
+                        var f = new Deck.Fmt(r.FontWeight >= FontWeights.Bold, r.FontStyle == FontStyles.Italic, u, r.FontFamily?.Source, r.FontSize * 72 / 96);
                         foreach (var c in r.Text.Replace("\r\n", "\n").Replace('\r', '\n')) Add(c == '\n' ? '\v' : c, f);
                         break;
                     case LineBreak: Add('\v'); break;
@@ -575,6 +595,7 @@ public partial class MainWindow : Window
         if (editHidden != null) editHidden.Visibility = Visibility.Visible;
         editHidden = null;
         UpdateStatus();
+        SyncFormatUi();
         var el = (OpenXmlElement)box.Tag;
         var (text, fmt) = EditText(box.Document);
         if (cancel || (text == Deck.GetEditText(el) && fmt.SequenceEqual(editStart))) return;
@@ -599,9 +620,49 @@ public partial class MainWindow : Window
         Changed();
     }
 
-    void SetFontSize(double pt) => EditSelected(s => Deck.EditRuns(s, r => Deck.SetAttr(r, "sz", ((int)Math.Round(pt * 100)).ToString())));
+    /// <summary>While editing text: on the editor's selection (or for the text typed next), otherwise on the whole shape.</summary>
+    void SetFontSize(double pt)
+    {
+        if (editBox is { } box)
+        {
+            box.Selection.ApplyPropertyValue(TextElement.FontSizeProperty, pt * Deck.FontScale((OpenXmlElement)box.Tag) * 96 / 72);
+            BackToEditor();
+        }
+        else EditSelected(s => Deck.EditRuns(s, r => Deck.SetAttr(r, "sz", ((int)Math.Round(pt * 100)).ToString())));
+    }
 
-    double SelectedSize => selected != null && double.TryParse(Deck.FirstRun(selected, "sz"), out var v) ? v / 100 : 18;
+    void SetFontFace(string face)
+    {
+        if (editBox is { } box)
+        {
+            box.Selection.ApplyPropertyValue(TextElement.FontFamilyProperty, new FontFamily(face));
+            BackToEditor();
+        }
+        else EditSelected(s => Deck.EditRuns(s, r => Deck.SetFont(r, face)));
+    }
+
+    /// <summary>Focus back to the text editor after the font / size boxes, once the drop-down has closed.</summary>
+    void BackToEditor()
+    {
+        var box = editBox;
+        Dispatcher.BeginInvoke(() => { if (editBox == box) box?.Focus(); }, System.Windows.Threading.DispatcherPriority.Input);
+        SyncFormatUi();
+    }
+
+    bool InFormatBoxes(DependencyObject? d)
+    {
+        for (; d != null; d = d is Visual ? VisualTreeHelper.GetParent(d) ?? LogicalTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
+            if (d == FontBox || d == SizeBox || (d as FrameworkElement)?.TemplatedParent is { } tp && (tp == FontBox || tp == SizeBox)) return true;
+        return false;
+    }
+
+    /// <summary>Points of the editor's selection as stored in the file (null: mixed sizes).</summary>
+    double? EditorSize(TextRange sel) =>
+        sel.GetPropertyValue(TextElement.FontSizeProperty) is double px ? Math.Round(px * 72 / 96 / Deck.FontScale((OpenXmlElement)editBox!.Tag), 1) : null;
+
+    double SelectedSize => editBox is { } box
+        ? EditorSize(box.Selection) ?? EditorSize(new TextRange(box.Selection.Start, box.Selection.Start)) ?? 18 // mixed: the size where it starts
+        : selected != null && double.TryParse(Deck.FirstRun(selected, "sz"), out var v) ? v / 100 : 18;
 
     void ToggleRun(string attr, string on, string off)
     {
@@ -613,8 +674,16 @@ public partial class MainWindow : Window
     void SyncFormatUi()
     {
         syncing = true;
-        SizeBox.Text = selected != null && Deck.HasText(selected) ? SelectedSize.ToString() : "";
-        FontBox.Text = selected == null ? "" : Deck.FirstRunFont(selected) ?? "";
+        if (editBox is { } box) // the selected characters; blank when they differ
+        {
+            SizeBox.Text = EditorSize(box.Selection)?.ToString() ?? "";
+            FontBox.Text = box.Selection.GetPropertyValue(TextElement.FontFamilyProperty) is FontFamily f ? f.Source.Split(',')[0].Trim() : "";
+        }
+        else
+        {
+            SizeBox.Text = selected != null && Deck.HasText(selected) ? SelectedSize.ToString() : "";
+            FontBox.Text = selected == null ? "" : Deck.FirstRunFont(selected) ?? "";
+        }
         syncing = false;
     }
 
@@ -630,7 +699,7 @@ public partial class MainWindow : Window
 
     void OnFontPicked(object sender, SelectionChangedEventArgs e)
     {
-        if (!syncing && FontBox.SelectedItem is string face) EditSelected(s => Deck.EditRuns(s, r => Deck.SetFont(r, face)));
+        if (!syncing && FontBox.SelectedItem is string face) SetFontFace(face);
     }
 
     void OnGrow(object? s, RoutedEventArgs? e) => SetFontSize(FontSizes.FirstOrDefault(v => v > SelectedSize, SelectedSize + 8));
@@ -709,8 +778,7 @@ public partial class MainWindow : Window
     {
         if (Deck == null) return;
         if (Count <= 1) { StatusText.Text = "마지막 슬라이드는 삭제할 수 없습니다"; return; }
-        if (MessageBox.Show(this, $"슬라이드 {Current + 1}을(를) 삭제할까요? 실행 취소할 수 없습니다.", "슬라이드 삭제",
-                MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+        if (!ConfirmDeleteSlide(Current + 1)) return;
         ink.Remove(CurrentSlide!);
         Deck.DeleteSlide(Current);
         FlushInk();
@@ -774,6 +842,19 @@ public partial class MainWindow : Window
     public void ClearInk() { if (CurrentSlide is { } s) StrokesOf(s).Clear(); }
 
     void OnClearInk(object sender, RoutedEventArgs e) => ClearInk();
+
+    /// <summary>Takes back the last pen stroke (or erase) on the current slide; slide edits are left alone.</summary>
+    public void UndoInk()
+    {
+        CommitEdit();
+        if (CurrentSlide is not { } cur) return;
+        StatusText.Text = inkLog.Undo(StrokesOf(cur)) ? "판서를 되돌렸습니다" : "되돌릴 판서가 없습니다";
+    }
+
+    void OnUndoInk(object sender, RoutedEventArgs e) => UndoInk();
+
+    /// <summary>The show's and presenter's undo button: the last stroke on the slide being shown.</summary>
+    internal void UndoShowInk() => inkLog.Undo(ShowInk);
 
     void OnClearAllInk(object sender, RoutedEventArgs e)
     {
@@ -942,7 +1023,7 @@ public partial class MainWindow : Window
             case "next" or "prev" or "first" or "last" when Blanked != Blank.None: SetBlank(Blank.None); return true; // like PowerPoint: back to the same slide
             case "laser": Pen.SetTool(Pen.Tool == Tool.Laser ? Tool.Select : Tool.Laser); return true;
             case "zoom": show?.ToggleZoom(); return true;
-            case "undo": inkLog.Undo(ShowInk); return true;
+            case "undo": UndoShowInk(); return true;
             case "clearInk": ShowInk.Clear(); return true;
             case { } id: return Run(id);
         }
@@ -1053,7 +1134,11 @@ public partial class MainWindow : Window
         if (editBox != null)
         {
             if (e.Key == Key.Escape) { CommitEdit(cancel: true); e.Handled = true; }
-            else if (Shortcuts.Find(Gesture.From(e), inShow: false) is { } id && id is "bold" or "italic" or "underline") { ToggleInEditor(id); e.Handled = true; }
+            else if (Shortcuts.Find(Gesture.From(e), inShow: false) is { } id)
+            {
+                if (id is "bold" or "italic" or "underline") { ToggleInEditor(id); e.Handled = true; }
+                else if (id is "grow" or "shrink") e.Handled = Run(id); // on the selected characters
+            }
             return;
         }
         if (Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes

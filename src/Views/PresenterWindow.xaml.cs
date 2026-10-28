@@ -135,6 +135,7 @@ public partial class PresenterWindow : Window
     void OnPrev(object sender, RoutedEventArgs e) => main.Go(main.Current - 1);
     void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
     void OnClear(object sender, RoutedEventArgs e) => main.ShowInk.Clear();
+    void OnUndoInk(object sender, RoutedEventArgs e) => main.UndoShowInk();
     void OnBlack(object sender, RoutedEventArgs e) => main.SetBlank(main.Blanked == Blank.Black ? Blank.None : Blank.Black);
     void OnWhite(object sender, RoutedEventArgs e) => main.SetBlank(main.Blanked == Blank.White ? Blank.None : Blank.White);
     void OnBreak(object sender, RoutedEventArgs e) => main.OpenBreak();

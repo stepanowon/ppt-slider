@@ -93,7 +93,7 @@ static partial class SelfTest
         catch (Exception ex) { Check(false, ex.ToString()); }
         try { EditorSnaps(file, outDir, Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
-        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, InkStoreTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests })
+        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, InkStoreTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests, ThumbMenuTests })
         {
             try { test(file, outDir, Check); }
             catch (Exception ex) { Check(false, $"{test.Method.Name}: {ex}"); }
@@ -123,6 +123,24 @@ static partial class SelfTest
             check(after.Text == before.Text && changed.Count == 2 && Deck.GetEditText(shape) == before.Text
                   && changed.All(k => X.Attr(src[k]?.GetFirstChild<A.RunProperties>(), "b") == (after.Fmt[k].B ? "1" : "0")),
                 $"editor: Ctrl+B on 2 characters of \"{run.Text.Trim()}\" is saved ({changed.Count} changed)");
+
+            // the font / size boxes on the same 2 characters: only those change, in the file's points
+            doc = SlideRenderer.EditDocument(h.Text!);
+            run = doc.Blocks.OfType<System.Windows.Documents.Paragraph>().SelectMany(p => p.Inlines).OfType<System.Windows.Documents.Run>().First(r => r.Text.Trim().Length >= 2);
+            before = MainWindow.EditText(doc);
+            var sel = new System.Windows.Documents.TextRange(run.ContentStart.GetPositionAtOffset(skip), run.ContentStart.GetPositionAtOffset(skip + 2));
+            sel.ApplyPropertyValue(System.Windows.Documents.TextElement.FontSizeProperty, 50.0 * Deck.FontScale(h.Element) * 96 / 72);
+            sel.ApplyPropertyValue(System.Windows.Documents.TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily("Arial"));
+            after = MainWindow.EditText(doc);
+            changed = Enumerable.Range(0, after.Fmt.Count).Where(k => after.Fmt[k] != before.Fmt[k]).ToList();
+            shape = h.Element.CloneNode(true);
+            Deck.SetEditText(shape, after.Text, after.Fmt, before.Fmt);
+            src = Deck.CharSources(shape);
+            var rPrs = src.Select(e => e?.GetFirstChild<A.RunProperties>()).ToList();
+            check(changed.Count == 2 && Deck.GetEditText(shape) == before.Text
+                  && changed.All(k => X.Attr(rPrs[k], "sz") == "5000" && X.Attr(X.Child(rPrs[k], "latin"), "typeface") == "Arial")
+                  && Enumerable.Range(0, rPrs.Count).Except(changed).All(k => X.Attr(rPrs[k], "sz") != "5000"),
+                $"editor: font / size on 2 characters of \"{run.Text.Trim()}\" is saved ({changed.Count} changed)");
             return;
         }
     }
@@ -206,6 +224,20 @@ static partial class SelfTest
         var typed = text0.Insert(6, "X");
         s = Styled(typed, F(typed, (k, f) => k == 6 ? new Deck.Fmt(false, false, false) : k > 6 ? F(text0)[k - 1] : f));
         check(Runs(Ps(s)[0]) == "Hello [b2400]|X[2400]|World[i]|BR|Line2[1800]", "format: text typed with bold off — " + Runs(Ps(s)[0]));
+
+        // font / size picked for part of the text while editing (size in points as drawn: normAutofit fontScale is undone)
+        s = Styled(text0, F(text0, (k, f) => k is >= 6 and < 9 ? f with { Size = 32 } : f));
+        check(Runs(Ps(s)[0]) == "Hello [b2400]|Wor[i3200]|ld[i]|BR|Line2[1800]", "format: size on part of a run — " + Runs(Ps(s)[0]));
+        s = Styled(text0, F(text0, (k, f) => k is >= 1 and < 3 ? f with { Font = "Arial, Malgun Gothic" } : f));
+        check(Runs(Ps(s)[0]) == "H[b2400]|el[b2400]|lo [b2400]|World[i]|BR|Line2[1800]"
+              && Ps(s)[0].Elements<A.Run>().ElementAt(1).RunProperties?.GetFirstChild<A.LatinFont>()?.Typeface?.Value == "Arial"
+              && Ps(s)[0].Elements<A.Run>().ElementAt(1).RunProperties?.GetFirstChild<A.EastAsianFont>()?.Typeface?.Value == "Arial"
+              && Ps(s)[0].Elements<A.Run>().First().RunProperties?.GetFirstChild<A.LatinFont>() == null,
+            "format: font on part of a run — " + Runs(Ps(s)[0]));
+        s = Make();
+        s.TextBody!.BodyProperties!.Append(new A.NormalAutoFit { FontScale = 50000 });
+        Deck.SetEditText(s, text0, F(text0, (k, f) => k is >= 6 and < 11 ? f with { Size = 10 } : f), fmt0);
+        check(Runs(Ps(s)[0]) == "Hello [b2400]|World[i2000]|BR|Line2[1800]", "format: size under fontScale 50% — " + Runs(Ps(s)[0]));
 
         s = Edit(_ => "");
         check(Ps(s).Count == 1 && Ps(s)[0].ParagraphProperties != null && Ps(s)[0].GetFirstChild<A.EndParagraphRunProperties>()?.FontSize?.Value == 2000,

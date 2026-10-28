@@ -193,4 +193,51 @@ static partial class SelfTest
         check(AutoSave.Recoverable(path) == null, "autosave: a copy older than the file is not offered");
         AutoSave.Delete(path);
     }
+
+    /// <summary>Right-clicking a thumbnail goes to that slide and offers "슬라이드 삭제" for it.</summary>
+    static void ThumbMenuTests(string file, string outDir, Action<bool, string> check)
+    {
+        var path = Path.Combine(outDir, "thumbmenu.pptx");
+        File.Copy(file, path, true);
+        bool? answer = false;
+        int asked = 0;
+        var main = new MainWindow { ConfirmDeleteSlide = n => { asked = n; return answer == true; } };
+        try
+        {
+            main.Open(path);
+            var deck = main.Deck!;
+            int count = main.Count;
+            ListBoxItem Item(int i) => (ListBoxItem)main.Thumbs.Items[i];
+            MenuItem RightClick(int i)
+            {
+                Item(i).RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Right)
+                    { RoutedEvent = UIElement.PreviewMouseRightButtonDownEvent });
+                var menu = Item(i).ContextMenu!;
+                menu.RaiseEvent(new RoutedEventArgs(ContextMenu.OpenedEvent));
+                return (MenuItem)menu.Items[0];
+            }
+
+            var delete = RightClick(1);
+            check(main.Current == 1 && (string)delete.Header == "슬라이드 삭제" && delete.IsEnabled,
+                "thumb menu: right-click selects that slide and offers deletion");
+            var id = deck.IdOf(deck.Slides[1]);
+            delete.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            check(asked == 2 && main.Count == count && deck.IdOf(deck.Slides[1]) == id, "thumb menu: cancel keeps the slide");
+
+            answer = true;
+            var next = deck.IdOf(deck.Slides[2]);
+            RightClick(1).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            check(main.Count == count - 1 && main.Thumbs.Items.Count == count - 1 && deck.Slides.All(s => deck.IdOf(s) != id)
+                  && deck.IdOf(deck.Slides[1]) == next && main.Current == 1 && deck.Dirty,
+                "thumb menu: OK deletes that slide, the next one takes its place");
+
+            var last = RightClick(main.Count - 1);
+            last.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            check(main.Count == count - 2 && main.Current == main.Count - 1, "thumb menu: deleting the last slide selects the new last one");
+
+            while (main.Count > 1) RightClick(0).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            check(!RightClick(0).IsEnabled, "thumb menu: disabled when only one slide is left");
+        }
+        finally { main.CloseForTest(); }
+    }
 }

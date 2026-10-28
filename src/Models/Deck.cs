@@ -190,21 +190,30 @@ public sealed class Deck : IDisposable
         }
     }
 
-    /// <summary>Bold / italic / underline of one character as the editor shows it.</summary>
-    public readonly record struct Fmt(bool B, bool I, bool U);
+    /// <summary>
+    /// Bold / italic / underline, font (the editor's font family, first name = the face) and size (points as drawn,
+    /// i.e. after <see cref="FontScale"/>) of one character as the editor shows it.
+    /// </summary>
+    public readonly record struct Fmt(bool B, bool I, bool U, string? Font = null, double Size = 0);
 
-    /// <summary>Bold / italic / underline the editor changed on a character (null: as its run says).</summary>
-    readonly record struct Ovr(bool? B, bool? I, bool? U)
+    /// <summary>Formatting the editor changed on a character (null: as its run says). <see cref="Size"/> is in points as stored.</summary>
+    readonly record struct Ovr(bool? B, bool? I, bool? U, string? Font = null, double? Size = null)
     {
-        public bool Any => B != null || I != null || U != null;
+        public bool Any => B != null || I != null || U != null || Font != null || Size != null;
 
         public void Apply(A.RunProperties r)
         {
             if (B is { } b) SetAttr(r, "b", b ? "1" : "0");
             if (I is { } i) SetAttr(r, "i", i ? "1" : "0");
             if (U is { } u) SetAttr(r, "u", u ? "sng" : "none");
+            if (Size is { } sz) SetAttr(r, "sz", ((int)Math.Round(sz * 100)).ToString());
+            if (Font is { } f) SetFont(r, f.Split(',')[0].Trim());
         }
     }
+
+    /// <summary>The shrink-on-overflow scale (normAutofit fontScale) the shape's text is drawn with.</summary>
+    public static double FontScale(OpenXmlElement shape) =>
+        (X.Long(X.Child(X.Child(X.Child(shape, "txBody"), "bodyPr"), "normAutofit"), "fontScale") ?? 100000) / 100000.0;
 
     /// <summary>One character of a shape's text and the run / field / line break it came from (null: a paragraph end).</summary>
     readonly record struct Ch(char C, OpenXmlElement? Src, int Para, bool Typed = false, Ovr O = default);
@@ -239,7 +248,7 @@ public sealed class Deck : IDisposable
     /// typed text takes the formatting of the text it replaces or follows (as in PowerPoint),
     /// a new paragraph copies the one it was split from, and untouched paragraphs are left as they are.
     /// <paramref name="fmt"/> (per character of <paramref name="text"/>) and <paramref name="oldFmt"/> (per character of the
-    /// original text) are what the editor showed after and before: where they differ, bold / italic / underline is set on the run.
+    /// original text) are what the editor showed after and before: where they differ, bold / italic / underline / font / size is set on the run.
     /// </summary>
     public static void SetEditText(OpenXmlElement shape, string text, IReadOnlyList<Fmt>? fmt = null, IReadOnlyList<Fmt>? oldFmt = null)
     {
@@ -262,12 +271,18 @@ public sealed class Deck : IDisposable
             .Concat(text[pre..(text.Length - suf)].Select(c => new Ch(c, style, at, Typed: true)))
             .Concat(old.Skip(n - suf)).ToList();
         if (fmt != null && oldFmt != null)
+        {
+            double scale = FontScale(shape);
             for (int k = 0; k < items.Count; k++)
             {
                 int was = k < pre ? k : k >= text.Length - suf ? k - text.Length + n : styleAt; // the original character it compares to
                 Fmt a = was >= 0 ? oldFmt[was] : default, b = fmt[k];
-                items[k] = items[k] with { O = new Ovr(a.B != b.B ? b.B : null, a.I != b.I ? b.I : null, a.U != b.U ? b.U : null) };
+                // font and size only against a real character: an empty box's editor defaults are not a choice
+                bool font = was >= 0 && b.Font != null && a.Font != b.Font, size = was >= 0 && b.Size > 0 && Math.Abs(a.Size - b.Size) > 0.01;
+                items[k] = items[k] with { O = new Ovr(a.B != b.B ? b.B : null, a.I != b.I ? b.I : null, a.U != b.U ? b.U : null,
+                    font ? b.Font : null, size ? b.Size / scale : null) };
             }
+        }
         var counts = paras.Select((_, i) => old.Count(c => c.Para == i && c.Src != null)).ToList();
 
         var result = new List<A.Paragraph>();

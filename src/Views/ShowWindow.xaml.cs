@@ -260,6 +260,7 @@ public partial class ShowWindow : Window
     void OnPrev(object sender, RoutedEventArgs e) => main.Go(main.Current - 1);
     void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
     void OnClear(object sender, RoutedEventArgs e) => main.ShowInk.Clear();
+    void OnUndoInk(object sender, RoutedEventArgs e) => main.UndoShowInk();
     void OnThinner(object sender, RoutedEventArgs e) => main.Pen.Grow(-1);
     void OnThicker(object sender, RoutedEventArgs e) => main.Pen.Grow(1);
     void OnBreak(object sender, RoutedEventArgs e) => main.OpenBreak();
