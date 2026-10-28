@@ -32,7 +32,7 @@ public partial class PresenterWindow : Window
         else Monitors.PlaceFullScreen(this, monitor);
         foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
-            var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2, 0, 2, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = "펜/형광펜 색" };
+            var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2, 0, 2, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = L.T("penColor") };
             Shortcuts.SetFor(b, $"color{i + 1}");
             b.Click += (_, _) => main.Pen.SetColor(c);
             Swatches.Children.Add(b);
@@ -70,7 +70,7 @@ public partial class PresenterWindow : Window
         NextHost.Visibility = last ? Visibility.Collapsed : Visibility.Visible;
         NextEnd.Visibility = last ? Visibility.Visible : Visibility.Collapsed;
         var notes = Deck.Notes(slide);
-        Notes.Text = notes == "" ? "(노트 없음)" : notes;
+        Notes.Text = notes == "" ? L.T("noNotes") : notes;
         Notes.Foreground = notes == "" ? Brushes.Gray : Brushes.White;
         Page.Text = $"{main.Current + 1} / {main.Count}";
         OnShowState();
@@ -84,9 +84,9 @@ public partial class PresenterWindow : Window
         TBlack.IsChecked = b == Blank.Black;
         TWhite.IsChecked = b == Blank.White;
         Ink.Strokes = main.ShowInk;
-        State.Text = main.Jump != "" ? $"슬라이드 {main.Jump} 로 이동 (Enter)"
-            : b == Blank.Black ? "청중 화면: 검은 화면"
-            : b == Blank.White ? "청중 화면: 흰 화면"
+        State.Text = main.Jump != "" ? L.F("goToSlide", main.Jump)
+            : b == Blank.Black ? L.T("audienceBlack")
+            : b == Blank.White ? L.T("audienceWhite")
             : "";
     }
 

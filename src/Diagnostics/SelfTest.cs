@@ -24,6 +24,7 @@ static partial class SelfTest
         var log = new List<string>();
         void Check(bool ok, string what) { log.Add($"{(ok ? "PASS" : "FAIL")} {what}"); if (!ok) failed = true; }
         failed = false;
+        LocTests(Check);
         try { TextEdits(Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
         try
@@ -103,6 +104,22 @@ static partial class SelfTest
     }
 
     static bool failed;
+
+    /// <summary>Every UI text exists in all three languages with the same {n} arguments.</summary>
+    static void LocTests(Action<bool, string> check)
+    {
+        static string Args(string s) => string.Join(",", System.Text.RegularExpressions.Regex.Matches(s, @"\{\d+[^}]*\}").Select(m => m.Value).Order());
+        var bad = L.Table.Where(p => p.Value.Length != 3 || p.Value.Any(string.IsNullOrWhiteSpace) || p.Value.Select(Args).Distinct().Count() != 1).Select(p => p.Key).ToList();
+        check(bad.Count == 0, $"loc: {L.Table.Count} texts in ko/ja/en with matching arguments{(bad.Count > 0 ? " — bad: " + string.Join(", ", bad) : "")}");
+        check(L.Table["colorNames"].All(v => v.Split(',').Length == PenState.Palette.Length), "loc: a color name per pen color");
+        var used = Directory.Exists(SourceDir) ? Directory.GetFiles(SourceDir, "*.*", SearchOption.AllDirectories).Where(f => (f.EndsWith(".cs") || f.EndsWith(".xaml")) && Path.GetFileName(f) != "Loc.cs")
+            .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"(?:\{local:Loc |L\.[TF]\(\"")([\w.]+)").Select(m => m.Groups[1].Value)).Distinct().ToList() : [];
+        var missing = used.Where(k => !L.Table.ContainsKey(k)).ToList();
+        check(missing.Count == 0, $"loc: {used.Count} keys used in the source all exist{(missing.Count > 0 ? " — missing: " + string.Join(", ", missing) : "")}");
+    }
+
+    /// <summary>The src folder when run from the build output (bin\Debug\...); absent elsewhere.</summary>
+    static string SourceDir => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "src"));
 
     /// <summary>Ctrl+B on two characters in the editor of a real shape: exactly those two change weight after the commit.</summary>
     static void EditorBold(List<ShapeHit> hits, Action<bool, string> check)

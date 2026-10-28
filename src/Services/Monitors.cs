@@ -6,7 +6,7 @@ namespace PptSlider;
 
 public record MonitorInfo(int Index, Int32Rect Bounds, bool Primary)
 {
-    public override string ToString() => $"모니터 {Index + 1}{(Primary ? " (주 모니터)" : "")} — {Bounds.Width}×{Bounds.Height}";
+    public override string ToString() => $"{L.F("monitor", Index + 1)}{(Primary ? L.T("primaryMonitor") : "")} — {Bounds.Width}×{Bounds.Height}";
 }
 
 /// <summary>Win32 monitor enumeration; WPF has no API for it.</summary>

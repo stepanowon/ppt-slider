@@ -51,13 +51,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        var ko = XmlLanguage.GetLanguage("ko-kr");
+        var lang = XmlLanguage.GetLanguage(L.Lang switch { "ko" => "ko-kr", "ja" => "ja-jp", _ => "en-us" });
         FontBox.ItemsSource = Fonts.SystemFontFamilies
-            .Select(f => f.FamilyNames.TryGetValue(ko, out var n) ? n : f.Source).Distinct().OrderBy(n => n).ToList();
+            .Select(f => f.FamilyNames.TryGetValue(lang, out var n) ? n : f.Source).Distinct().OrderBy(n => n).ToList();
         SizeBox.ItemsSource = FontSizes;
         foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
-            var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2), Background = new SolidColorBrush(c), Focusable = false, BorderBrush = Brushes.Gray, ToolTip = "펜/형광펜 색" };
+            var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2), Background = new SolidColorBrush(c), Focusable = false, BorderBrush = Brushes.Gray, ToolTip = L.T("penColor") };
             Shortcuts.SetFor(b, $"color{i + 1}");
             b.Click += (_, _) => Pen.SetColor(c);
             Swatches.Children.Add(b);
@@ -72,9 +72,9 @@ public partial class MainWindow : Window
         inkSaveTimer.Tick += (_, _) => FlushInk();
         PenState.StraightenOnShift(Ink);
         AskRecover = path => MessageBox.Show(this,
-            $"{System.IO.Path.GetFileName(path)}\n\n지난번에 저장하지 못한 편집 내용이 자동 저장되어 있습니다(파일보다 최근).\n복구할까요?\n\n[예]  자동 저장된 내용으로 열기\n[아니요]  파일 그대로 열기 (자동 저장본은 지웁니다)",
-            "자동 저장 복구", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
-        ConfirmDeleteSlide = n => MessageBox.Show(this, $"슬라이드 {n}을(를) 삭제할까요? 실행 취소할 수 없습니다.", "슬라이드 삭제",
+            L.F("recover", System.IO.Path.GetFileName(path)), L.T("recoverTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+        FillLanguages();
+        ConfirmDeleteSlide = n => MessageBox.Show(this, L.F("deleteSlideAsk", n), L.T("deleteSlide"),
             MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK;
         autoSaveTimer.Tick += (_, _) => AutoSaveNow();
         autoSaveTimer.Start();
@@ -100,7 +100,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"파일을 열 수 없습니다.\n{ex.Message}\n\n.pptx 형식만 지원합니다.", "열기", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.F("openFail", ex.Message), L.T("open"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         show?.Close();
@@ -121,8 +121,8 @@ public partial class MainWindow : Window
         RebuildThumbs();
         Current = -1;
         Go(0);
-        if (restored > 0) StatusText.Text = $"지난번 판서 {restored}획을 복원했습니다 (모두 지우려면 [그리기] 탭의 [모든 판서])";
-        if (d.Dirty) StatusText.Text = "자동 저장된 사본에서 복구했습니다. 저장하면 원래 파일에 씁니다.";
+        if (restored > 0) StatusText.Text = L.F("inkRestored", restored);
+        if (d.Dirty) StatusText.Text = L.T("recovered");
         UpdateTitle();
     }
 
@@ -177,8 +177,7 @@ public partial class MainWindow : Window
         if (ink.Values.Any(s => s.Count > 0))
         {
             var r = MessageBox.Show(this,
-                "판서한 내용이 있습니다. 어떤 버전으로 저장할까요?\n\n[예]  판서를 포함하여 저장 (새 파일)\n[아니요]  판서 없이 저장\n[취소]  저장하지 않음",
-                "저장", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+                L.T("saveWithInk"), L.T("save"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (r == MessageBoxResult.Cancel) return false;
             withInk = r == MessageBoxResult.Yes;
         }
@@ -188,9 +187,9 @@ public partial class MainWindow : Window
             var name = System.IO.Path.GetFileNameWithoutExtension(Deck.Path);
             var dlg = new SaveFileDialog
             {
-                Filter = "PowerPoint 프레젠테이션 (*.pptx)|*.pptx",
+                Filter = L.T("pptxFilter"),
                 InitialDirectory = System.IO.Path.GetDirectoryName(Deck.Path),
-                FileName = withInk ? name + "_판서.pptx" : name + ".pptx",
+                FileName = withInk ? name + L.T("inkSuffix") + ".pptx" : name + ".pptx",
             };
             if (dlg.ShowDialog(this) != true) return false;
             path = dlg.FileName;
@@ -200,13 +199,13 @@ public partial class MainWindow : Window
             var before = Deck.Path;
             Deck.Save(path, withInk ? ink : null);
             if (!Deck.Dirty) AutoSave.Delete(before); // saved over (or away from) it: the copy is stale
-            StatusText.Text = $"저장됨: {path}";
+            StatusText.Text = L.F("saved", path);
             UpdateTitle();
             return true;
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"저장하지 못했습니다.\n{ex.Message}", "저장", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, L.F("saveFail", ex.Message), L.T("save"), MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
     }
@@ -219,28 +218,27 @@ public partial class MainWindow : Window
         bool withInk = false;
         if (ink.Values.Any(s => s.Count > 0))
         {
-            var r = MessageBox.Show(this, "판서한 내용이 있습니다. PDF에 판서를 포함할까요?\n\n[예]  판서 포함\n[아니요]  판서 없이\n[취소]  내보내지 않음",
-                "PDF로 내보내기", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            var r = MessageBox.Show(this, L.T("pdfWithInk"), L.T("exportPdf"), MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
             if (r == MessageBoxResult.Cancel) return;
             withInk = r == MessageBoxResult.Yes;
         }
         var name = System.IO.Path.GetFileNameWithoutExtension(Deck.Path);
         var dlg = new SaveFileDialog
         {
-            Filter = "PDF 문서 (*.pdf)|*.pdf",
+            Filter = L.T("pdfFilter"),
             InitialDirectory = System.IO.Path.GetDirectoryName(Deck.Path),
-            FileName = name + (withInk ? "_판서" : "") + ".pdf",
+            FileName = name + (withInk ? L.T("inkSuffix") : "") + ".pdf",
         };
         if (dlg.ShowDialog(this) != true) return;
         try
         {
             Cursor = Cursors.Wait;
             PdfExport.Export(Deck, dlg.FileName, withInk ? ink : null);
-            StatusText.Text = $"PDF로 내보냄: {dlg.FileName}";
+            StatusText.Text = L.F("pdfDone", dlg.FileName);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"PDF를 만들지 못했습니다.\n{ex.Message}", "PDF로 내보내기", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, L.F("pdfFail", ex.Message), L.T("exportPdf"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally { Cursor = null; }
     }
@@ -248,7 +246,7 @@ public partial class MainWindow : Window
     bool ConfirmDiscard()
     {
         if (Deck == null || !Deck.Dirty) return true;
-        var r = MessageBox.Show(this, "저장하지 않은 변경 내용이 있습니다. 저장할까요?", "PPT Slider",
+        var r = MessageBox.Show(this, L.T("unsaved"), "PPT Slider",
             MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
         return r == MessageBoxResult.No || (r == MessageBoxResult.Yes && Save(false));
     }
@@ -309,7 +307,7 @@ public partial class MainWindow : Window
         inkSaveTimer.Stop();
         if (Deck == null) return;
         try { InkStore.Save(Deck.Path, Deck.Slides.Where(ink.ContainsKey).Select(sp => (Deck.IdOf(sp), ink[sp]))); }
-        catch (Exception) { StatusText.Text = "판서를 보관하지 못했습니다"; } // the ink is still here; saving the deck with ink keeps it too
+        catch (Exception) { StatusText.Text = L.T("inkKeepFail"); } // the ink is still here; saving the deck with ink keeps it too
     }
 
     void RenderCurrent()
@@ -350,7 +348,7 @@ public partial class MainWindow : Window
 
     ContextMenu ThumbMenu()
     {
-        var delete = new MenuItem { Header = "슬라이드 삭제", Icon = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets") } };
+        var delete = new MenuItem { Header = L.T("deleteSlide"), Icon = new TextBlock { Text = "", FontFamily = new FontFamily("Segoe MDL2 Assets") } };
         delete.Click += OnDeleteSlide;
         var menu = new ContextMenu { Items = { delete } };
         menu.Opened += (_, _) => delete.IsEnabled = Count > 1;
@@ -376,7 +374,7 @@ public partial class MainWindow : Window
         Title = Deck == null ? "PPT Slider" : $"{System.IO.Path.GetFileName(Deck.Path)}{(Deck.Dirty ? " *" : "")} - PPT Slider";
 
     void UpdateStatus() =>
-        StatusText.Text = Deck == null ? "파일을 열어 주세요" : $"슬라이드 {Current + 1} / {Count}";
+        StatusText.Text = Deck == null ? L.T("openAFile") : L.F("slideOf", Current + 1, Count);
 
     void OnThumbSelected(object sender, SelectionChangedEventArgs e)
     {
@@ -523,7 +521,7 @@ public partial class MainWindow : Window
                 if (editBox == box && box.GetPositionFromPoint(Stage.TranslatePoint(pt, box), true) is { } pos) box.CaretPosition = pos;
             }, System.Windows.Threading.DispatcherPriority.Loaded);
         else box.SelectAll();
-        StatusText.Text = "텍스트 편집 중 — 바깥을 클릭하면 적용, Esc는 취소, Shift+Enter는 줄 바꿈";
+        StatusText.Text = L.T("editingText");
     }
 
     /// <summary>The editor's text in <see cref="Deck.GetEditText"/> form, with each character's bold / italic / underline / font / size.</summary>
@@ -612,7 +610,7 @@ public partial class MainWindow : Window
         CommitEdit();
         if (Deck == null || selected == null || !Deck.HasText(selected))
         {
-            StatusText.Text = "먼저 슬라이드에서 텍스트 개체를 선택하세요";
+            StatusText.Text = L.T("selectTextFirst");
             return;
         }
         Deck.Snapshot(CurrentSlide!);
@@ -733,7 +731,7 @@ public partial class MainWindow : Window
         Pen.SetTool(Tool.Select);
         double w = Deck.Renderer.Width, h = Deck.Renderer.Height;
         Deck.Snapshot(CurrentSlide!);
-        selected = Deck.AddTextBox(CurrentSlide!, new Rect(w * 0.3, h * 0.42, w * 0.4, h * 0.12), "텍스트를 입력하세요");
+        selected = Deck.AddTextBox(CurrentSlide!, new Rect(w * 0.3, h * 0.42, w * 0.4, h * 0.12), L.T("newTextBox"));
         Changed();
         BeginEdit();
     }
@@ -777,7 +775,7 @@ public partial class MainWindow : Window
     void OnDeleteSlide(object sender, RoutedEventArgs e)
     {
         if (Deck == null) return;
-        if (Count <= 1) { StatusText.Text = "마지막 슬라이드는 삭제할 수 없습니다"; return; }
+        if (Count <= 1) { StatusText.Text = L.T("lastSlideStays"); return; }
         if (!ConfirmDeleteSlide(Current + 1)) return;
         ink.Remove(CurrentSlide!);
         Deck.DeleteSlide(Current);
@@ -792,8 +790,8 @@ public partial class MainWindow : Window
     {
         CommitEdit();
         // ink first: Ctrl+Z right after drawing takes back the stroke, not an earlier edit
-        if (CurrentSlide is { } cur && inkLog.Undo(StrokesOf(cur))) { StatusText.Text = "판서를 되돌렸습니다"; return; }
-        if (Deck?.Undo() is not { } part) { StatusText.Text = "더 이상 실행 취소할 내용이 없습니다"; return; }
+        if (CurrentSlide is { } cur && inkLog.Undo(StrokesOf(cur))) { StatusText.Text = L.T("inkUndone"); return; }
+        if (Deck?.Undo() is not { } part) { StatusText.Text = L.T("nothingToUndo"); return; }
         selected = null;
         int i = Deck.Slides.IndexOf(part);
         if (Thumbs.Items[i] is ListBoxItem item) item.Content = ThumbContent(i);
@@ -823,11 +821,11 @@ public partial class MainWindow : Window
         PenPreview.Stroke = Brushes.Gray;
         ToolText.Text = Pen.Tool switch
         {
-            Tool.Pen => $"펜 · 두께 {Pen.PenSize:0}",
-            Tool.Highlighter => $"형광펜 · 두께 {Pen.HiSize:0}",
-            Tool.Eraser => "지우개",
-            Tool.Laser => "레이저 포인터",
-            _ => "선택",
+            Tool.Pen => L.F("penStatus", Pen.PenSize),
+            Tool.Highlighter => L.F("highlighterStatus", Pen.HiSize),
+            Tool.Eraser => L.T("eraser"),
+            Tool.Laser => L.T("laser"),
+            _ => L.T("select"),
         };
     }
 
@@ -848,7 +846,7 @@ public partial class MainWindow : Window
     {
         CommitEdit();
         if (CurrentSlide is not { } cur) return;
-        StatusText.Text = inkLog.Undo(StrokesOf(cur)) ? "판서를 되돌렸습니다" : "되돌릴 판서가 없습니다";
+        StatusText.Text = inkLog.Undo(StrokesOf(cur)) ? L.T("inkUndone") : L.T("noInkToUndo");
     }
 
     void OnUndoInk(object sender, RoutedEventArgs e) => UndoInk();
@@ -858,7 +856,7 @@ public partial class MainWindow : Window
 
     void OnClearAllInk(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, "모든 슬라이드의 판서를 지울까요?", "판서 지우기", MessageBoxButton.OKCancel) == MessageBoxResult.OK)
+        if (MessageBox.Show(this, L.T("clearAllAsk"), L.T("clearInkTitle"), MessageBoxButton.OKCancel) == MessageBoxResult.OK)
             foreach (var s in ink.Values) s.Clear();
     }
 
@@ -923,22 +921,50 @@ public partial class MainWindow : Window
     {
         var lines = Shortcuts.All.GroupBy(a => a.Group).Select(g =>
             $"[{g.Key}]\n" + string.Join("\n", g.Where(a => Shortcuts.Of(a.Id).Count > 0).Select(a => $"    {a.Name} : {Shortcuts.Text(a.Id)}")));
-        MessageBox.Show(this, string.Join("\n", lines) + """
-
-            [고정]
-                Esc : 텍스트 편집 취소 / 선택 도구로 (쇼에서는 한 번 더 누르면 종료)
-                쇼에서 숫자 + Enter : 해당 번호 슬라이드로 이동 (숫자만 누르면 1초 뒤 펜 색)
-                Shift + 드래그 : 판서를 직선으로    쇼에서 확대 중 Esc / 클릭 : 원래 크기
-                더블클릭 : 텍스트 편집    드래그 : 이동, 오른쪽 아래 모서리 : 크기
-
-            단축키는 [슬라이드 쇼] 탭의 [단축키 설정]에서 바꿀 수 있습니다.
-            """, "단축키");
+        MessageBox.Show(this, string.Join("\n", lines) + "\n\n" + L.T("helpFixed"), L.T("shortcuts"));
     }
 
     void OnShortcutSettings(object? sender, RoutedEventArgs? e) => new ShortcutsWindow { Owner = this }.ShowDialog();
 
+    /// <summary>The 설정 tab's language list: same as Windows (the default), then 한국어 / 日本語 / English.</summary>
+    void FillLanguages()
+    {
+        syncing = true;
+        LanguageBox.ItemsSource = new[] { L.F("languageSystem", L.Names[Array.IndexOf(L.Languages, L.WindowsLang)]) }.Concat(L.Names).ToList();
+        LanguageBox.SelectedIndex = L.Saved is { } s ? Array.IndexOf(L.Languages, s) + 1 : 0;
+        syncing = false;
+    }
+
+    void OnLanguagePicked(object sender, SelectionChangedEventArgs e)
+    {
+        if (syncing || LanguageBox.SelectedIndex < 0) return;
+        PickLanguage(LanguageBox.SelectedIndex == 0 ? null : L.Languages[LanguageBox.SelectedIndex - 1]);
+    }
+
+    /// <summary>Saves the choice (null: same as Windows); it applies after a restart, offered right away.</summary>
+    void PickLanguage(string? lang)
+    {
+        if (lang == L.Saved) return;
+        if (!L.Save(lang))
+        {
+            MessageBox.Show(this, L.T("languageSaveFail"), L.T("language"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            FillLanguages();
+            return;
+        }
+        var next = lang ?? L.WindowsLang;
+        if (next == L.Lang) return; // e.g. picked Windows' language, which is already showing
+        if (MessageBox.Show(this, L.T("languageRestart", next), "PPT Slider", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes
+            || !ConfirmDiscard()) return; // the choice still applies at the next start
+        var path = Deck?.Path;
+        restarting = true; // already asked about unsaved edits
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { ArgumentList = { path ?? "" }, UseShellExecute = false });
+        Close();
+    }
+
+    bool restarting;
+
     void UpdateHint() =>
-        EmptyHint.Text = "PPTX 파일을 열거나 이곳으로 끌어다 놓으세요" + (Shortcuts.Text("open") is { Length: > 0 } k ? $" ({k})" : "");
+        EmptyHint.Text = L.T("emptyHint") + (Shortcuts.Text("open") is { Length: > 0 } k ? $" ({k})" : "");
 
     // ---------- slide show keys and state (shared by the show window and the presenter view) ----------
 
@@ -1155,7 +1181,7 @@ public partial class MainWindow : Window
 
     void OnOpen(object? sender, RoutedEventArgs? e)
     {
-        var dlg = new OpenFileDialog { Filter = "PowerPoint 프레젠테이션 (*.pptx)|*.pptx" };
+        var dlg = new OpenFileDialog { Filter = L.T("pptxFilter") };
         if (dlg.ShowDialog(this) == true) Open(dlg.FileName);
     }
 
@@ -1170,7 +1196,7 @@ public partial class MainWindow : Window
 
     void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (!ConfirmDiscard()) { e.Cancel = true; return; }
+        if (!restarting && !ConfirmDiscard()) { e.Cancel = true; return; }
         show?.Close();
         FlushInk();
         if (Deck != null) AutoSave.Delete(Deck.Path); // a normal close: no copy left to recover

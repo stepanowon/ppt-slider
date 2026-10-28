@@ -58,45 +58,45 @@ public static class Shortcuts
 
     public static readonly ShortcutAction[] All =
     [
-        new("next", "이동", "다음 슬라이드", true, [K(Key.Right), K(Key.Down), K(Key.PageDown), K(Key.Space), K(Key.Enter), K(Key.N)]),
-        new("prev", "이동", "이전 슬라이드", true, [K(Key.Left), K(Key.Up), K(Key.PageUp), K(Key.Back)]),
-        new("first", "이동", "첫 슬라이드", true, [K(Key.Home)]),
-        new("last", "이동", "마지막 슬라이드", true, [K(Key.End)]),
-        new("select", "판서", "선택/포인터", true, []),
-        new("pen", "판서", "펜", true, [K(Key.P)]),
-        new("highlighter", "판서", "형광펜", true, [K(Key.H)]),
-        new("eraser", "판서", "지우개", true, [K(Key.E)]),
-        new("laser", "판서", "레이저 포인터", true, [K(Key.L, Ctrl)]),
-        .. PenState.Palette.Select((_, i) => new ShortcutAction($"color{i + 1}", "판서", $"색 {i + 1} ({ColorNames[i]})", true, [K(Key.D1 + i), K(Key.NumPad1 + i)])),
-        new("thinner", "판서", "가늘게", true, [K(Key.OemOpenBrackets), K(Key.OemMinus), K(Key.Subtract)]),
-        new("thicker", "판서", "굵게", true, [K(Key.OemCloseBrackets), K(Key.OemPlus), K(Key.Add)]),
-        new("clearInk", "판서", "현재 슬라이드 판서 지우기", true, [K(Key.C)]),
-        new("blankPage", "판서", "빈 판서 페이지 삽입", true, [K(Key.Enter, Ctrl)]),
-        new("showFirst", "쇼", "처음부터 슬라이드 쇼", false, [K(Key.F5)]),
-        new("showCurrent", "쇼", "현재 슬라이드부터 슬라이드 쇼", false, [K(Key.F5, ModifierKeys.Shift)]),
-        new("break", "쇼", "Break Time 타이머", true, [K(Key.T)]),
-        new("black", "쇼", "검은 화면", true, [K(Key.B), K(Key.OemPeriod)]),
-        new("white", "쇼", "흰 화면", true, [K(Key.W), K(Key.OemComma)]),
-        new("zoom", "쇼", "화면 확대 (영역 드래그)", true, [K(Key.Z)]),
-        new("open", "파일", "열기", false, [K(Key.O, Ctrl)]),
-        new("save", "파일", "저장", false, [K(Key.S, Ctrl)]),
-        new("saveAs", "파일", "다른 이름으로 저장", false, [K(Key.S, CtrlShift)]),
-        new("exportPdf", "파일", "PDF로 내보내기", false, []),
-        new("undo", "편집", "실행 취소 (판서 우선)", true, [K(Key.Z, Ctrl)]),
-        new("editText", "편집", "텍스트 편집", false, [K(Key.F2)]),
-        new("deleteShape", "편집", "개체 삭제", false, [K(Key.Delete)]),
-        new("bold", "편집", "굵게", false, [K(Key.B, Ctrl)]),
-        new("italic", "편집", "기울임꼴", false, [K(Key.I, Ctrl)]),
-        new("underline", "편집", "밑줄", false, [K(Key.U, Ctrl)]),
-        new("grow", "편집", "글꼴 크기 크게", false, [K(Key.OemPeriod, CtrlShift)]),
-        new("shrink", "편집", "글꼴 크기 작게", false, [K(Key.OemComma, CtrlShift)]),
-        new("newSlide", "슬라이드", "새 슬라이드", false, [K(Key.M, Ctrl)]),
-        new("duplicate", "슬라이드", "슬라이드 복제", false, [K(Key.D, Ctrl)]),
-        new("help", "도움말", "단축키 목록", false, [K(Key.F1)]),
-        new("settings", "도움말", "단축키 설정", false, []),
+        new("next", L.T("g.move"), L.T("nextSlide"), true, [K(Key.Right), K(Key.Down), K(Key.PageDown), K(Key.Space), K(Key.Enter), K(Key.N)]),
+        new("prev", L.T("g.move"), L.T("prevSlide"), true, [K(Key.Left), K(Key.Up), K(Key.PageUp), K(Key.Back)]),
+        new("first", L.T("g.move"), L.T("firstSlide"), true, [K(Key.Home)]),
+        new("last", L.T("g.move"), L.T("lastSlide"), true, [K(Key.End)]),
+        new("select", L.T("g.ink"), L.T("selectPointer"), true, []),
+        new("pen", L.T("g.ink"), L.T("pen"), true, [K(Key.P)]),
+        new("highlighter", L.T("g.ink"), L.T("highlighter"), true, [K(Key.H)]),
+        new("eraser", L.T("g.ink"), L.T("eraser"), true, [K(Key.E)]),
+        new("laser", L.T("g.ink"), L.T("laser"), true, [K(Key.L, Ctrl)]),
+        .. PenState.Palette.Select((_, i) => new ShortcutAction($"color{i + 1}", L.T("g.ink"), L.F("colorN", i + 1, ColorNames[i]), true, [K(Key.D1 + i), K(Key.NumPad1 + i)])),
+        new("thinner", L.T("g.ink"), L.T("thinner"), true, [K(Key.OemOpenBrackets), K(Key.OemMinus), K(Key.Subtract)]),
+        new("thicker", L.T("g.ink"), L.T("thicker"), true, [K(Key.OemCloseBrackets), K(Key.OemPlus), K(Key.Add)]),
+        new("clearInk", L.T("g.ink"), L.T("clearInk"), true, [K(Key.C)]),
+        new("blankPage", L.T("g.ink"), L.T("insertBlankPage"), true, [K(Key.Enter, Ctrl)]),
+        new("showFirst", L.T("g.show"), L.T("showFromStart"), false, [K(Key.F5)]),
+        new("showCurrent", L.T("g.show"), L.T("showFromCurrent"), false, [K(Key.F5, ModifierKeys.Shift)]),
+        new("break", L.T("g.show"), L.T("breakTimer"), true, [K(Key.T)]),
+        new("black", L.T("g.show"), L.T("black"), true, [K(Key.B), K(Key.OemPeriod)]),
+        new("white", L.T("g.show"), L.T("white"), true, [K(Key.W), K(Key.OemComma)]),
+        new("zoom", L.T("g.show"), L.T("zoom"), true, [K(Key.Z)]),
+        new("open", L.T("g.file"), L.T("open"), false, [K(Key.O, Ctrl)]),
+        new("save", L.T("g.file"), L.T("save"), false, [K(Key.S, Ctrl)]),
+        new("saveAs", L.T("g.file"), L.T("saveAs"), false, [K(Key.S, CtrlShift)]),
+        new("exportPdf", L.T("g.file"), L.T("exportPdf"), false, []),
+        new("undo", L.T("g.edit"), L.T("undoInkFirst"), true, [K(Key.Z, Ctrl)]),
+        new("editText", L.T("g.edit"), L.T("editText"), false, [K(Key.F2)]),
+        new("deleteShape", L.T("g.edit"), L.T("deleteShape"), false, [K(Key.Delete)]),
+        new("bold", L.T("g.edit"), L.T("bold"), false, [K(Key.B, Ctrl)]),
+        new("italic", L.T("g.edit"), L.T("italic"), false, [K(Key.I, Ctrl)]),
+        new("underline", L.T("g.edit"), L.T("underline"), false, [K(Key.U, Ctrl)]),
+        new("grow", L.T("g.edit"), L.T("grow"), false, [K(Key.OemPeriod, CtrlShift)]),
+        new("shrink", L.T("g.edit"), L.T("shrink"), false, [K(Key.OemComma, CtrlShift)]),
+        new("newSlide", L.T("g.slides"), L.T("newSlide"), false, [K(Key.M, Ctrl)]),
+        new("duplicate", L.T("g.slides"), L.T("duplicateSlide"), false, [K(Key.D, Ctrl)]),
+        new("help", L.T("g.help"), L.T("shortcutList"), false, [K(Key.F1)]),
+        new("settings", L.T("g.help"), L.T("shortcutSettings"), false, []),
     ];
 
-    static string[] ColorNames => ["검정", "빨강", "파랑", "초록", "노랑", "흰색", "주황"];
+    static string[] ColorNames => L.T("colorNames").Split(',');
 
     static readonly string FilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PptSlider", "shortcuts.json");
 
@@ -156,7 +156,7 @@ public static class Shortcuts
 
     /// <summary>
     /// <c>local:Shortcuts.For="save"</c> on a control appends the current binding to its ToolTip,
-    /// e.g. "저장" → "저장 (Ctrl+S)", and keeps it up to date when the bindings change.
+    /// e.g. "Save" → "Save (Ctrl+S)", and keeps it up to date when the bindings change.
     /// </summary>
     public static readonly DependencyProperty ForProperty = DependencyProperty.RegisterAttached(
         "For", typeof(string), typeof(Shortcuts), new PropertyMetadata(null, OnForChanged));

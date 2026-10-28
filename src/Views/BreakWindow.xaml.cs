@@ -20,6 +20,8 @@ public partial class BreakWindow : Window
         Monitors.PlaceFullScreen(this, monitor);
         timer.Tick += (_, _) => Tick();
         Closed += (_, _) => timer.Stop();
+        MinLabel.Text = L.F("minutesShort", 5);
+        MaxLabel.Text = L.F("hoursShort", 2);
         OnMinutes(null, null);
     }
 
@@ -31,13 +33,13 @@ public partial class BreakWindow : Window
     {
         if (MinutesText == null) return;
         int m = (int)Minutes.Value;
-        MinutesText.Text = m < 60 ? $"{m}분" : m % 60 == 0 ? $"{m / 60}시간" : $"{m / 60}시간 {m % 60}분";
+        MinutesText.Text = m < 60 ? L.F("minutesShort", m) : m % 60 == 0 ? L.F("hoursShort", m / 60) : L.F("hoursMinutes", m / 60, m % 60);
     }
 
     void OnStart(object? sender, RoutedEventArgs? e)
     {
         end = DateTime.Now.AddMinutes(Minutes.Value);
-        Until.Text = $"{end:HH:mm}에 다시 시작합니다";
+        Until.Text = L.F("resumeAt", end);
         Setup.Visibility = Visibility.Collapsed;
         Running.Visibility = Visibility.Visible;
         timer.Start();
@@ -54,7 +56,7 @@ public partial class BreakWindow : Window
             {
                 done = true;
                 timer.Stop();
-                Heading.Text = "휴식 끝! 수업을 시작합니다";
+                Heading.Text = L.T("breakOver");
                 Until.Text = "";
                 Root.Background = new SolidColorBrush(Color.FromRgb(0xC4, 0x3E, 0x1C));
                 SystemSounds.Exclamation.Play();
@@ -81,8 +83,8 @@ public partial class BreakWindow : Window
         }
         else if (k == Key.Space && !done)
         {
-            if (paused is { } p) { end = DateTime.Now + p; paused = null; Until.Text = $"{end:HH:mm}에 다시 시작합니다"; }
-            else { paused = end - DateTime.Now; Until.Text = "일시 정지됨"; }
+            if (paused is { } p) { end = DateTime.Now + p; paused = null; Until.Text = L.F("resumeAt", end); }
+            else { paused = end - DateTime.Now; Until.Text = L.T("paused"); }
             Tick();
         }
     }

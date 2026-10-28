@@ -25,7 +25,8 @@ PowerPoint 없이 `.pptx` 파일을 열어 간단히 편집하고, 판서하면�
 - **발표자 보기**: "발표자 보기 사용"을 켜면 쇼와 다른 모니터에 현재 · 다음 슬라이드, 발표자 노트(글자 크기 조절), 경과 시간을 보여 줍니다.
   발표자 보기에서 판서하면 쇼 화면에도 그대로 나타나며, 쇼와 같은 단축키를 씁니다.
 - **Break Time**: 5분 ~ 2시간(5분 단위) 전체 화면 휴식 타이머(T).
-- **단축키 설정**: 모든 명령의 단축키를 바꿀 수 있으며 `%APPDATA%\PptSlider\shortcuts.json`에 저장됩니다. F1로 목록을 볼 수 있습니다.
+- **언어**: 한국어 · 日本語 · English. 기본은 Windows 표시 언어를 따르고(한국어 · 일본어가 아니면 영어), [설정] 탭의 언어 목록에서 바꾸면 다시 시작한 뒤 적용됩니다. 선택은 `%APPDATA%\PptSlider\language.txt`에 저장됩니다.
+- **단축키 설정**: [설정] 탭의 [단축키 설정]에서 모든 명령의 단축키를 바꿀 수 있으며 `%APPDATA%\PptSlider\shortcuts.json`에 저장됩니다. F1로 목록을 볼 수 있습니다.
 
 ### 기본 단축키
 
@@ -93,7 +94,8 @@ self-contained publish → `Package\AppxManifest.xml`과 `Package\Assets` 로고
 결과는 `bin\msix\PptSlider_<버전>_x64.msix`입니다. 패키지 버전은 `src\PptSlider.csproj`의 `Version`을 따릅니다.
 Windows SDK가 없으면 `makeappx` · `signtool`이 든 NuGet 패키지 `Microsoft.Windows.SDK.BuildTools`를 `obj\tools`에 내려받아 씁니다.
 
-매니페스트에는 전체 신뢰(runFullTrust) 데스크톱 앱, `.pptx` 파일 연결, 한국어(ko-KR) 리소스가 들어 있습니다.
+매니페스트에는 전체 신뢰(runFullTrust) 데스크톱 앱, `.pptx` 파일 연결, 한국어 · 일본어 · 영어(ko-KR, ja-JP, en-US) 리소스가 들어 있습니다.
+Store는 이 세 언어마다 스토어 목록(설명 · 스크린샷)을 요구합니다.
 로고는 `Package\make-assets.ps1`로 다시 그릴 수 있습니다.
 
 ### 로컬 테스트 설치
@@ -135,7 +137,7 @@ src/
 ├─ Models/              Deck(.pptx 문서 · 편집 · 저장 · 실행 취소), PenState(판서 도구 상태), InkHistory(판서 되돌리기)
 ├─ Rendering/           SlideRenderer(PPTX → WPF 렌더링, SmartArt 포함)
 ├─ Services/            Shortcuts(단축키), Monitors(모니터 목록), InkStore(판서 보관), PdfExport(PDF),
-│                       RecentFiles(최근 파일), AutoSave(자동 저장), AppPaths(앱 데이터 폴더)
+│                       RecentFiles(최근 파일), AutoSave(자동 저장), AppPaths(앱 데이터 폴더), Loc(한 · 일 · 영 UI 문자열)
 └─ Diagnostics/         SelfTest (편집 · 쇼 · 판서 · 뷰어 검사)
 ```
 

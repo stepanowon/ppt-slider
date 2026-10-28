@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PptSlider"
         Title="PPT Slider" Width="1400" Height="860" WindowStartupLocation="CenterScreen"
-        FontFamily="Segoe UI, Malgun Gothic" FontSize="12" Background="#F3F3F3"
+        FontFamily="{x:Static local:L.UiFont}" FontSize="12" Background="#F3F3F3"
         AllowDrop="True" Drop="OnDrop" PreviewKeyDown="OnKey" Closing="OnClosing">
     <Window.Resources>
         <SolidColorBrush x:Key="Accent" Color="#C43E1C"/>
@@ -81,122 +81,132 @@
     <DockPanel>
         <!-- ribbon -->
         <TabControl x:Name="Ribbon" DockPanel.Dock="Top" Background="#FAFAFA" BorderThickness="0,0,0,1" BorderBrush="#D6D6D6" Padding="4,2" Height="122" Focusable="False">
-            <TabItem Header="홈">
+            <TabItem Header="{local:Loc tab.home}">
                 <StackPanel Orientation="Horizontal">
-                    <HeaderedContentControl Header="파일" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.file}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE8E5;" Content="열기" Click="OnOpen" ToolTip="열기" local:Shortcuts.For="open"/>
-                            <Button x:Name="RecentBtn" Style="{StaticResource Small}" Tag="&#xE70D;" Click="OnRecentMenu" ToolTip="최근 파일" VerticalAlignment="Top" Margin="-6,8,0,0"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="저장" Click="OnSave" ToolTip="저장" local:Shortcuts.For="save"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="다른 이름" Click="OnSaveAs" ToolTip="다른 이름으로 저장" local:Shortcuts.For="saveAs"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xEA90;" Content="PDF" Click="OnExportPdf" ToolTip="PDF로 내보내기 (판서 포함 여부 선택)" local:Shortcuts.For="exportPdf"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8E5;" Content="{local:Loc open}" Click="OnOpen" ToolTip="{local:Loc open}" local:Shortcuts.For="open"/>
+                            <Button x:Name="RecentBtn" Style="{StaticResource Small}" Tag="&#xE70D;" Click="OnRecentMenu" ToolTip="{local:Loc recent}" VerticalAlignment="Top" Margin="-6,8,0,0"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74E;" Content="{local:Loc save}" Click="OnSave" ToolTip="{local:Loc save}" local:Shortcuts.For="save"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE792;" Content="{local:Loc saveAsShort}" Click="OnSaveAs" ToolTip="{local:Loc saveAs}" local:Shortcuts.For="saveAs"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xEA90;" Content="PDF" Click="OnExportPdf" ToolTip="{local:Loc exportPdfTip}" local:Shortcuts.For="exportPdf"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="편집" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="실행 취소" Click="OnUndo" ToolTip="실행 취소" local:Shortcuts.For="undo"/>
+                    <HeaderedContentControl Header="{local:Loc grp.edit}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="{local:Loc undo}" Click="OnUndo" ToolTip="{local:Loc undo}" local:Shortcuts.For="undo"/>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="슬라이드" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.slides}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE710;" Content="새 슬라이드" Click="OnNewSlide" ToolTip="빈 슬라이드 추가" local:Shortcuts.For="newSlide"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE8C8;" Content="복제" Click="OnDuplicate" ToolTip="슬라이드 복제" local:Shortcuts.For="duplicate"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="삭제" Click="OnDeleteSlide" ToolTip="슬라이드 삭제"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE710;" Content="{local:Loc newSlide}" Click="OnNewSlide" ToolTip="{local:Loc newSlideTip}" local:Shortcuts.For="newSlide"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8C8;" Content="{local:Loc duplicate}" Click="OnDuplicate" ToolTip="{local:Loc duplicateSlide}" local:Shortcuts.For="duplicate"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="{local:Loc delete}" Click="OnDeleteSlide" ToolTip="{local:Loc deleteSlide}"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="글꼴" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.font}" Style="{StaticResource Grp}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,2">
-                                <ComboBox x:Name="FontBox" Width="150" IsEditable="True" SelectionChanged="OnFontPicked" ToolTip="글꼴"/>
-                                <ComboBox x:Name="SizeBox" Width="58" Margin="4,0,0,0" IsEditable="True" SelectionChanged="OnSizePicked" KeyDown="OnSizeKey" ToolTip="글꼴 크기 (Enter로 적용)"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8E8;" Click="OnGrow" ToolTip="글꼴 크기 크게" local:Shortcuts.For="grow"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8E7;" Click="OnShrink" ToolTip="글꼴 크기 작게" local:Shortcuts.For="shrink"/>
+                                <ComboBox x:Name="FontBox" Width="150" IsEditable="True" SelectionChanged="OnFontPicked" ToolTip="{local:Loc grp.font}"/>
+                                <ComboBox x:Name="SizeBox" Width="58" Margin="4,0,0,0" IsEditable="True" SelectionChanged="OnSizePicked" KeyDown="OnSizeKey" ToolTip="{local:Loc fontSizeTip}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E8;" Click="OnGrow" ToolTip="{local:Loc grow}" local:Shortcuts.For="grow"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E7;" Click="OnShrink" ToolTip="{local:Loc shrink}" local:Shortcuts.For="shrink"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,2">
-                                <Button Style="{StaticResource Small}" Tag="&#xE8DD;" Click="OnBold" ToolTip="굵게" local:Shortcuts.For="bold"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8DB;" Click="OnItalic" ToolTip="기울임꼴" local:Shortcuts.For="italic"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE8DC;" Click="OnUnderline" ToolTip="밑줄" local:Shortcuts.For="underline"/>
-                                <Button x:Name="ColorBtn" Style="{StaticResource Small}" Tag="&#xE8D3;" Click="OnFontColor" ToolTip="글꼴 색"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8DD;" Click="OnBold" ToolTip="{local:Loc bold}" local:Shortcuts.For="bold"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8DB;" Click="OnItalic" ToolTip="{local:Loc italic}" local:Shortcuts.For="italic"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8DC;" Click="OnUnderline" ToolTip="{local:Loc underline}" local:Shortcuts.For="underline"/>
+                                <Button x:Name="ColorBtn" Style="{StaticResource Small}" Tag="&#xE8D3;" Click="OnFontColor" ToolTip="{local:Loc fontColor}"/>
                             </StackPanel>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="단락" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.paragraph}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Small}" Tag="&#xE8E4;" Click="OnAlign" CommandParameter="l" ToolTip="왼쪽 맞춤"/>
-                            <Button Style="{StaticResource Small}" Tag="&#xE8E3;" Click="OnAlign" CommandParameter="ctr" ToolTip="가운데 맞춤"/>
-                            <Button Style="{StaticResource Small}" Tag="&#xE8E2;" Click="OnAlign" CommandParameter="r" ToolTip="오른쪽 맞춤"/>
+                            <Button Style="{StaticResource Small}" Tag="&#xE8E4;" Click="OnAlign" CommandParameter="l" ToolTip="{local:Loc alignLeft}"/>
+                            <Button Style="{StaticResource Small}" Tag="&#xE8E3;" Click="OnAlign" CommandParameter="ctr" ToolTip="{local:Loc alignCenter}"/>
+                            <Button Style="{StaticResource Small}" Tag="&#xE8E2;" Click="OnAlign" CommandParameter="r" ToolTip="{local:Loc alignRight}"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="삽입" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.insert}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="텍스트 상자" Click="OnAddText"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE894;" Content="개체 삭제" Click="OnDeleteShape" ToolTip="선택한 개체 삭제" local:Shortcuts.For="deleteShape"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="{local:Loc textBox}" Click="OnAddText"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE894;" Content="{local:Loc deleteShape}" Click="OnDeleteShape" ToolTip="{local:Loc deleteShapeTip}" local:Shortcuts.For="deleteShape"/>
                         </StackPanel>
                     </HeaderedContentControl>
                 </StackPanel>
             </TabItem>
-            <TabItem Header="그리기">
+            <TabItem Header="{local:Loc tab.draw}">
                 <StackPanel Orientation="Horizontal">
-                    <HeaderedContentControl Header="도구" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.tools}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="ToolSelect" Style="{StaticResource Rb}" Tag="&#xE8B0;" Content="선택" Click="OnTool" ToolTip="선택/편집 (Esc)" local:Shortcuts.For="select"/>
-                            <RadioButton x:Name="ToolPen" Style="{StaticResource Rb}" Tag="&#xEE56;" Content="펜" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
-                            <RadioButton x:Name="ToolHi" Style="{StaticResource Rb}" Tag="&#xE7E6;" Content="형광펜" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
-                            <RadioButton x:Name="ToolEraser" Style="{StaticResource Rb}" Tag="&#xED60;" Content="지우개" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
+                            <RadioButton x:Name="ToolSelect" Style="{StaticResource Rb}" Tag="&#xE8B0;" Content="{local:Loc select}" Click="OnTool" ToolTip="{local:Loc selectTip}" local:Shortcuts.For="select"/>
+                            <RadioButton x:Name="ToolPen" Style="{StaticResource Rb}" Tag="&#xEE56;" Content="{local:Loc pen}" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
+                            <RadioButton x:Name="ToolHi" Style="{StaticResource Rb}" Tag="&#xE7E6;" Content="{local:Loc highlighter}" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
+                            <RadioButton x:Name="ToolEraser" Style="{StaticResource Rb}" Tag="&#xED60;" Content="{local:Loc eraser}" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="색" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.color}" Style="{StaticResource Grp}">
                         <WrapPanel x:Name="Swatches" Width="150" VerticalAlignment="Center"/>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="두께" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.width}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Slider x:Name="SizeSlider" Width="140" Minimum="1" Maximum="80" Focusable="False" ValueChanged="OnPenSize"/>
                             <TextBlock x:Name="SizeText" Width="30" Margin="6,0" VerticalAlignment="Center"/>
                             <Ellipse x:Name="PenPreview" VerticalAlignment="Center"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="되돌리기 · 지우기" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.undoClear}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button x:Name="UndoInkBtn" Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="되돌리기" Click="OnUndoInk" ToolTip="판서 되돌리기" local:Shortcuts.For="undo"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="이 슬라이드" Click="OnClearInk" ToolTip="현재 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="모든 판서" Click="OnClearAllInk"/>
+                            <Button x:Name="UndoInkBtn" Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="{local:Loc undoInkShort}" Click="OnUndoInk" ToolTip="{local:Loc undoInk}" local:Shortcuts.For="undo"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE75C;" Content="{local:Loc thisSlide}" Click="OnClearInk" ToolTip="{local:Loc clearInk}" local:Shortcuts.For="clearInk"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="{local:Loc allInk}" Click="OnClearAllInk"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="페이지" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE7C3;" Content="빈 판서 페이지" Click="OnBlankPage" ToolTip="현재 슬라이드 뒤에 빈 슬라이드를 넣고 이동" local:Shortcuts.For="blankPage"/>
+                    <HeaderedContentControl Header="{local:Loc grp.page}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE7C3;" Content="{local:Loc blankPage}" Click="OnBlankPage" ToolTip="{local:Loc blankPageTip}" local:Shortcuts.For="blankPage"/>
                     </HeaderedContentControl>
                 </StackPanel>
             </TabItem>
-            <TabItem Header="슬라이드 쇼">
+            <TabItem Header="{local:Loc tab.show}">
                 <StackPanel Orientation="Horizontal">
-                    <HeaderedContentControl Header="슬라이드 쇼 시작" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.startShow}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE768;" Content="처음부터" Click="OnShowFirst" ToolTip="처음부터" local:Shortcuts.For="showFirst"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE786;" Content="현재 슬라이드부터" Click="OnShowCurrent" ToolTip="현재 슬라이드부터" local:Shortcuts.For="showCurrent"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE768;" Content="{local:Loc fromStart}" Click="OnShowFirst" ToolTip="{local:Loc fromStart}" local:Shortcuts.For="showFirst"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE786;" Content="{local:Loc fromCurrent}" Click="OnShowCurrent" ToolTip="{local:Loc fromCurrent}" local:Shortcuts.For="showCurrent"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="모니터" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc grp.monitor}" Style="{StaticResource Grp}">
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="슬라이드 쇼를 표시할 모니터" Foreground="#555" Margin="0,0,0,4"/>
+                            <TextBlock Text="{local:Loc monitorLabel}" Foreground="#555" Margin="0,0,0,4"/>
                             <StackPanel Orientation="Horizontal">
                                 <ComboBox x:Name="MonitorBox" Width="230" Focusable="False"/>
-                                <Button Style="{StaticResource Small}" Tag="&#xE72C;" Click="OnRefreshMonitors" ToolTip="모니터 목록 새로 고침"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE72C;" Click="OnRefreshMonitors" ToolTip="{local:Loc refreshMonitors}"/>
                             </StackPanel>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="발표자 보기" Style="{StaticResource Grp}">
+                    <HeaderedContentControl Header="{local:Loc presenterView}" Style="{StaticResource Grp}">
                         <StackPanel VerticalAlignment="Center">
-                            <CheckBox x:Name="PresenterBox" Content="발표자 보기 사용" IsChecked="True" Focusable="False"
-                                      ToolTip="쇼 모니터가 아닌 모니터에 현재·다음 슬라이드, 발표자 노트, 시간을 표시합니다. 모니터가 하나면 표시하지 않습니다."/>
-                            <TextBlock Text="다른 모니터에 표시" Foreground="#888" Margin="20,2,0,0"/>
+                            <CheckBox x:Name="PresenterBox" Content="{local:Loc usePresenter}" IsChecked="True" Focusable="False"
+                                      ToolTip="{local:Loc usePresenterTip}"/>
+                            <TextBlock Text="{local:Loc onOtherMonitor}" Foreground="#888" Margin="20,2,0,0"/>
                         </StackPanel>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="휴식" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE916;" Content="Break Time" Click="OnBreak" ToolTip="휴식 타이머" local:Shortcuts.For="break"/>
+                    <HeaderedContentControl Header="{local:Loc grp.break}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE916;" Content="Break Time" Click="OnBreak" ToolTip="{local:Loc breakTip}" local:Shortcuts.For="break"/>
                     </HeaderedContentControl>
-                    <HeaderedContentControl Header="도움말" Style="{StaticResource Grp}">
-                        <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE765;" Content="단축키" Click="OnHelp" ToolTip="단축키 목록" local:Shortcuts.For="help"/>
-                            <Button Style="{StaticResource Rb}" Tag="&#xE713;" Content="단축키 설정" Click="OnShortcutSettings" ToolTip="단축키 바꾸기" local:Shortcuts.For="settings"/>
+                    <HeaderedContentControl Header="{local:Loc grp.help}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE765;" Content="{local:Loc shortcuts}" Click="OnHelp" ToolTip="{local:Loc shortcutList}" local:Shortcuts.For="help"/>
+                    </HeaderedContentControl>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="{local:Loc tab.settings}">
+                <StackPanel Orientation="Horizontal">
+                    <HeaderedContentControl Header="Language / 언어 / 言語" Style="{StaticResource Grp}">
+                        <StackPanel VerticalAlignment="Center">
+                            <ComboBox x:Name="LanguageBox" Width="220" SelectionChanged="OnLanguagePicked" ToolTip="{local:Loc language}"/>
+                            <TextBlock Text="{local:Loc languageNote}" Foreground="#888" Margin="2,4,0,0"/>
                         </StackPanel>
+                    </HeaderedContentControl>
+                    <HeaderedContentControl Header="{local:Loc shortcuts}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE713;" Content="{local:Loc shortcutSettings}" Click="OnShortcutSettings" ToolTip="{local:Loc shortcutSettingsTip}" local:Shortcuts.For="settings"/>
                     </HeaderedContentControl>
                 </StackPanel>
             </TabItem>
@@ -218,7 +228,7 @@
         <Grid Background="#E6E6E6">
             <StackPanel x:Name="EmptyPanel" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <TextBlock x:Name="EmptyHint" HorizontalAlignment="Center" FontSize="16" Foreground="#888"/>
-                <TextBlock x:Name="RecentTitle" Text="최근 파일" FontSize="14" Foreground="#666" Margin="0,28,0,6"/>
+                <TextBlock x:Name="RecentTitle" Text="{local:Loc recent}" FontSize="14" Foreground="#666" Margin="0,28,0,6"/>
                 <ItemsControl x:Name="RecentList" Focusable="False"/>
             </StackPanel>
             <Viewbox Margin="28">

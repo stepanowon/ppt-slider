@@ -2,9 +2,8 @@
 <!--
   MSIX manifest for PPT Slider. build-msix.ps1 copies it next to the published app and stamps Version from PptSlider.csproj.
 
-  Identity below is TEMPORARY, for local test installs signed with a self-made certificate.
-  Before submitting to the Microsoft Store, replace Name, Publisher and PublisherDisplayName with the values shown in
-  Partner Center (Product identity page). Publisher must match exactly, e.g. "CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX".
+  Identity and PublisherDisplayName are the Partner Center values (Product identity page) of the reserved name "PPTSlider";
+  DisplayName must stay equal to that reserved name. Local test builds sign with a self-made certificate for the same Publisher.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -12,11 +11,11 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="PptSlider.Dev" Publisher="CN=PptSlider Dev" Version="1.0.0.0" ProcessorArchitecture="x64" />
+  <Identity Name="StephenWon.PPTSlider" Publisher="CN=58BB6EA5-E7A7-4A4F-9A0C-62261149B3A1" Version="1.0.0.0" ProcessorArchitecture="x64" />
 
   <Properties>
-    <DisplayName>PPT Slider</DisplayName>
-    <PublisherDisplayName>PptSlider Dev</PublisherDisplayName>
+    <DisplayName>PPTSlider</DisplayName>
+    <PublisherDisplayName>StephenWon</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -26,12 +25,14 @@
 
   <Resources>
     <Resource Language="ko-KR" />
+    <Resource Language="ja-JP" />
+    <Resource Language="en-US" />
   </Resources>
 
   <Applications>
     <Application Id="PptSlider" Executable="PptSlider.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="PPT Slider"
+        DisplayName="PPTSlider"
         Description="PowerPoint 없이 .pptx를 열어 편집하고 판서하며 발표하는 앱"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"

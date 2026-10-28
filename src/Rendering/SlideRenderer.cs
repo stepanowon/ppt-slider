@@ -267,7 +267,7 @@ public class SlideRenderer
             ui = new Border
             {
                 BorderBrush = Brushes.LightGray, BorderThickness = new Thickness(1),
-                Child = new TextBlock { Text = "[차트/SmartArt는 표시되지 않습니다]", Foreground = Brushes.Gray, FontSize = 14,
+                Child = new TextBlock { Text = L.T("notShown"), Foreground = Brushes.Gray, FontSize = 14,
                     HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
             };
         ui.Width = r.Width;

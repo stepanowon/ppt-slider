@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PptSlider"
-        Title="슬라이드 쇼" Background="Black" Topmost="True"
-        FontFamily="Segoe UI, Malgun Gothic" InputMethod.IsInputMethodEnabled="False"
+        Title="{local:Loc tab.show}" Background="Black" Topmost="True"
+        FontFamily="{x:Static local:L.UiFont}" InputMethod.IsInputMethodEnabled="False"
         PreviewKeyDown="OnKey" MouseWheel="OnWheel">
     <Grid x:Name="Root" Background="Black" MouseLeftButtonDown="OnClick" MouseMove="OnMouseMove" MouseLeave="OnMouseLeave"
           PreviewMouseLeftButtonDown="OnPickDown" PreviewMouseMove="OnPickMove" PreviewMouseLeftButtonUp="OnPickUp">
@@ -30,32 +30,32 @@
         </Canvas>
         <Border x:Name="ZoomHint" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" Padding="18,8" CornerRadius="8"
                 Background="#D0202020" Visibility="Collapsed" IsHitTestVisible="False">
-            <TextBlock Foreground="White" FontSize="18" Text="확대할 영역을 드래그하세요   (Esc: 취소)"/>
+            <TextBlock Foreground="White" FontSize="18" Text="{local:Loc zoomHint}"/>
         </Border>
 
         <!-- PowerPoint-style faint toolbar, bottom left -->
         <Border x:Name="Bar" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16" Padding="4" Cursor="Arrow"
                 Background="#D0202020" CornerRadius="8" Opacity="0.25" MouseEnter="OnBarEnter" MouseLeave="OnBarLeave">
             <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="이전" local:Shortcuts.For="prev"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="다음" local:Shortcuts.For="next"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="{local:Loc prev}" local:Shortcuts.For="prev"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="{local:Loc next}" local:Shortcuts.For="next"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
-                <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="포인터 (Esc)" local:Shortcuts.For="select"/>
-                <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="레이저 포인터" local:Shortcuts.For="laser"/>
-                <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
-                <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
-                <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
-                <Button x:Name="TUndo" Style="{StaticResource Tb}" Tag="&#xE7A7;" Click="OnUndoInk" ToolTip="판서 되돌리기" local:Shortcuts.For="undo"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="이 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
+                <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="{local:Loc pointer}" local:Shortcuts.For="select"/>
+                <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="{local:Loc laser}" local:Shortcuts.For="laser"/>
+                <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
+                <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
+                <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
+                <Button x:Name="TUndo" Style="{StaticResource Tb}" Tag="&#xE7A7;" Click="OnUndoInk" ToolTip="{local:Loc undoInk}" local:Shortcuts.For="undo"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="{local:Loc clearInk}" local:Shortcuts.For="clearInk"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
                 <StackPanel x:Name="Swatches" Orientation="Horizontal" VerticalAlignment="Center"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE738;" Click="OnThinner" ToolTip="가늘게" local:Shortcuts.For="thinner"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE738;" Click="OnThinner" ToolTip="{local:Loc thinner}" local:Shortcuts.For="thinner"/>
                 <TextBlock x:Name="SizeText" Foreground="White" VerticalAlignment="Center" Width="26" TextAlignment="Center"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE710;" Click="OnThicker" ToolTip="굵게" local:Shortcuts.For="thicker"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE710;" Click="OnThicker" ToolTip="{local:Loc thicker}" local:Shortcuts.For="thicker"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
                 <Button Style="{StaticResource Tb}" Tag="&#xE916;" Click="OnBreak" ToolTip="Break Time" local:Shortcuts.For="break"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="쇼 마침 (Esc)"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="{local:Loc endShow}"/>
             </StackPanel>
         </Border>
         <!-- faint, but on its own dark backing so it reads on white slides too -->

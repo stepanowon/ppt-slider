@@ -42,7 +42,7 @@ public partial class ShortcutsWindow : Window
         if (Selected is not { } a) return;
         capturing = add;
         Message.Text = "";
-        CaptureText.Text = $"‘{a.Name}’에 {(add ? "추가할" : "지정할")} 키를 누르세요…   (Esc : 취소)";
+        CaptureText.Text = L.F(add ? "pressKeyToAdd" : "pressKeyToSet", a.Name);
         CaptureBar.Visibility = Visibility.Visible;
         List.IsEnabled = Buttons.IsEnabled = false; // also keeps Enter / Esc from reaching OK / Cancel
         Keyboard.Focus(this);
@@ -63,13 +63,13 @@ public partial class ShortcutsWindow : Window
         var g = Gesture.From(e);
         if (Gesture.IsModifierKey(g.Key)) return; // wait for the actual key
         if (g is { Key: Key.Escape, Mods: ModifierKeys.None }) { EndCapture(); return; }
-        if (g.Key == Key.Escape) { Message.Text = "Esc는 지정할 수 없습니다."; EndCapture(); return; }
+        if (g.Key == Key.Escape) { Message.Text = L.T("escReserved"); EndCapture(); return; }
 
         var a = Selected!;
         var owner = Shortcuts.All.FirstOrDefault(o => o != a && map[o.Id].Contains(g));
         if (owner != null)
         {
-            if (MessageBox.Show(this, $"{g}은(는) 이미 ‘{owner.Name}’에 지정되어 있습니다.\n‘{a.Name}’(으)로 옮길까요?", "단축키 중복",
+            if (MessageBox.Show(this, L.F("keyTaken", g, owner.Name, a.Name), L.T("keyTakenTitle"),
                     MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) { EndCapture(); return; }
             map[owner.Id].Remove(g);
         }
@@ -98,7 +98,7 @@ public partial class ShortcutsWindow : Window
 
     void OnResetAll(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, "모든 단축키를 기본값으로 되돌릴까요?", "단축키 설정", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
+        if (MessageBox.Show(this, L.T("resetAllAsk"), L.T("shortcutSettings"), MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK) return;
         foreach (var (id, keys) in Shortcuts.Defaults()) map[id] = keys;
         Refresh();
     }
@@ -107,7 +107,7 @@ public partial class ShortcutsWindow : Window
     {
         Shortcuts.Set(map);
         if (!Shortcuts.Save())
-            MessageBox.Show(this, "설정 파일을 저장하지 못했습니다. 이번 실행 동안만 적용됩니다.", "단축키 설정", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, L.T("settingsSaveFail"), L.T("shortcutSettings"), MessageBoxButton.OK, MessageBoxImage.Warning);
         DialogResult = true;
     }
 }

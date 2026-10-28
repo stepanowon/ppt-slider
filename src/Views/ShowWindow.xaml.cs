@@ -38,7 +38,7 @@ public partial class ShowWindow : Window
         else Monitors.PlaceFullScreen(this, monitor);
         foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
-            var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = "펜/형광펜 색" };
+            var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = L.T("penColor") };
             Shortcuts.SetFor(b, $"color{i + 1}");
             b.Click += (_, _) => main.Pen.SetColor(c);
             Swatches.Children.Add(b);
@@ -84,7 +84,7 @@ public partial class ShowWindow : Window
         Cover.Fill = Root.Background = b == Blank.White ? Brushes.White : Brushes.Black;
         Ink.Strokes = main.ShowInk; // the slide's: the same collection as the editor, so ink shows in both
         JumpBox.Visibility = main.Jump == "" ? Visibility.Collapsed : Visibility.Visible;
-        JumpText.Text = $"슬라이드 {main.Jump}";
+        JumpText.Text = L.F("slideN", main.Jump);
     }
 
     void OnPen()
@@ -201,7 +201,7 @@ public partial class ShowWindow : Window
     internal static string Elapsed(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes:00}:{t.Seconds:00}";
 
-    void UpdateClock() => Clock.Text = $"{DateTime.Now:t}   경과 {Elapsed(DateTime.Now - main.ShowStart)}";
+    void UpdateClock() => Clock.Text = L.F("clock", DateTime.Now, Elapsed(DateTime.Now - main.ShowStart));
 
     // ---------- pointer: laser dot, cursor hidden after 3 seconds still ----------
 

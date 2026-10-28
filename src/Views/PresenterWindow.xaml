@@ -2,13 +2,13 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PptSlider"
-        Title="발표자 보기" Background="#1C1C1C" Foreground="White"
-        FontFamily="Segoe UI, Malgun Gothic" InputMethod.IsInputMethodEnabled="False"
+        Title="{local:Loc presenterView}" Background="#1C1C1C" Foreground="White"
+        FontFamily="{x:Static local:L.UiFont}" InputMethod.IsInputMethodEnabled="False"
         PreviewKeyDown="OnKey">
     <DockPanel x:Name="Root" Margin="20,14,20,14">
         <!-- time -->
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-            <Button DockPanel.Dock="Right" Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="쇼 마침 (Esc)"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="{local:Loc endShow}"/>
             <TextBlock x:Name="Elapsed" FontSize="34" FontWeight="SemiBold" VerticalAlignment="Center"/>
             <TextBlock x:Name="Clock" FontSize="20" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="22,4,0,0"/>
             <TextBlock x:Name="State" FontSize="18" Foreground="#FFB070" VerticalAlignment="Center" Margin="28,4,0,0"/>
@@ -17,21 +17,21 @@
         <!-- controls -->
         <Border DockPanel.Dock="Bottom" Margin="0,12,0,0" Padding="6,4" Background="#2C2C2C" CornerRadius="8">
             <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="이전" local:Shortcuts.For="prev"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="{local:Loc prev}" local:Shortcuts.For="prev"/>
                 <TextBlock x:Name="Page" FontSize="18" VerticalAlignment="Center" MinWidth="80" TextAlignment="Center"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="다음" local:Shortcuts.For="next"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="{local:Loc next}" local:Shortcuts.For="next"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="6,6"/>
-                <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="포인터 (Esc)" local:Shortcuts.For="select"/>
-                <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="레이저 포인터" local:Shortcuts.For="laser"/>
-                <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="펜" local:Shortcuts.For="pen"/>
-                <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="형광펜" local:Shortcuts.For="highlighter"/>
-                <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="지우개" local:Shortcuts.For="eraser"/>
-                <Button x:Name="TUndo" Style="{StaticResource Tb}" Tag="&#xE7A7;" Click="OnUndoInk" ToolTip="판서 되돌리기" local:Shortcuts.For="undo"/>
-                <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="이 슬라이드 판서 지우기" local:Shortcuts.For="clearInk"/>
+                <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="{local:Loc pointer}" local:Shortcuts.For="select"/>
+                <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="{local:Loc laser}" local:Shortcuts.For="laser"/>
+                <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
+                <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
+                <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
+                <Button x:Name="TUndo" Style="{StaticResource Tb}" Tag="&#xE7A7;" Click="OnUndoInk" ToolTip="{local:Loc undoInk}" local:Shortcuts.For="undo"/>
+                <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="{local:Loc clearInk}" local:Shortcuts.For="clearInk"/>
                 <StackPanel x:Name="Swatches" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0"/>
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="6,6"/>
-                <ToggleButton x:Name="TBlack" Style="{StaticResource Tb}" Tag="&#xE7F4;" Click="OnBlack" ToolTip="검은 화면" local:Shortcuts.For="black"/>
-                <ToggleButton x:Name="TWhite" Style="{StaticResource Tb}" Tag="&#xE706;" Click="OnWhite" ToolTip="흰 화면" local:Shortcuts.For="white"/>
+                <ToggleButton x:Name="TBlack" Style="{StaticResource Tb}" Tag="&#xE7F4;" Click="OnBlack" ToolTip="{local:Loc black}" local:Shortcuts.For="black"/>
+                <ToggleButton x:Name="TWhite" Style="{StaticResource Tb}" Tag="&#xE706;" Click="OnWhite" ToolTip="{local:Loc white}" local:Shortcuts.For="white"/>
                 <Button Style="{StaticResource Tb}" Tag="&#xE916;" Click="OnBreak" ToolTip="Break Time" local:Shortcuts.For="break"/>
             </StackPanel>
         </Border>
@@ -45,7 +45,7 @@
 
             <!-- current slide: same ink as the show -->
             <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Text="현재 슬라이드" Foreground="#AAAAAA" Margin="0,0,0,6"/>
+                <TextBlock DockPanel.Dock="Top" Text="{local:Loc currentSlide}" Foreground="#AAAAAA" Margin="0,0,0,6"/>
                 <Viewbox VerticalAlignment="Top">
                     <Grid x:Name="Stage" ClipToBounds="True" MouseLeftButtonDown="OnStageClick" MouseMove="OnStageMove" MouseLeave="OnStageLeave" MouseWheel="OnWheel">
                         <ContentControl x:Name="Host" Focusable="False"/>
@@ -65,17 +65,17 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="3*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="다음 슬라이드" Foreground="#AAAAAA" Margin="0,0,0,6"/>
+                <TextBlock Text="{local:Loc nextSlide}" Foreground="#AAAAAA" Margin="0,0,0,6"/>
                 <Viewbox Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Left">
                     <Border BorderBrush="#555555" BorderThickness="1">
                         <ContentControl x:Name="NextHost" Focusable="False"/>
                     </Border>
                 </Viewbox>
-                <TextBlock x:Name="NextEnd" Grid.Row="1" Text="마지막 슬라이드입니다" Foreground="#888888" FontSize="18" Visibility="Collapsed"/>
+                <TextBlock x:Name="NextEnd" Grid.Row="1" Text="{local:Loc isLastSlide}" Foreground="#888888" FontSize="18" Visibility="Collapsed"/>
                 <DockPanel Grid.Row="2" Margin="0,14,0,6">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource Tb}" Tag="&#xE8E8;" Click="OnNotesBigger" ToolTip="노트 글자 크게"/>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource Tb}" Tag="&#xE8E7;" Click="OnNotesSmaller" ToolTip="노트 글자 작게"/>
-                    <TextBlock Text="발표자 노트" Foreground="#AAAAAA" VerticalAlignment="Center"/>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Tb}" Tag="&#xE8E8;" Click="OnNotesBigger" ToolTip="{local:Loc notesBigger}"/>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource Tb}" Tag="&#xE8E7;" Click="OnNotesSmaller" ToolTip="{local:Loc notesSmaller}"/>
+                    <TextBlock Text="{local:Loc notes}" Foreground="#AAAAAA" VerticalAlignment="Center"/>
                 </DockPanel>
                 <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Focusable="False">
                     <TextBlock x:Name="Notes" TextWrapping="Wrap" FontSize="22" LineHeight="32"/>
