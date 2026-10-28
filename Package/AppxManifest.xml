@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSIX manifest for PPT Slider. build-msix.ps1 copies it next to the published app and stamps Version from PptSlider.csproj.
+
+  Identity below is TEMPORARY, for local test installs signed with a self-made certificate.
+  Before submitting to the Microsoft Store, replace Name, Publisher and PublisherDisplayName with the values shown in
+  Partner Center (Product identity page). Publisher must match exactly, e.g. "CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX".
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity Name="PptSlider.Dev" Publisher="CN=PptSlider Dev" Version="1.0.0.0" ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>PPT Slider</DisplayName>
+    <PublisherDisplayName>PptSlider Dev</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="ko-KR" />
+  </Resources>
+
+  <Applications>
+    <Application Id="PptSlider" Executable="PptSlider.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="PPT Slider"
+        Description="PowerPoint 없이 .pptx를 열어 편집하고 판서하며 발표하는 앱"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="pptx">
+            <uap:DisplayName>PowerPoint 프레젠테이션</uap:DisplayName>
+            <uap:Logo>Assets\Square44x44Logo.png</uap:Logo>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.pptx</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>
