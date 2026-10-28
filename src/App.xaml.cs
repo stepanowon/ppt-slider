@@ -13,6 +13,13 @@ public partial class App : Application
             Shutdown(SelfTest.Run(file, outDir));
             return;
         }
+        if (e.Args is ["--screenshots", var deck, var dir, ..] && e.Args.Length <= 5)
+        {
+            L.Init(e.Args.Length > 3 ? e.Args[3] : null);
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Shutdown(SelfTest.Screens(deck, dir, e.Args.Length > 4 ? int.Parse(e.Args[4]) : 0));
+            return;
+        }
         L.Init();
         Shortcuts.Load();
         var w = new MainWindow();
