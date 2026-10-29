@@ -4,33 +4,98 @@
 
 A Windows desktop app for opening `.pptx` files without PowerPoint, making simple edits, and presenting while drawing on the slides (WPF, .NET 10).
 
+![The editor](screen/en/1-editor.png)
+
+## Installation
+
+<!-- After the Store release, replace STORE_ID with the Store ID from Partner Center → Product identity (12 characters starting with 9). -->
+
+**Requirements**: Windows 10 version 1809 or later, or Windows 11, 64-bit (x64). .NET is included in the app, so there is nothing else to install.
+
+### Microsoft Store (recommended)
+
+1. [Open PPTSlider in the Microsoft Store](https://apps.microsoft.com/detail/STORE_ID), or search for "PPTSlider" in the Microsoft Store app.
+2. Click **Get** (or **Install**).
+3. Start **PPTSlider** from the Start menu.
+
+To install from the command line (winget):
+
+```powershell
+winget install --id STORE_ID --source msstore
+```
+
+The Microsoft Store installs updates automatically. To get one right away, click **Library → Get updates** in the Store app.
+
+### Opening .pptx files with PPTSlider
+
+Once installed, PPTSlider appears in the "Open with" list for .pptx files.
+
+- Once: right-click the file → **Open with** → **PPTSlider**
+- Always: in **Settings → Apps → Default apps**, search for `.pptx` and choose PPTSlider.
+
+You can also drop a file onto the app window or use **Open** (Ctrl+O).
+
+### Uninstalling
+
+In **Settings → Apps → Installed apps**, click **⋯ → Uninstall** next to PPTSlider. Recent files, autosaved copies and the shortcut and language settings are removed with it.
+Your edited .pptx files and exported PDFs stay where they are.
+
+### Building it yourself
+
+To run without the Store, build it as described under [Build](#build) and run `PptSlider.exe`, or follow the local test install under [MSIX package](#msix-package).
+
+
 ## Features
 
-- **Open / Save**: open `.pptx` files (drag and drop, "Open with" supported), Save, Save As.
+### Open, save and export
+
+- Open `.pptx` files (drag and drop, "Open with" supported), Save, Save As.
   Edits change the OpenXML document directly, so elements the app cannot draw are kept as they are when you save.
-  - **Recent files**: the last 10 files appear in the list next to the Open button and on the empty screen.
-  - **Autosave**: every 2 minutes a copy of the deck being edited is kept, and deleted on a normal exit. If the app ended abnormally, opening the same file again offers to recover the newer copy.
-  - **Export to PDF**: one page per slide, with or without ink.
-  - **Ink Notes**: only the slides you drew on, with their ink, as a PDF (lecture notes).
-- **Editing**
-  - Select objects, drag to move, resize from the bottom-right corner, delete
-  - Double-click (or F2) to edit text in place (the original font, size, color, alignment and other formatting are kept)
-  - Bold / Italic / Underline, font, size, color, paragraph alignment (while editing text, bold, italic, underline, font and size apply only to the selected characters, and the font and size boxes show the values of the selected characters)
-  - Insert text boxes and pictures (pictures: the [Picture] button, paste with Ctrl+V, or drop an image file); new, duplicate and delete slides; undo
-  - Drag thumbnails to change the slide order
-  - Text set to "shrink text on overflow" (normAutofit) is drawn smaller to fit its box.
-- **Screen ink**: pen, highlighter, eraser, 7 colors, adjustable width. Ink is drawn on a transparent window over the screen, not on the slide,
-  so you can draw over the editor, the slide show and other apps too (the show's monitor during a show, otherwise the editor's).
-  - Ink is remembered per slide: when you change slides, the ink you drew on that slide comes back.
-  - On-screen toolbar: pointer (keep the ink and click the screen underneath), pen, highlighter, eraser, colors, width, undo, clear, hide. It can be dragged aside.
-  - Hold Shift while drawing for a straight line. Ctrl+Z takes back ink strokes first when there are any.
-  - **Blank ink page** (Ctrl+Enter): inserts a blank slide after the current one and switches to the pen.
-  - Ink is not saved in the .pptx and is gone when the app closes. To keep it, export to PDF or Ink Notes.
-- **Slide show**: from the beginning (F5) / from the current slide (Shift+F5). You can choose the monitor for the show (default: the secondary monitor).
-  - Black / white screen, laser pointer, go to a slide by number (number + Enter), zoom (Z, then drag an area)
-  - Current time and elapsed time in the bottom-right corner; the cursor hides after 3 seconds without mouse movement
-- **Presenter View**: with "Use Presenter View" on, a monitor other than the show's displays the current and next slide, speaker notes (adjustable text size) and elapsed time.
-  Ink tools picked in Presenter View draw on the show's screen, and it uses the same shortcuts as the show.
+- **Recent files**: the last 10 files appear in the list next to the Open button and on the empty screen.
+- **Autosave**: every 2 minutes a copy of the deck being edited is kept, and deleted on a normal exit. If the app ended abnormally, opening the same file again offers to recover the newer copy.
+- **Export to PDF**: one page per slide, with or without ink.
+- **Ink Notes**: only the slides you drew on, with their ink, as a PDF (lecture notes).
+
+### Editing
+
+- Select objects, drag to move, resize from the bottom-right corner, delete
+- Double-click (or F2) to edit text in place (the original font, size, color, alignment and other formatting are kept)
+- Bold / Italic / Underline, font, size, color, paragraph alignment (while editing text, bold, italic, underline, font and size apply only to the selected characters, and the font and size boxes show the values of the selected characters)
+- Insert text boxes and pictures (pictures: the [Picture] button, paste with Ctrl+V, or drop an image file); new, duplicate and delete slides; undo
+- Drag thumbnails to change the slide order
+- Text set to "shrink text on overflow" (normAutofit) is drawn smaller to fit its box.
+
+### Screen ink
+
+![Ink over the editor](screen/en/2-editor-ink.png)
+
+Pen, highlighter, eraser, 7 colors, adjustable width. Ink is drawn on a transparent window over the screen, not on the slide,
+so you can draw over the editor, the slide show and other apps too (the show's monitor during a show, otherwise the editor's).
+
+- Ink is remembered per slide: when you change slides, the ink you drew on that slide comes back.
+- On-screen toolbar: pointer (keep the ink and click the screen underneath), pen, highlighter, eraser, colors, width, undo, clear, hide. It can be dragged aside.
+- Hold Shift while drawing for a straight line. Ctrl+Z takes back ink strokes first when there are any.
+- **Blank ink page** (Ctrl+Enter): inserts a blank slide after the current one and switches to the pen.
+- Ink is not saved in the .pptx and is gone when the app closes. To keep it, export to PDF or Ink Notes.
+
+### Slide show
+
+![Ink during the slide show](screen/en/3-show-ink.png)
+
+From the beginning (F5) / from the current slide (Shift+F5). You can choose the monitor for the show (default: the secondary monitor).
+
+- Black / white screen, laser pointer, go to a slide by number (number + Enter), zoom (Z, then drag an area)
+- Current time and elapsed time in the bottom-right corner; the cursor hides after 3 seconds without mouse movement
+
+### Presenter View
+
+![Presenter View](screen/en/4-presenter.png)
+
+With "Use Presenter View" on, a monitor other than the show's displays the current and next slide, speaker notes (adjustable text size) and elapsed time.
+Ink tools picked in Presenter View draw on the show's screen, and it uses the same shortcuts as the show.
+
+### More
+
 - **Break Time**: a full-screen break timer from 5 minutes to 2 hours in 5-minute steps (T).
 - **Language**: 한국어 · 日本語 · English. By default the app follows the Windows display language (English when it is neither Korean nor Japanese). Changing it in the language list on the [Settings] tab takes effect after a restart. The choice is saved to `%APPDATA%\PptSlider\language.txt`.
 - **Shortcut settings**: every command's shortcut can be changed in [Settings] tab → [Shortcut Settings], and is saved to `%APPDATA%\PptSlider\shortcuts.json`. Press F1 to see the list.
@@ -65,7 +130,7 @@ Esc is a fixed key: it cancels text editing, ends the zoom, returns to the Selec
 
 ### Not drawn yet
 
-Charts, effects (shadows etc.), table styles other than the default, text autofit and animations are not shown on screen. They stay in the file unchanged.
+Charts, effects (shadows etc.), table styles other than the default and animations are not shown on screen. They stay in the file unchanged.
 SmartArt is drawn from the picture PowerPoint saved in the file (drawing.xml); files without that picture show only a placeholder box.
 
 ## Build
@@ -90,6 +155,15 @@ Renders every slide to PNG and checks the edit → save → reopen round trip, p
 The show and presenter windows open off screen and key presses go only to them, so you can keep working while it runs.
 Results are written to `outDir\selftest.txt`; exit code 0 means pass. App data goes to `outDir\local`, so your real recent files and autosaves are not touched. The self-test always runs in Korean.
 
+### Screenshots
+
+```powershell
+PptSlider.exe --screenshots deck.pptx outDir [ko|ja|en] [slide index (from 0)]
+```
+
+The mode that makes the `screen/` images above. It opens the editor on the primary monitor and captures, from the real screen, the editor, ink over the editor, ink in the slide show, and Presenter View (with the show on another monitor).
+It captures the screen as it is, so leave the mouse and keyboard alone while it runs. Presenter View is captured only with two or more monitors.
+
 ## MSIX package
 
 ```powershell
@@ -104,6 +178,7 @@ Without a Windows SDK, it downloads the NuGet package `Microsoft.Windows.SDK.Bui
 The manifest declares a full-trust (runFullTrust) desktop app, the `.pptx` file association, and Korean, Japanese and English (ko-KR, ja-JP, en-US) resources.
 The Store asks for a Store listing (description, screenshots) in each of these three languages.
 The logos can be redrawn with `Package\make-assets.ps1`.
+The Store listing text, poster art, box art and icons are in [docs/store-listing.md](docs/store-listing.md) and `Package\StoreArt` (`Package\make-store-art.ps1`); the privacy policy is [PRIVACY.md](PRIVACY.md).
 
 ### Local test install
 
@@ -136,7 +211,9 @@ In a packaged install, writes to `%LOCALAPPDATA%` and `%APPDATA%` may be redirec
 
 ```
 build-msix.ps1          Builds the MSIX package
-Package/                AppxManifest.xml, Assets (logos), make-assets.ps1
+Package/                AppxManifest.xml, Assets (logos), StoreArt (Store images), make-assets.ps1, make-store-art.ps1
+screen/                 screenshots for the README and the Store (ko, ja, en)
+docs/                   store-listing.md (Store listing text)
 src/
 ├─ App.xaml(.cs)        Entry point (--selftest, opening a file at startup)
 ├─ Views/               MainWindow (editor), ShowWindow (slide show), PresenterWindow (Presenter View),
@@ -145,7 +222,7 @@ src/
 ├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt)
 ├─ Services/            Shortcuts, Monitors (monitor list), PdfExport (PDF),
 │                       RecentFiles, AutoSave, AppPaths (app data folder), Loc (Korean · Japanese · English UI text)
-└─ Diagnostics/         SelfTest (editing · show · ink · viewer checks)
+└─ Diagnostics/         SelfTest (editing · show · ink · viewer checks), Screenshots (screenshots)
 ```
 
 Dependency: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)
