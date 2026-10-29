@@ -9,10 +9,16 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Version>0.1.0</Version>
     <Product>PPT Slider</Product>
+    <Copyright>Copyright (c) 2026 StephenWon</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.5.1" />
+  </ItemGroup>
+
+  <!-- the license and third-party notices go next to the exe (and so into the MSIX) -->
+  <ItemGroup>
+    <None Include="..\LICENSE;..\THIRD-PARTY-NOTICES.txt" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

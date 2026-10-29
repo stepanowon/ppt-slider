@@ -90,11 +90,11 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 **저작권 및 상표 정보**
 
-© 2026 StephenWon. All rights reserved. 이 앱은 Microsoft와 관련이 없으며, 언급된 상표는 각 소유자의 것입니다.
+© 2026 StephenWon. MIT License. 이 앱은 Microsoft와 관련이 없으며, 언급된 상표는 각 소유자의 것입니다.
 
 **추가 사용 조건**
 
-이 앱은 무료로 제공되며, 명시적이거나 묵시적인 어떠한 보증도 없이 "있는 그대로" 제공됩니다. 개발자는 이 앱의 사용으로 인한 데이터 손실이나 손해에 책임을 지지 않습니다. 중요한 파일은 편집하기 전에 백업하세요. 판서는 .pptx 파일에 저장되지 않으므로, 남기려면 PDF로 내보내야 합니다. 개인정보 처리에 대해서는 개인정보처리방침을 참고하세요.
+이 앱은 MIT 라이선스(https://github.com/stepanowon/ppt-slider/blob/main/LICENSE)에 따라 무료로 제공되며, 명시적이거나 묵시적인 어떠한 보증도 없이 "있는 그대로" 제공됩니다. 개발자는 이 앱의 사용으로 인한 데이터 손실이나 손해에 책임을 지지 않습니다. 중요한 파일은 편집하기 전에 백업하세요. 판서는 .pptx 파일에 저장되지 않으므로, 남기려면 PDF로 내보내야 합니다. 개인정보 처리에 대해서는 개인정보처리방침을 참고하세요.
 
 **개발자**
 
@@ -178,11 +178,11 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 **著作権と商標の情報**
 
-© 2026 StephenWon. All rights reserved. 本アプリは Microsoft とは関係がなく、記載された商標はそれぞれの所有者に帰属します。
+© 2026 StephenWon. MIT License. 本アプリは Microsoft とは関係がなく、記載された商標はそれぞれの所有者に帰属します。
 
 **追加使用条件**
 
-本アプリは無料で提供され、明示または黙示を問わず、いかなる保証もなく「現状のまま」提供されます。開発者は、本アプリの使用によって生じたデータの損失や損害について責任を負いません。重要なファイルは編集する前にバックアップしてください。手書きは .pptx ファイルに保存されないため、残すには PDF に出力する必要があります。個人情報の取り扱いについては、プライバシー ポリシーをご覧ください。
+本アプリは MIT ライセンス (https://github.com/stepanowon/ppt-slider/blob/main/LICENSE) に基づいて無料で提供され、明示または黙示を問わず、いかなる保証もなく「現状のまま」提供されます。開発者は、本アプリの使用によって生じたデータの損失や損害について責任を負いません。重要なファイルは編集する前にバックアップしてください。手書きは .pptx ファイルに保存されないため、残すには PDF に出力する必要があります。個人情報の取り扱いについては、プライバシー ポリシーをご覧ください。
 
 **開発者**
 
@@ -266,11 +266,11 @@ presentation · screen ink · slide show · presenter view · pptx viewer · lec
 
 **Copyright and trademark info**
 
-© 2026 StephenWon. All rights reserved. This app is not affiliated with Microsoft; trademarks mentioned belong to their respective owners.
+© 2026 StephenWon. MIT License. This app is not affiliated with Microsoft; trademarks mentioned belong to their respective owners.
 
 **Additional license terms**
 
-This app is provided free of charge, "as is", without warranty of any kind, express or implied. The developer is not liable for any data loss or damage arising from its use. Back up important files before editing them. Ink is not saved into the .pptx file; export to PDF to keep it. See the privacy policy for how your information is handled.
+This app is provided free of charge under the MIT License (https://github.com/stepanowon/ppt-slider/blob/main/LICENSE), "as is", without warranty of any kind, express or implied. The developer is not liable for any data loss or damage arising from its use. Back up important files before editing them. Ink is not saved into the .pptx file; export to PDF to keep it. See the privacy policy for how your information is handled.
 
 **Developed by**
 

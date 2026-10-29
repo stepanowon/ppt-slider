@@ -226,3 +226,8 @@ src/
 ```
 
 依存パッケージ: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)
+
+## ライセンス
+
+[MIT ライセンス](LICENSE)です。著作権表示とライセンス文を残せば、誰でも使用・改変・再配布できます。
+一緒に配布される外部コンポーネント (Open XML SDK、.NET ランタイム) のライセンスは [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) にあり、ビルド結果と MSIX パッケージにも含まれます。

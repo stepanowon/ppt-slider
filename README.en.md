@@ -226,3 +226,8 @@ src/
 ```
 
 Dependency: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)
+
+## License
+
+[MIT License](LICENSE). Anyone may use, modify and redistribute it as long as the copyright notice and license text are kept.
+The licenses of the bundled third-party components (Open XML SDK, .NET runtime) are in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt), which also ships with the build output and the MSIX package.

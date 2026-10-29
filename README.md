@@ -226,3 +226,8 @@ src/
 ```
 
 의존 패키지: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)
+
+## 라이선스
+
+[MIT 라이선스](LICENSE)입니다. 저작권 표시와 라이선스 문구를 남기면 누구나 사용 · 수정 · 재배포할 수 있습니다.
+함께 배포되는 외부 구성 요소(Open XML SDK, .NET 런타임)의 라이선스는 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt)에 있으며, 빌드 결과물과 MSIX 패키지에도 함께 들어갑니다.
