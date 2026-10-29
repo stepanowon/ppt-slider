@@ -8,20 +8,18 @@ A Windows desktop app for opening `.pptx` files without PowerPoint, making simpl
 
 ## Installation
 
-<!-- After the Store release, replace STORE_ID with the Store ID from Partner Center → Product identity (12 characters starting with 9). -->
-
 **Requirements**: Windows 10 version 1809 or later, or Windows 11, 64-bit (x64). .NET is included in the app, so there is nothing else to install.
 
 ### Microsoft Store (recommended)
 
-1. [Open PPTSlider in the Microsoft Store](https://apps.microsoft.com/detail/STORE_ID), or search for "PPTSlider" in the Microsoft Store app.
+1. [Open PPTSlider in the Microsoft Store](https://apps.microsoft.com/detail/9PL1M72JXSCN), or search for "PPTSlider" in the Microsoft Store app.
 2. Click **Get** (or **Install**).
 3. Start **PPTSlider** from the Start menu.
 
 To install from the command line (winget):
 
 ```powershell
-winget install --id STORE_ID --source msstore
+winget install --id 9PL1M72JXSCN --source msstore
 ```
 
 The Microsoft Store installs updates automatically. To get one right away, click **Library → Get updates** in the Store app.

@@ -8,20 +8,18 @@ PowerPoint 없이 `.pptx` 파일을 열어 간단히 편집하고, 판서하면�
 
 ## 설치
 
-<!-- Store 게시 후 STORE_ID를 Partner Center → 제품 ID의 Store ID(9로 시작하는 12자리)로 바꿉니다. -->
-
 **요구 사항**: Windows 10 버전 1809 이상 또는 Windows 11, 64비트(x64). .NET은 앱에 포함되어 있어 따로 설치하지 않아도 됩니다.
 
 ### Microsoft Store (권장)
 
-1. [Microsoft Store에서 PPTSlider 열기](https://apps.microsoft.com/detail/STORE_ID) 또는 Microsoft Store 앱에서 "PPTSlider"를 검색합니다.
+1. [Microsoft Store에서 PPTSlider 열기](https://apps.microsoft.com/detail/9PL1M72JXSCN) 또는 Microsoft Store 앱에서 "PPTSlider"를 검색합니다.
 2. **받기**(또는 **설치**)를 누릅니다.
 3. 시작 메뉴에서 **PPTSlider**를 실행합니다.
 
 명령줄로 설치하려면 (winget):
 
 ```powershell
-winget install --id STORE_ID --source msstore
+winget install --id 9PL1M72JXSCN --source msstore
 ```
 
 업데이트는 Microsoft Store가 자동으로 설치합니다. 바로 받으려면 Store 앱의 **라이브러리 → 업데이트 받기**를 누릅니다.

@@ -8,20 +8,18 @@ PowerPoint がなくても `.pptx` ファイルを開いて簡単に編集し、
 
 ## インストール
 
-<!-- Store 公開後、STORE_ID を Partner Center → 製品 ID の Store ID (9 で始まる 12 文字) に置き換えます。 -->
-
 **必要環境**: Windows 10 バージョン 1809 以降または Windows 11、64 ビット (x64)。.NET はアプリに含まれているため、別途インストールする必要はありません。
 
 ### Microsoft Store (推奨)
 
-1. [Microsoft Store で PPTSlider を開く](https://apps.microsoft.com/detail/STORE_ID)か、Microsoft Store アプリで「PPTSlider」を検索します。
+1. [Microsoft Store で PPTSlider を開く](https://apps.microsoft.com/detail/9PL1M72JXSCN)か、Microsoft Store アプリで「PPTSlider」を検索します。
 2. **入手** (または **インストール**) をクリックします。
 3. スタート メニューから **PPTSlider** を起動します。
 
 コマンド ラインでインストールするには (winget):
 
 ```powershell
-winget install --id STORE_ID --source msstore
+winget install --id 9PL1M72JXSCN --source msstore
 ```
 
 更新は Microsoft Store が自動でインストールします。すぐに入手するには、Store アプリの **ライブラリ → 更新プログラムを取得する** をクリックします。
