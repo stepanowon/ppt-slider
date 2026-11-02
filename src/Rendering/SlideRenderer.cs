@@ -10,9 +10,6 @@ using Path = System.Windows.Shapes.Path;
 
 namespace PptSlider;
 
-/// <summary>A top-level shape on the slide, where it was drawn (slide DIPs) and its drawn text, if any.</summary>
-public record ShapeHit(OpenXmlElement Element, Rect Bounds, FrameworkElement? Text = null);
-
 /// <summary>
 /// Draws PPTX slides as WPF visuals: backgrounds, master/layout graphics, shapes, text, pictures, groups, tables.
 /// SmartArt is drawn from the shapes PowerPoint saved with it (drawing.xml).
@@ -213,7 +210,7 @@ public class SlideRenderer
         var (stroke, sw, dash) = Line(spPr, style, c);
         if (fill != null || stroke != null)
         {
-            var geom = Geometry(spPr, r.Width, r.Height, (X.Long(X.Child(xfrm, "ext"), "cx") ?? 1), (X.Long(X.Child(xfrm, "ext"), "cy") ?? 1));
+            var geom = ShapeGeometry.Of(spPr, r.Width, r.Height, (X.Long(X.Child(xfrm, "ext"), "cx") ?? 1), (X.Long(X.Child(xfrm, "ext"), "cy") ?? 1));
             var path = new Path { Data = geom, Fill = fill, Stroke = stroke, StrokeThickness = sw, StrokeDashArray = dash };
             bool fh = X.Attr(xfrm, "flipH") == "1", fv = X.Attr(xfrm, "flipV") == "1";
             if (fh || fv) { path.RenderTransformOrigin = new Point(0.5, 0.5); path.RenderTransform = new ScaleTransform(fh ? -1 : 1, fv ? -1 : 1); }
@@ -513,7 +510,7 @@ public class SlideRenderer
 
     /// <summary>
     /// The text a <see cref="Text"/> panel drew, as an editable document that looks the same.
-    /// Bullets become non-text inline objects, so the document's text matches <see cref="Deck.GetEditText"/>.
+    /// Bullets become non-text inline objects, so the document's text matches <see cref="TextContent.GetEditText"/>.
     /// </summary>
     public static FlowDocument EditDocument(FrameworkElement textPanel)
     {
@@ -694,164 +691,5 @@ public class SlideRenderer
         }
         var widths = X.Child(X.Child(el, "fmtScheme"), "lnStyleLst")?.ChildElements.Select(l => (double)(X.Long(l, "w") ?? 12700)).ToList() ?? [];
         return themes[mp] = new Theme(colors, fonts, widths);
-    }
-
-    // ---------- geometry ----------
-
-    static Geometry Geometry(OpenXmlElement? spPr, double w, double h, double extW, double extH)
-    {
-        if (X.Child(spPr, "custGeom") is { } cust) return Custom(cust, w, h, extW, extH);
-        var prst = X.Child(spPr, "prstGeom");
-        double Adj(string name, double def) =>
-            X.Child(prst, "avLst")?.ChildElements.FirstOrDefault(g => X.Attr(g, "name") == name) is { } gd
-            && double.TryParse(X.Attr(gd, "fmla")?.Replace("val ", ""), out var v) ? v / 100000 : def;
-        double mn = Math.Min(w, h);
-        Geometry Poly(params double[] xy)
-        {
-            var fig = new PathFigure { StartPoint = new Point(xy[0], xy[1]), IsClosed = true };
-            for (int i = 2; i < xy.Length; i += 2) fig.Segments.Add(new LineSegment(new Point(xy[i], xy[i + 1]), true));
-            return new PathGeometry(new[] { fig });
-        }
-        var kind = X.Attr(prst, "prst") ?? "rect";
-        if (kind is "line" or "straightConnector1" || kind.StartsWith("bentConnector") || kind.StartsWith("curvedConnector"))
-            return new LineGeometry(new Point(0, 0), new Point(w, h));
-        double a;
-        switch (kind)
-        {
-            case "ellipse": case "flowChartConnector": return new EllipseGeometry(new Rect(0, 0, w, h));
-            case "roundRect": case "flowChartAlternateProcess": a = mn * Adj("adj", 0.16667); return new RectangleGeometry(new Rect(0, 0, w, h), a, a);
-            case "flowChartTerminator": return new RectangleGeometry(new Rect(0, 0, w, h), mn / 2, mn / 2);
-            case "triangle": return Poly(w * Adj("adj", 0.5), 0, w, h, 0, h);
-            case "rtTriangle": return Poly(0, 0, w, h, 0, h);
-            case "diamond": case "flowChartDecision": return Poly(w / 2, 0, w, h / 2, w / 2, h, 0, h / 2);
-            case "parallelogram": a = mn * Adj("adj", 0.25); return Poly(a, 0, w, 0, w - a, h, 0, h);
-            case "trapezoid": a = mn * Adj("adj", 0.25); return Poly(a, 0, w - a, 0, w, h, 0, h);
-            case "hexagon": a = mn * Adj("adj", 0.25); return Poly(a, 0, w - a, 0, w, h / 2, w - a, h, a, h, 0, h / 2);
-            case "homePlate": a = mn * Adj("adj", 0.5); return Poly(0, 0, w - a, 0, w, h / 2, w - a, h, 0, h);
-            case "chevron": a = mn * Adj("adj", 0.5); return Poly(0, 0, w - a, 0, w, h / 2, w - a, h, 0, h, a, h / 2);
-            case "rightArrow":
-            case "leftArrow":
-                double sh = h * Adj("adj1", 0.5), hl = mn * Adj("adj2", 0.5), y0 = (h - sh) / 2, y1 = (h + sh) / 2;
-                return kind == "rightArrow"
-                    ? Poly(0, y0, w - hl, y0, w - hl, 0, w, h / 2, w - hl, h, w - hl, y1, 0, y1)
-                    : Poly(w, y0, hl, y0, hl, 0, 0, h / 2, hl, h, hl, y1, w, y1);
-            case "upArrow":
-            case "downArrow":
-            {
-                double shaft = w * Adj("adj1", 0.5), head = mn * Adj("adj2", 0.5), x0 = (w - shaft) / 2, x1 = (w + shaft) / 2;
-                return kind == "upArrow"
-                    ? Poly(x0, h, x0, head, 0, head, w / 2, 0, w, head, x1, head, x1, h)
-                    : Poly(x0, 0, x1, 0, x1, h - head, w, h - head, w / 2, h, 0, h - head, x0, h - head);
-            }
-            case "pentagon": return Poly(w / 2, 0, w, h * 0.382, w * 0.809, h, w * 0.191, h, 0, h * 0.382);
-            case "star5":
-            {
-                // ten points on two circles, stretched to fill the box
-                var pts = Enumerable.Range(0, 10).Select(i => new Point(Math.Cos(-Math.PI / 2 + i * Math.PI / 5) * (i % 2 == 0 ? 1 : 0.382), Math.Sin(-Math.PI / 2 + i * Math.PI / 5) * (i % 2 == 0 ? 1 : 0.382))).ToList();
-                double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X), minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
-                return Poly(pts.SelectMany(p => new[] { (p.X - minX) / (maxX - minX) * w, (p.Y - minY) / (maxY - minY) * h }).ToArray());
-            }
-            default: return new RectangleGeometry(new Rect(0, 0, w, h)); // ponytail: other presets drawn as rectangles
-        }
-    }
-
-    /// <summary>A preset shape's outline at a size, for the Shapes gallery.</summary>
-    public static Geometry PresetGeometry(string prst, double w, double h) =>
-        Geometry(new DocumentFormat.OpenXml.Presentation.ShapeProperties(
-            $"""<p:spPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><a:prstGeom prst="{prst}"><a:avLst/></a:prstGeom></p:spPr>"""), w, h, 1, 1);
-
-    static Geometry Custom(OpenXmlElement cust, double w, double h, double extW, double extH)
-    {
-        var geo = new PathGeometry();
-        foreach (var path in X.Child(cust, "pathLst")?.ChildElements ?? Enumerable.Empty<OpenXmlElement>())
-        {
-            double sx = w / (X.Long(path, "w") is { } pw && pw > 0 ? pw : extW), sy = h / (X.Long(path, "h") is { } ph && ph > 0 ? ph : extH);
-            PathFigure? fig = null;
-            Point cur = default;
-            Point Pt(OpenXmlElement? pt) => new((X.Long(pt, "x") ?? 0) * sx, (X.Long(pt, "y") ?? 0) * sy);
-            foreach (var cmd in path.ChildElements)
-            {
-                var pts = cmd.ChildElements.Where(e => e.LocalName == "pt").Select(Pt).ToList();
-                switch (cmd.LocalName)
-                {
-                    case "moveTo": fig = new PathFigure { StartPoint = cur = pts[0] }; geo.Figures.Add(fig); break;
-                    case "lnTo": fig?.Segments.Add(new LineSegment(cur = pts[0], true)); break;
-                    case "cubicBezTo": fig?.Segments.Add(new BezierSegment(pts[0], pts[1], cur = pts[2], true)); break;
-                    case "quadBezTo": fig?.Segments.Add(new QuadraticBezierSegment(pts[0], cur = pts[1], true)); break;
-                    case "arcTo":
-                        double wr = (X.Long(cmd, "wR") ?? 0) * sx, hr = (X.Long(cmd, "hR") ?? 0) * sy;
-                        double st = (X.Long(cmd, "stAng") ?? 0) / 60000.0 * Math.PI / 180, swa = (X.Long(cmd, "swAng") ?? 0) / 60000.0 * Math.PI / 180;
-                        var center = new Point(cur.X - wr * Math.Cos(st), cur.Y - hr * Math.Sin(st));
-                        cur = new Point(center.X + wr * Math.Cos(st + swa), center.Y + hr * Math.Sin(st + swa));
-                        fig?.Segments.Add(new ArcSegment(cur, new Size(wr, hr), 0, Math.Abs(swa) > Math.PI,
-                            swa > 0 ? SweepDirection.Clockwise : SweepDirection.Counterclockwise, true));
-                        break;
-                    case "close": if (fig != null) fig.IsClosed = true; break;
-                }
-            }
-        }
-        return geo;
-    }
-}
-
-/// <summary>
-/// A shape's text. Text taller than its shape overflows it, as in PowerPoint (below a top-anchored box, both ways when
-/// centered, above when bottom-anchored), instead of being cut off at the box. The slide's own edge still clips.
-/// </summary>
-public sealed class TextPanel : StackPanel
-{
-    protected override Geometry? GetLayoutClip(Size layoutSlotSize) => null;
-}
-
-/// <summary>Tiny helpers for walking OpenXML by local name, which tolerates every namespace variant.</summary>
-public static class X
-{
-    public static OpenXmlElement? Child(OpenXmlElement? e, string name) => e?.ChildElements.FirstOrDefault(c => c.LocalName == name);
-    public static string? Attr(OpenXmlElement? e, string name) => e?.GetAttributes().FirstOrDefault(a => a.LocalName == name).Value;
-    public static long? Long(OpenXmlElement? e, string name) => long.TryParse(Attr(e, name), out var v) ? v : null;
-}
-
-static class ColorMath
-{
-    public static Color Apply(Color c, IEnumerable<(string name, double val)> mods)
-    {
-        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0, a = 1;
-        foreach (var (name, v) in mods)
-        {
-            switch (name)
-            {
-                case "alpha": a = v; break;
-                case "shade": r *= v; g *= v; b *= v; break;
-                case "tint": r = 1 - (1 - r) * v; g = 1 - (1 - g) * v; b = 1 - (1 - b) * v; break;
-                case "lumMod" or "lumOff" or "satMod":
-                    var (hh, ss, ll) = ToHsl(r, g, b);
-                    if (name == "lumMod") ll *= v; else if (name == "lumOff") ll += v; else ss *= v;
-                    (r, g, b) = FromHsl(hh, Math.Clamp(ss, 0, 1), Math.Clamp(ll, 0, 1));
-                    break;
-            }
-        }
-        static byte B(double x) => (byte)Math.Round(Math.Clamp(x, 0, 1) * 255);
-        return Color.FromArgb(B(a), B(r), B(g), B(b));
-    }
-
-    static (double h, double s, double l) ToHsl(double r, double g, double b)
-    {
-        double max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b)), l = (max + min) / 2;
-        if (max == min) return (0, 0, l);
-        double d = max - min, s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-        double h = max == r ? (g - b) / d + (g < b ? 6 : 0) : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
-        return (h / 6, s, l);
-    }
-
-    static (double, double, double) FromHsl(double h, double s, double l)
-    {
-        if (s == 0) return (l, l, l);
-        double q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
-        static double F(double p, double q, double t)
-        {
-            if (t < 0) t += 1; if (t > 1) t -= 1;
-            return t < 1.0 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2.0 / 3 ? p + (q - p) * (2.0 / 3 - t) * 6 : p;
-        }
-        return (F(p, q, h + 1.0 / 3), F(p, q, h), F(p, q, h - 1.0 / 3));
     }
 }

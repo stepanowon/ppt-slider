@@ -187,26 +187,26 @@ static partial class SelfTest
             // editor: Ctrl+Z takes back the slide's strokes first (newest first), then the edit
             var slide = main.CurrentSlide!;
             P.Shape Text() => slide.Slide!.Descendants<P.Shape>().First(sh => sh.TextBody != null);
-            var original = Deck.GetText(Text());
-            main.Deck!.Snapshot(slide);
-            Deck.SetText(Text(), "편집됨");
+            var original = TextContent.GetText(Text());
+            main.Deck!.History.Snapshot(slide);
+            TextContent.SetText(Text(), "편집됨");
             var ed = main.StrokesOf(slide);
             int strokes = ed.Count;
             ed.Add(Line(20, 400, 400, 420));
             main.Run("undo");
-            check(ed.Count == strokes && Deck.GetText(Text()) == "편집됨", "editor: Ctrl+Z takes back the new stroke, not the edit");
+            check(ed.Count == strokes && TextContent.GetText(Text()) == "편집됨", "editor: Ctrl+Z takes back the new stroke, not the edit");
             for (int i = 0; i < strokes + 1; i++) main.Run("undo");
-            check(ed.Count == 0 && Deck.GetText(Text()) == original, $"editor: then the older strokes, then the edit ({ed.Count} strokes left)");
+            check(ed.Count == 0 && TextContent.GetText(Text()) == original, $"editor: then the older strokes, then the edit ({ed.Count} strokes left)");
 
             // editor: the 그리기 tab's undo button takes back strokes only, never the edit
-            main.Deck!.Snapshot(slide);
-            Deck.SetText(Text(), "편집됨");
+            main.Deck!.History.Snapshot(slide);
+            TextContent.SetText(Text(), "편집됨");
             ed.Add(Line(20, 400, 400, 420));
             ed.Add(Line(20, 450, 400, 470));
             Click(main.UndoInkBtn);
             check(ed.Count == 1 && main.StatusText.Text == "판서를 되돌렸습니다", "editor: the undo-ink button takes back the last stroke");
             Click(main.UndoInkBtn); Click(main.UndoInkBtn);
-            check(ed.Count == 0 && Deck.GetText(Text()) == "편집됨" && main.StatusText.Text == "되돌릴 판서가 없습니다",
+            check(ed.Count == 0 && TextContent.GetText(Text()) == "편집됨" && main.StatusText.Text == "되돌릴 판서가 없습니다",
                 "editor: with no strokes left it says so and leaves the edit alone");
         }
         finally { main.CloseForTest(); }
@@ -217,9 +217,9 @@ static partial class SelfTest
     static string NotesTest(string file, string outDir, Action<bool, string> check)
     {
         using var deck = Deck.Open(file);
-        var withNotes = deck.Slides.Count(s => Deck.Notes(s) != "");
+        var withNotes = deck.Slides.Count(s => TextContent.Notes(s) != "");
         var slide = deck.Duplicate(0); // a copy has no notes page yet
-        check(Deck.Notes(slide) == "", "notes: a slide without a notes page has none");
+        check(TextContent.Notes(slide) == "", "notes: a slide without a notes page has none");
         var notes = slide.AddNewPart<DocumentFormat.OpenXml.Packaging.NotesSlidePart>();
         static string Ph(int id, string type, string text) =>
             $"""<p:sp><p:nvSpPr><p:cNvPr id="{id}" name="{type}"/><p:cNvSpPr/><p:nvPr><p:ph type="{type}"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/>{text}</p:txBody></p:sp>""";
@@ -231,12 +231,12 @@ static partial class SelfTest
             {Ph(4, "sldNum", "<a:p><a:r><a:t>4</a:t></a:r></a:p>")}
             </p:spTree></p:cSld></p:notes>
             """);
-        check(Deck.Notes(slide) == "첫 줄\n둘째 줄", $"notes: body placeholder text, one line per paragraph [{Deck.Notes(slide).Replace("\n", "\\n")}]");
+        check(TextContent.Notes(slide) == "첫 줄\n둘째 줄", $"notes: body placeholder text, one line per paragraph [{TextContent.Notes(slide).Replace("\n", "\\n")}]");
         check(true, $"notes: {withNotes} of {deck.Slides.Count - 1} slides in the deck have notes");
         var path = Path.Combine(outDir, "notes.pptx");
         deck.Save(path);
         using var saved = Deck.Open(path);
-        check(Deck.Notes(saved.Slides[1]) == "첫 줄\n둘째 줄", "notes: kept after save and reopen");
+        check(TextContent.Notes(saved.Slides[1]) == "첫 줄\n둘째 줄", "notes: kept after save and reopen");
         return path;
     }
 
@@ -255,7 +255,7 @@ static partial class SelfTest
             if (pv == null) return;
             Wait(300);
             void Press(Key k, ModifierKeys m = ModifierKeys.None) => pv.Press(new Gesture(k, m));
-            string Expected() => Deck.Notes(main.CurrentSlide!) is { Length: > 0 } t ? t : "(노트 없음)";
+            string Expected() => TextContent.Notes(main.CurrentSlide!) is { Length: > 0 } t ? t : "(노트 없음)";
 
             check(pv.Page.Text == $"1 / {n}" && pv.Host.Content != null && pv.NextHost.Content != null && pv.Notes.Text == Expected(),
                 "presenter: current slide, next slide, notes, page number");
@@ -264,10 +264,10 @@ static partial class SelfTest
             Press(Key.Right);
             check(main.Current == 1 && show.Page.Text == $"2 / {n}" && pv.Page.Text == $"2 / {n}" && pv.Notes.Text == Expected(),
                 "presenter: → moves the show and updates the notes");
-            if (main.Deck!.Slides.FindIndex(s => Deck.Notes(s) != "") is >= 0 and var k)
+            if (main.Deck!.Slides.FindIndex(s => TextContent.Notes(s) != "") is >= 0 and var k)
             {
                 main.Go(k);
-                check(pv.Notes.Text == Deck.Notes(main.CurrentSlide!), $"presenter: slide {k + 1}'s notes shown");
+                check(pv.Notes.Text == TextContent.Notes(main.CurrentSlide!), $"presenter: slide {k + 1}'s notes shown");
                 Snap(pv, Path.Combine(outDir, "presenter-notes.png"));
             }
 

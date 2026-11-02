@@ -69,7 +69,7 @@ public partial class PresenterWindow : Window
         NextHost.Content = last ? null : deck.Renderer.Render(deck.Slides[main.Current + 1]);
         NextHost.Visibility = last ? Visibility.Collapsed : Visibility.Visible;
         NextEnd.Visibility = last ? Visibility.Visible : Visibility.Collapsed;
-        var notes = Deck.Notes(slide);
+        var notes = TextContent.Notes(slide);
         Notes.Text = notes == "" ? L.T("noNotes") : notes;
         Notes.Foreground = notes == "" ? Brushes.Gray : Brushes.White;
         Page.Text = $"{main.Current + 1} / {main.Count}";

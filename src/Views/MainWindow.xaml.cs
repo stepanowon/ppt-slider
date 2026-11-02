@@ -18,7 +18,6 @@ namespace PptSlider;
 
 public partial class MainWindow : Window
 {
-    static readonly double[] FontSizes = [8, 9, 10, 10.5, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 48, 54, 60, 66, 72, 80, 88, 96];
     static readonly Color[] TextColors =
     [
         Colors.Black, Colors.White, Color.FromRgb(0x44, 0x54, 0x6A), Color.FromRgb(0x44, 0x72, 0xC4), Color.FromRgb(0xED, 0x7D, 0x31),
@@ -42,20 +41,18 @@ public partial class MainWindow : Window
     InkOverlay? overlay;
     bool inkHidden;
     List<ShapeHit> hits = [];
-    RichTextBox? editBox;
-    FrameworkElement? editHidden; // the drawn text the editor covers
-    List<Deck.Fmt> editStart = []; // bold / italic / underline per character when editing began
-    double editScale = 1; // the font scale the editor shows the text at
     ShowWindow? show;
     bool syncing;
 
     public MainWindow()
     {
+        editing = new EditingParts(this);
+        commands = Commands();
         InitializeComponent();
         var lang = XmlLanguage.GetLanguage(L.Lang switch { "ko" => "ko-kr", "ja" => "ja-jp", _ => "en-us" });
         FontBox.ItemsSource = Fonts.SystemFontFamilies
             .Select(f => f.FamilyNames.TryGetValue(lang, out var n) ? n : f.Source).Distinct().OrderBy(n => n).ToList();
-        SizeBox.ItemsSource = FontSizes;
+        SizeBox.ItemsSource = TextCommands.FontSizes;
         foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
             var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2), Background = new SolidColorBrush(c), Focusable = false, BorderBrush = Brushes.Gray, ToolTip = L.T("penColor") };
@@ -114,9 +111,8 @@ public partial class MainWindow : Window
         ink.Clear();
         inkLog.Clear();
         inkLog.Track(desktopInk);
-        selected = null;
-        cell = null;
-        clip = null; // its shapes belong to the file that was open
+        Selection.Reset();
+        ClipboardCommands.Forget(); // its shapes belong to the file that was open
         StageFrame.Visibility = Visibility.Visible;
         EmptyPanel.Visibility = Visibility.Collapsed;
         Stage.Width = d.Renderer.Width;
@@ -267,7 +263,7 @@ public partial class MainWindow : Window
         if (Deck == null || Count == 0) return;
         i = Math.Clamp(i, 0, Count - 1);
         CommitEdit();
-        if (i != Current) { selected = null; cell = null; }
+        if (i != Current) Selection.Reset();
         Current = i;
         RenderCurrent();
         syncing = true;
@@ -296,7 +292,7 @@ public partial class MainWindow : Window
     {
         hits = [];
         SlideHost.Content = Deck!.Renderer.Render(CurrentSlide!, hits);
-        sel.RemoveAll(e => hits.All(h => h.Element != e));
+        Selection.Prune();
         DrawSelection();
     }
 
@@ -345,97 +341,106 @@ public partial class MainWindow : Window
             Pen.SetColor(PenState.Palette[n - 1]);
             return true;
         }
-        switch (id)
-        {
-            case "next": Go(Current + 1); break;
-            case "prev": Go(Current - 1); break;
-            case "first": Go(0); break;
-            case "last": Go(Count - 1); break;
-            case "select": Pen.SetTool(Tool.Select); break;
-            case "pen": Pen.SetTool(Tool.Pen); break;
-            case "highlighter": Pen.SetTool(Tool.Highlighter); break;
-            case "eraser": Pen.SetTool(Tool.Eraser); break;
-            case "thinner": Pen.Grow(-1); break;
-            case "thicker": Pen.Grow(1); break;
-            case "clearInk": ClearInk(); break;
-            case "blankPage": OnBlankPage(null, null); break;
-            case "exportPdf": OnExportPdf(null, null); break;
-            case "inkNotes": OnInkNotes(null, null); break;
-            case "picture": OnAddPicture(null, null); break;
-            case "break": OpenBreak(); break;
-            case "showFirst": StartShow(0); break;
-            case "showCurrent": StartShow(Current); break;
-            case "open": OnOpen(null, null); break;
-            case "save": Save(false); break;
-            case "saveAs": Save(true); break;
-            case "undo": OnUndo(null, null); break;
-            case "redo": OnRedo(null, null); break;
-            case "copy" when sel.Count > 0: CopyShapes(false); break;
-            case "cut" when sel.Count > 0: CopyShapes(true); break;
-            case "paste": if (!Paste()) return false; break;
-            case "selectAll": SelectAll(); break;
-            case "copyFormat": CopyFormat(); break;
-            case "pasteFormat": PasteFormat(); break;
-            case "editText": BeginEdit(); break;
-            case "deleteShape" when sel.Count > 0: OnDeleteShape(null, null); break;
-            case "bold": OnBold(null, null); break;
-            case "italic": OnItalic(null, null); break;
-            case "underline": OnUnderline(null, null); break;
-            case "strike": OnStrike(null, null); break;
-            case "indentMore": OnIndentMore(null, null); break;
-            case "indentLess": OnIndentLess(null, null); break;
-            case "bringToFront": Arrange("front"); break;
-            case "sendToBack": Arrange("back"); break;
-            case "bringForward": Arrange("forward"); break;
-            case "sendBackward": Arrange("backward"); break;
-            case "grow": OnGrow(null, null); break;
-            case "shrink": OnShrink(null, null); break;
-            case "newSlide": OnNewSlide(null, null); break;
-            case "duplicate": if (sel.Count > 0) DuplicateShapes(); else OnDuplicate(null, null); break; // shapes first, as in PowerPoint
-            case "help": OnHelp(null, null); break;
-            case "settings": OnShortcutSettings(null, null); break;
-            default: return false;
-        }
-        return true;
+        return commands.TryGetValue(id, out var run) && run();
     }
+
+    /// <summary>The commands by id, each true when it applied. A new command is one more entry here; <see cref="Run"/> stays as it is.</summary>
+    readonly Dictionary<string, Func<bool>> commands;
+
+    /// <summary>A command that always applies.</summary>
+    static Func<bool> Do(Action a) => () => { a(); return true; };
+
+    /// <summary>A command that applies only while <paramref name="can"/> holds (otherwise the key is left to others).</summary>
+    static Func<bool> When(Func<bool> can, Action a) => () => { if (!can()) return false; a(); return true; };
+
+    Dictionary<string, Func<bool>> Commands() => new()
+    {
+            ["next"] = Do(() => Go(Current + 1)),
+            ["prev"] = Do(() => Go(Current - 1)),
+            ["first"] = Do(() => Go(0)),
+            ["last"] = Do(() => Go(Count - 1)),
+            ["select"] = Do(() => Pen.SetTool(Tool.Select)),
+            ["pen"] = Do(() => Pen.SetTool(Tool.Pen)),
+            ["highlighter"] = Do(() => Pen.SetTool(Tool.Highlighter)),
+            ["eraser"] = Do(() => Pen.SetTool(Tool.Eraser)),
+            ["thinner"] = Do(() => Pen.Grow(-1)),
+            ["thicker"] = Do(() => Pen.Grow(1)),
+            ["clearInk"] = Do(() => ClearInk()),
+            ["blankPage"] = Do(() => OnBlankPage(null, null)),
+            ["exportPdf"] = Do(() => OnExportPdf(null, null)),
+            ["inkNotes"] = Do(() => OnInkNotes(null, null)),
+            ["picture"] = Do(() => OnAddPicture(null, null)),
+            ["break"] = Do(() => OpenBreak()),
+            ["showFirst"] = Do(() => StartShow(0)),
+            ["showCurrent"] = Do(() => StartShow(Current)),
+            ["open"] = Do(() => OnOpen(null, null)),
+            ["save"] = Do(() => Save(false)),
+            ["saveAs"] = Do(() => Save(true)),
+            ["undo"] = Do(() => OnUndo(null, null)),
+            ["redo"] = Do(() => OnRedo(null, null)),
+            ["copy"] = When(() => Selection.Count > 0, () => ClipboardCommands.Copy(false)),
+            ["cut"] = When(() => Selection.Count > 0, () => ClipboardCommands.Copy(true)),
+            ["paste"] = () => ClipboardCommands.Paste(),
+            ["selectAll"] = Do(() => ShapeCommands.SelectAll()),
+            ["copyFormat"] = Do(() => FormatPainterTool.Copy()),
+            ["pasteFormat"] = Do(() => FormatPainterTool.Paste()),
+            ["editText"] = Do(() => TextEditor.Begin()),
+            ["deleteShape"] = When(() => Selection.Count > 0, () => ShapeCommands.Delete()),
+            ["bold"] = Do(() => OnBold(null, null)),
+            ["italic"] = Do(() => OnItalic(null, null)),
+            ["underline"] = Do(() => OnUnderline(null, null)),
+            ["strike"] = Do(() => OnStrike(null, null)),
+            ["indentMore"] = Do(() => OnIndentMore(null, null)),
+            ["indentLess"] = Do(() => OnIndentLess(null, null)),
+            ["bringToFront"] = Do(() => ShapeCommands.Arrange("front")),
+            ["sendToBack"] = Do(() => ShapeCommands.Arrange("back")),
+            ["bringForward"] = Do(() => ShapeCommands.Arrange("forward")),
+            ["sendBackward"] = Do(() => ShapeCommands.Arrange("backward")),
+            ["grow"] = Do(() => OnGrow(null, null)),
+            ["shrink"] = Do(() => OnShrink(null, null)),
+            ["newSlide"] = Do(() => OnNewSlide(null, null)),
+            ["duplicate"] = () => { if (Selection.Count > 0) ClipboardCommands.Duplicate(); else OnDuplicate(null, null); return true; }, // shapes first, as in PowerPoint
+            ["help"] = Do(() => OnHelp(null, null)),
+            ["settings"] = Do(() => OnShortcutSettings(null, null)),
+    };
 
     /// <summary>With the Korean IME on, letter keys arrive as ImeProcessed.</summary>
     public static Key RealKey(KeyEventArgs e) => e.Key switch { Key.ImeProcessed => e.ImeProcessedKey, Key.System => e.SystemKey, _ => e.Key };
 
     void OnKey(object sender, KeyEventArgs e)
     {
-        if (editBox == null && Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes
+        if (!TextEditor.IsEditing && Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes
         if (HandleKey(Gesture.From(e))) e.Handled = true;
     }
 
     /// <summary>A key press in the editor window; true when it was used. The key handler and the self-test come here.</summary>
     internal bool HandleKey(Gesture g)
     {
-        if (editBox != null)
+        if (TextEditor.IsEditing)
         {
             if (g.Key == Key.Escape) { CommitEdit(cancel: true); return true; }
-            if (g.Key == Key.Tab && editBox.Tag is OpenXmlElement { LocalName: "tc" } tc) // table: to the next / previous cell
+            if (g.Key == Key.Tab && TextEditor.Target is { LocalName: "tc" } tc) // table: to the next / previous cell
             {
-                NextCell(tc, g.Mods.HasFlag(ModifierKeys.Shift) ? -1 : 1);
+                TextEditor.NextCell(tc, g.Mods.HasFlag(ModifierKeys.Shift) ? -1 : 1);
                 return true;
             }
             if (Shortcuts.Find(g, inShow: false) is { } id)
             {
-                if (id is "bold" or "italic" or "underline" or "strike") { ToggleInEditor(id); return true; }
+                if (id is "bold" or "italic" or "underline" or "strike") { TextEditor.Toggle(id); return true; }
                 if (id is "grow" or "shrink" or "indentMore" or "indentLess") return Run(id); // on the selected characters / paragraphs
             }
             return false;
         }
         if (g is { Key: Key.Escape, Mods: ModifierKeys.None })
         {
-            if (pendingShape != null || painter != null) { pendingShape = null; EndPainter(); Stage.Cursor = null; UpdateStatus(); }
-            else { Pen.SetTool(Tool.Select); selected = null; DrawSelection(); }
+            if (StageInput.PendingShape != null || FormatPainterTool.IsActive) { EndTools(); UpdateStatus(); }
+            else { Pen.SetTool(Tool.Select); Selection.Primary = null; DrawSelection(); }
             return true;
         }
-        if (sel.Count > 0 && Pen.Tool == Tool.Select && g.Key is Key.Left or Key.Right or Key.Up or Key.Down && g.Mods is ModifierKeys.None or ModifierKeys.Control)
+        if (Selection.Count > 0 && Pen.Tool == Tool.Select && g.Key is Key.Left or Key.Right or Key.Up or Key.Down && g.Mods is ModifierKeys.None or ModifierKeys.Control)
         {
             double step = g.Mods == ModifierKeys.Control ? 1 : 8; // arrow keys move the selected shapes, as in PowerPoint
-            Nudge(g.Key switch { Key.Left => -step, Key.Right => step, _ => 0 }, g.Key switch { Key.Up => -step, Key.Down => step, _ => 0 });
+            ShapeCommands.Nudge(g.Key switch { Key.Left => -step, Key.Right => step, _ => 0 }, g.Key switch { Key.Up => -step, Key.Down => step, _ => 0 });
             return true;
         }
         return Shortcuts.Find(g, inShow: false) is { } cmd && Run(cmd);
@@ -456,7 +461,7 @@ public partial class MainWindow : Window
     {
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] files) return;
         if (files.FirstOrDefault(f => f.EndsWith(".pptx", StringComparison.OrdinalIgnoreCase)) is { } f) Open(f);
-        else if (Deck != null && files.FirstOrDefault(p => Deck.PictureType(System.IO.Path.GetExtension(p)) != null) is { } pic) InsertPictureFile(pic);
+        else if (Deck != null && files.FirstOrDefault(p => ShapeFactory.PictureType(System.IO.Path.GetExtension(p)) != null) is { } pic) InsertCommands.PictureFile(pic);
     }
 
     bool closing;

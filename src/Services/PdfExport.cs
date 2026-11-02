@@ -14,6 +14,25 @@ namespace PptSlider;
 /// </summary>
 public static class PdfExport
 {
+    /// <summary>The strokes drawn as they look on screen, for a PDF page.</summary>
+    static DrawingVisual InkVisual(StrokeCollection strokes)
+    {
+        var dv = new DrawingVisual();
+        using var dc = dv.RenderOpen();
+        foreach (var s in strokes)
+        {
+            var st = s.Clone();
+            if (st.DrawingAttributes.IsHighlighter) // bake highlighter transparency into the color
+            {
+                st.DrawingAttributes.IsHighlighter = false;
+                var c = st.DrawingAttributes.Color;
+                st.DrawingAttributes.Color = Color.FromArgb(0x70, c.R, c.G, c.B);
+            }
+            st.Draw(dc);
+        }
+        return dv;
+    }
+
     /// <param name="ink">strokes per slide, in slide coordinates (null = without ink)</param>
     /// <param name="onlyInked">lecture notes: only the slides that have ink</param>
     public static void Export(Deck deck, string path, IReadOnlyDictionary<SlidePart, StrokeCollection>? ink, bool onlyInked = false)
@@ -31,7 +50,7 @@ public static class PdfExport
             using (var dc = white.RenderOpen()) dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, w, h)); // JPEG has no transparency
             bmp.Render(white);
             bmp.Render(el);
-            if (ink != null && ink.TryGetValue(sp, out var strokes) && strokes.Count > 0) bmp.Render(Deck.InkVisual(strokes));
+            if (ink != null && ink.TryGetValue(sp, out var strokes) && strokes.Count > 0) bmp.Render(InkVisual(strokes));
             var enc = new JpegBitmapEncoder { QualityLevel = 90 };
             enc.Frames.Add(BitmapFrame.Create(new FormatConvertedBitmap(bmp, PixelFormats.Bgr24, null, 0)));
             using var ms = new MemoryStream();

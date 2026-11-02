@@ -224,13 +224,18 @@ In a packaged install, writes to `%LOCALAPPDATA%` and `%APPDATA%` may be redirec
 build-msix.ps1          Builds the MSIX package
 Package/                AppxManifest.xml, Assets (logos), StoreArt (Store images), make-assets.ps1, make-store-art.ps1
 screen/                 screenshots for the README and the Store (ko, ja, en)
-docs/                   store-listing.md (Store listing text)
+docs/                   store-listing.md (Store listing text), test plans and reports per version (Korean)
 src/
 ├─ App.xaml(.cs)        Entry point (--selftest, opening a file at startup)
 ├─ Views/               MainWindow (editor), ShowWindow (slide show), PresenterWindow (Presenter View),
 │                       InkOverlay (screen ink), BreakWindow (break timer), ShortcutsWindow (shortcut settings)
-├─ Models/              Deck (.pptx document · editing · saving · undo), PenState (ink tool state), InkHistory (ink undo)
-├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt)
+├─ Editing/             Editing parts (depend only on IEditorHost): ShapeSelection, SelectionAdorner (handles), StageInteraction (mouse),
+│                       TextEditor (in-place text editing), Shape · Text · Table · Insert · ClipboardCommands, FormatPainterTool,
+│                       EditingParts (wires the parts together)
+├─ Models/              Deck (.pptx document · saving · slide list), EditHistory (undo), ShapeFactory · ShapeLayout · ShapeStyle (shapes),
+│                       Tables, TextContent · TextFormat (text and its format), ShapeClipboard · FormatPainter (copying), SlideTree · Ooxml · X (XML helpers),
+│                       PenState (ink tool state), InkHistory (ink undo)
+├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt), ShapeGeometry (shape outlines), ColorMath (colors), TextPanel, ShapeHit
 ├─ Services/            Shortcuts, Monitors (monitor list), PdfExport (PDF),
 │                       RecentFiles, AutoSave, AppPaths (app data folder), Loc (Korean · Japanese · English UI text)
 └─ Diagnostics/         SelfTest (editing · show · ink · viewer checks), Screenshots (screenshots)

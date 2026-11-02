@@ -38,20 +38,20 @@ static partial class SelfTest
                     var hits = new List<ShapeHit>();
                     Png(deck.Renderer.Render(slides[i], hits), Path.Combine(outDir, $"slide{i + 1}.png"));
                     // the in-place editor must start from exactly the shape's text, or the edit diff misplaces formatting
-                    foreach (var h in hits.Where(h => h.Text != null && Deck.HasText(h.Element)))
-                        if (MainWindow.EditText(SlideRenderer.EditDocument(h.Text!)).Text is var t && t != Deck.GetEditText(h.Element))
-                            Check(false, $"slide {i + 1}: editor text differs: [{t}] vs [{Deck.GetEditText(h.Element)}]");
+                    foreach (var h in hits.Where(h => h.Text != null && TextContent.HasText(h.Element)))
+                        if (TextEditor.EditText(SlideRenderer.EditDocument(h.Text!)).Text is var t && t != TextContent.GetEditText(h.Element))
+                            Check(false, $"slide {i + 1}: editor text differs: [{t}] vs [{TextContent.GetEditText(h.Element)}]");
                     if (i == 0) EditorBold(hits, Check);
                     log.Add($"slide {i + 1}: {hits.Count} shapes");
                 }
 
                 var shape = slides[0].Slide!.Descendants<P.Shape>().First(s => s.TextBody != null);
-                deck.Snapshot(slides[0]);
-                Deck.SetText(shape, "수정됨\n둘째 줄");
-                Deck.EditRuns(shape, r => Deck.SetAttr(r, "sz", "4000"));
-                Check(Deck.GetText(shape) == "수정됨\n둘째 줄", "SetText/GetText");
+                deck.History.Snapshot(slides[0]);
+                TextContent.SetText(shape, "수정됨\n둘째 줄");
+                TextFormat.EditRuns(shape, r => Ooxml.SetAttr(r, "sz", "4000"));
+                Check(TextContent.GetText(shape) == "수정됨\n둘째 줄", "SetText/GetText");
 
-                Deck.AddPicture(slides[0], TinyPng(), Deck.PictureType(".png")!.Value, new Rect(40, 30, 200, 100));
+                ShapeFactory.AddPicture(slides[0], TinyPng(), ShapeFactory.PictureType(".png")!.Value, new Rect(40, 30, 200, 100));
                 deck.Save(Path.Combine(outDir, "with-picture.pptx"));
                 Check(!deck.Dirty, "save clears dirty");
 
@@ -59,7 +59,7 @@ static partial class SelfTest
                 deck.NewSlide(0);
                 deck.DeleteSlide(1);
                 deck.Save(Path.Combine(outDir, "slides.pptx"));
-                Check(deck.Undo() != null, "undo available");
+                Check(deck.History.Undo() != null, "undo available");
             }
 
             int n = Slides(file);
@@ -113,9 +113,14 @@ static partial class SelfTest
         check(bad.Count == 0, $"loc: {L.Table.Count} texts in ko/ja/en with matching arguments{(bad.Count > 0 ? " — bad: " + string.Join(", ", bad) : "")}");
         check(L.Table["colorNames"].All(v => v.Split(',').Length == PenState.Palette.Length), "loc: a color name per pen color");
         var used = Directory.Exists(SourceDir) ? Directory.GetFiles(SourceDir, "*.*", SearchOption.AllDirectories).Where(f => (f.EndsWith(".cs") || f.EndsWith(".xaml")) && Path.GetFileName(f) != "Loc.cs")
-            .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"(?:\{local:Loc |L\.[TF]\(\"")([\w.]+)").Select(m => m.Groups[1].Value)).Distinct().ToList() : [];
+            // whole literal keys only: a key built in code (the gallery's shape names) is checked below
+            .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), @"\{local:Loc ([\w.]+)\}|L\.[TF]\(""([\w.]+)""\s*[,)]")
+                .Select(m => m.Groups[1].Success ? m.Groups[1].Value : m.Groups[2].Value)).Distinct().ToList() : [];
+        check(used.Count > 0, $"loc: the source was found and scanned ({SourceDir})");
         var missing = used.Where(k => !L.Table.ContainsKey(k)).ToList();
         check(missing.Count == 0, $"loc: {used.Count} keys used in the source all exist{(missing.Count > 0 ? " — missing: " + string.Join(", ", missing) : "")}");
+        var built = ShapeFactory.ShapeKinds.Select(k => "shape." + k).Where(k => !L.Table.ContainsKey(k)).ToList();
+        check(built.Count == 0, $"loc: a name for each of the {ShapeFactory.ShapeKinds.Length} gallery shapes{(built.Count > 0 ? " — missing: " + string.Join(", ", built) : "")}");
     }
 
     /// <summary>The src folder when run from the build output (bin\Debug\...); absent elsewhere.</summary>
@@ -124,37 +129,37 @@ static partial class SelfTest
     /// <summary>Ctrl+B on two characters in the editor of a real shape: exactly those two change weight after the commit.</summary>
     static void EditorBold(List<ShapeHit> hits, Action<bool, string> check)
     {
-        foreach (var h in hits.Where(h => h.Text != null && Deck.HasText(h.Element)))
+        foreach (var h in hits.Where(h => h.Text != null && TextContent.HasText(h.Element)))
         {
             var doc = SlideRenderer.EditDocument(h.Text!);
             if (doc.Blocks.OfType<System.Windows.Documents.Paragraph>().SelectMany(p => p.Inlines).OfType<System.Windows.Documents.Run>()
                     .FirstOrDefault(r => r.Text.Trim().Length >= 2) is not { } run) continue;
-            var before = MainWindow.EditText(doc);
+            var before = TextEditor.EditText(doc);
             int skip = run.Text.Length - run.Text.TrimStart().Length;
-            MainWindow.Toggle(new System.Windows.Documents.TextRange(run.ContentStart.GetPositionAtOffset(skip), run.ContentStart.GetPositionAtOffset(skip + 2)), "bold");
-            var after = MainWindow.EditText(doc);
+            TextEditor.Toggle(new System.Windows.Documents.TextRange(run.ContentStart.GetPositionAtOffset(skip), run.ContentStart.GetPositionAtOffset(skip + 2)), "bold");
+            var after = TextEditor.EditText(doc);
             var changed = Enumerable.Range(0, after.Fmt.Count).Where(k => after.Fmt[k] != before.Fmt[k]).ToList();
             var shape = h.Element.CloneNode(true);
-            Deck.SetEditText(shape, after.Text, after.Fmt, before.Fmt);
-            var src = Deck.CharSources(shape);
-            check(after.Text == before.Text && changed.Count == 2 && Deck.GetEditText(shape) == before.Text
+            TextContent.SetEditText(shape, after.Text, after.Fmt, before.Fmt);
+            var src = TextContent.CharSources(shape);
+            check(after.Text == before.Text && changed.Count == 2 && TextContent.GetEditText(shape) == before.Text
                   && changed.All(k => X.Attr(src[k]?.GetFirstChild<A.RunProperties>(), "b") == (after.Fmt[k].B ? "1" : "0")),
                 $"editor: Ctrl+B on 2 characters of \"{run.Text.Trim()}\" is saved ({changed.Count} changed)");
 
             // the font / size boxes on the same 2 characters: only those change, in the file's points
             doc = SlideRenderer.EditDocument(h.Text!);
             run = doc.Blocks.OfType<System.Windows.Documents.Paragraph>().SelectMany(p => p.Inlines).OfType<System.Windows.Documents.Run>().First(r => r.Text.Trim().Length >= 2);
-            before = MainWindow.EditText(doc);
+            before = TextEditor.EditText(doc);
             var sel = new System.Windows.Documents.TextRange(run.ContentStart.GetPositionAtOffset(skip), run.ContentStart.GetPositionAtOffset(skip + 2));
-            sel.ApplyPropertyValue(System.Windows.Documents.TextElement.FontSizeProperty, 50.0 * Deck.FontScale(h.Element) * 96 / 72);
+            sel.ApplyPropertyValue(System.Windows.Documents.TextElement.FontSizeProperty, 50.0 * TextContent.FontScale(h.Element) * 96 / 72);
             sel.ApplyPropertyValue(System.Windows.Documents.TextElement.FontFamilyProperty, new System.Windows.Media.FontFamily("Arial"));
-            after = MainWindow.EditText(doc);
+            after = TextEditor.EditText(doc);
             changed = Enumerable.Range(0, after.Fmt.Count).Where(k => after.Fmt[k] != before.Fmt[k]).ToList();
             shape = h.Element.CloneNode(true);
-            Deck.SetEditText(shape, after.Text, after.Fmt, before.Fmt);
-            src = Deck.CharSources(shape);
+            TextContent.SetEditText(shape, after.Text, after.Fmt, before.Fmt);
+            src = TextContent.CharSources(shape);
             var rPrs = src.Select(e => e?.GetFirstChild<A.RunProperties>()).ToList();
-            check(changed.Count == 2 && Deck.GetEditText(shape) == before.Text
+            check(changed.Count == 2 && TextContent.GetEditText(shape) == before.Text
                   && changed.All(k => X.Attr(rPrs[k], "sz") == "5000" && X.Attr(X.Child(rPrs[k], "latin"), "typeface") == "Arial")
                   && Enumerable.Range(0, rPrs.Count).Except(changed).All(k => X.Attr(rPrs[k], "sz") != "5000"),
                 $"editor: font / size on 2 characters of \"{run.Text.Trim()}\" is saved ({changed.Count} changed)");
@@ -162,7 +167,7 @@ static partial class SelfTest
         }
     }
 
-    /// <summary>In-place edits (<see cref="Deck.SetEditText"/>) must keep runs, paragraph settings, line breaks and fields.</summary>
+    /// <summary>In-place edits (<see cref="TextContent.SetEditText"/>) must keep runs, paragraph settings, line breaks and fields.</summary>
     static void TextEdits(Action<bool, string> check)
     {
         static P.Shape Make() => new($$"""
@@ -181,10 +186,10 @@ static partial class SelfTest
             A.Break => "BR",
             _ => null,
         }).OfType<string>());
-        static P.Shape Edit(Func<string, string> f) { var s = Make(); Deck.SetEditText(s, f(Deck.GetEditText(s))); return s; }
+        static P.Shape Edit(Func<string, string> f) { var s = Make(); TextContent.SetEditText(s, f(TextContent.GetEditText(s))); return s; }
 
         var orig = Make();
-        check(Deck.GetEditText(orig) == "Hello World\vLine2\nSecond3", "edit: text model");
+        check(TextContent.GetEditText(orig) == "Hello World\vLine2\nSecond3", "edit: text model");
         check(Edit(t => t).OuterXml == orig.OuterXml, "edit: no change keeps the XML");
 
         var s = Edit(t => t.Replace("Hello ", "Hello Big "));
@@ -207,7 +212,7 @@ static partial class SelfTest
         check(Runs(Ps(s)[1]) == "Second[u]|4[1000]", "edit: an edited field becomes text — " + Runs(Ps(s)[1]));
 
         s = Edit(t => t.Replace("\vLine2\n", " "));
-        check(Ps(s).Count == 1 && Deck.GetEditText(s) == "Hello World Second3" && Ps(s)[0].ParagraphProperties?.Alignment?.InnerText == "ctr",
+        check(Ps(s).Count == 1 && TextContent.GetEditText(s) == "Hello World Second3" && Ps(s)[0].ParagraphProperties?.Alignment?.InnerText == "ctr",
             "edit: joining paragraphs keeps the first one's settings — " + Runs(Ps(s)[0]));
 
         s = Edit(t => t.Replace("Line2", "Line2\vMore"));
@@ -217,15 +222,15 @@ static partial class SelfTest
         check(Runs(Ps(s)[0]).StartsWith("XHello [b2400]"), "edit: typing at the start takes the first run");
 
         // bold / italic / underline changed in the editor; Fmt per character as the editor showed it
-        var text0 = Deck.GetEditText(orig);
-        List<Deck.Fmt> F(string text, Func<int, Deck.Fmt, Deck.Fmt>? change = null) => text.Select((c, k) =>
+        var text0 = TextContent.GetEditText(orig);
+        List<TextContent.Fmt> F(string text, Func<int, TextContent.Fmt, TextContent.Fmt>? change = null) => text.Select((c, k) =>
         {
             int o = k < text0.Length ? k : -1; // only used with same-length edits or explicit changes below
-            var f = o < 0 ? default : o < 6 ? new Deck.Fmt(true, false, false) : o < 11 ? new Deck.Fmt(false, true, false) : o >= 18 && o < 24 ? new Deck.Fmt(false, false, true) : default;
+            var f = o < 0 ? default : o < 6 ? new TextContent.Fmt(true, false, false) : o < 11 ? new TextContent.Fmt(false, true, false) : o >= 18 && o < 24 ? new TextContent.Fmt(false, false, true) : default;
             return change?.Invoke(k, f) ?? f;
         }).ToList();
         var fmt0 = F(text0);
-        P.Shape Styled(string text, List<Deck.Fmt> fmt) { var sh = Make(); Deck.SetEditText(sh, text, fmt, fmt0); return sh; }
+        P.Shape Styled(string text, List<TextContent.Fmt> fmt) { var sh = Make(); TextContent.SetEditText(sh, text, fmt, fmt0); return sh; }
 
         check(Styled(text0, fmt0).OuterXml == orig.OuterXml, "format: nothing changed keeps the XML");
         s = Styled(text0, F(text0, (k, f) => k is >= 6 and < 11 ? f with { B = true } : f));
@@ -239,7 +244,7 @@ static partial class SelfTest
         check(Runs(Ps(s)[1]) == "Sec[i]|ond[u]|FLD:3" && Ps(s)[1].Elements<A.Run>().First().RunProperties?.Underline?.InnerText == "none",
             "format: underline off / italic on — " + Runs(Ps(s)[1]));
         var typed = text0.Insert(6, "X");
-        s = Styled(typed, F(typed, (k, f) => k == 6 ? new Deck.Fmt(false, false, false) : k > 6 ? F(text0)[k - 1] : f));
+        s = Styled(typed, F(typed, (k, f) => k == 6 ? new TextContent.Fmt(false, false, false) : k > 6 ? F(text0)[k - 1] : f));
         check(Runs(Ps(s)[0]) == "Hello [b2400]|X[2400]|World[i]|BR|Line2[1800]", "format: text typed with bold off — " + Runs(Ps(s)[0]));
 
         // font / size picked for part of the text while editing (size in points as drawn: normAutofit fontScale is undone)
@@ -253,7 +258,7 @@ static partial class SelfTest
             "format: font on part of a run — " + Runs(Ps(s)[0]));
         s = Make();
         s.TextBody!.BodyProperties!.Append(new A.NormalAutoFit { FontScale = 50000 });
-        Deck.SetEditText(s, text0, F(text0, (k, f) => k is >= 6 and < 11 ? f with { Size = 10 } : f), fmt0);
+        TextContent.SetEditText(s, text0, F(text0, (k, f) => k is >= 6 and < 11 ? f with { Size = 10 } : f), fmt0);
         check(Runs(Ps(s)[0]) == "Hello [b2400]|World[i2000]|BR|Line2[1800]", "format: size under fontScale 50% — " + Runs(Ps(s)[0]));
 
         s = Edit(_ => "");

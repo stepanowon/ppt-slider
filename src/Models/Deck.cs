@@ -1,33 +1,33 @@
 using System.IO;
-using System.Windows;
-using System.Windows.Ink;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
-using A = DocumentFormat.OpenXml.Drawing;
 using P = DocumentFormat.OpenXml.Presentation;
+using static PptSlider.Ooxml;
 
 namespace PptSlider;
 
-/// <summary>An open .pptx held in memory. Edits change the OpenXML DOM directly so saving keeps everything we don't render.</summary>
-public sealed partial class Deck : IDisposable
+/// <summary>
+/// An open .pptx held in memory: opening and saving it, its slides (add, duplicate, move, delete) and its edit history.
+/// Edits change the OpenXML DOM directly so saving keeps everything we don't render; what they do to a slide's shapes
+/// and text lives in <see cref="ShapeFactory"/>, <see cref="ShapeLayout"/>, <see cref="ShapeStyle"/>, <see cref="Tables"/>,
+/// <see cref="TextContent"/>, <see cref="TextFormat"/>, <see cref="ShapeClipboard"/> and <see cref="FormatPainter"/>.
+/// </summary>
+public sealed class Deck : IDisposable
 {
-    const string Ns = "xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"";
-
     public string Path { get; private set; }
     public PresentationDocument Doc { get; }
     public PresentationPart Pres => Doc.PresentationPart!;
     public SlideRenderer Renderer { get; }
+    public EditHistory History { get; }
     public bool Dirty { get; private set; }
-    readonly Stack<(SlidePart part, string xml)> undo = new();
-    readonly Stack<(SlidePart part, string xml)> redo = new();
 
     Deck(string path, PresentationDocument doc)
     {
         Path = path;
         Doc = doc;
         Renderer = new SlideRenderer(Pres);
+        History = new EditHistory(sp => Slides.Contains(sp));
+        History.Changed += MarkDirty;
     }
 
     public static Deck Open(string path)
@@ -48,40 +48,15 @@ public sealed partial class Deck : IDisposable
 
     public void Dispose() => Doc.Dispose();
 
+    /// <summary>Something in the document changed since it was saved.</summary>
+    public void MarkDirty() => Dirty = true;
+
     P.SlideIdList IdList => Pres.Presentation!.SlideIdList ??= new P.SlideIdList();
 
     public List<SlidePart> Slides => SlidesOf(Pres);
 
     static List<SlidePart> SlidesOf(PresentationPart pres) =>
         pres.Presentation!.SlideIdList?.Elements<P.SlideId>().Select(s => (SlidePart)pres.GetPartById(s.RelationshipId!)).ToList() ?? [];
-
-    // ---------- undo ----------
-
-    /// <summary>Call before mutating a slide.</summary>
-    public void Snapshot(SlidePart sp)
-    {
-        undo.Push((sp, sp.Slide!.OuterXml));
-        redo.Clear(); // a new edit: what was undone can no longer be redone
-        Dirty = true;
-    }
-
-    public SlidePart? Undo() => Restore(undo, redo);
-
-    /// <summary>Puts back the last edit <see cref="Undo"/> took back (Ctrl+Y).</summary>
-    public SlidePart? Redo() => Restore(redo, undo);
-
-    SlidePart? Restore(Stack<(SlidePart part, string xml)> from, Stack<(SlidePart part, string xml)> to)
-    {
-        while (from.TryPop(out var u))
-        {
-            if (!Slides.Contains(u.part)) continue; // slide was deleted since
-            to.Push((u.part, u.part.Slide!.OuterXml));
-            u.part.Slide = new P.Slide(u.xml);
-            Dirty = true;
-            return u.part;
-        }
-        return null;
-    }
 
     // ---------- save ----------
 
@@ -91,25 +66,6 @@ public sealed partial class Deck : IDisposable
         SaveCopy(path);
         Path = path;
         Dirty = false;
-    }
-
-    /// <summary>The strokes drawn as they look on screen, for a PDF page.</summary>
-    public static DrawingVisual InkVisual(StrokeCollection strokes)
-    {
-        var dv = new DrawingVisual();
-        using var dc = dv.RenderOpen();
-        foreach (var s in strokes)
-        {
-            var st = s.Clone();
-            if (st.DrawingAttributes.IsHighlighter) // bake highlighter transparency into the color
-            {
-                st.DrawingAttributes.IsHighlighter = false;
-                var c = st.DrawingAttributes.Color;
-                st.DrawingAttributes.Color = Color.FromArgb(0x70, c.R, c.G, c.B);
-            }
-            st.Draw(dc);
-        }
-        return dv;
     }
 
     /// <summary>Writes the deck as it is to <paramref name="path"/> without making it the deck's file or clearing <see cref="Dirty"/> (autosave).</summary>
@@ -135,329 +91,7 @@ public sealed partial class Deck : IDisposable
         }
     }
 
-    /// <summary>Picture formats <see cref="AddPicture"/> takes, by file extension.</summary>
-    public static PartTypeInfo? PictureType(string ext) => ext.ToLowerInvariant() switch
-    {
-        ".png" => ImagePartType.Png,
-        ".jpg" or ".jpeg" => ImagePartType.Jpeg,
-        ".gif" => ImagePartType.Gif,
-        ".bmp" => ImagePartType.Bmp,
-        _ => null,
-    };
-
-    /// <summary>Adds a picture shape showing <paramref name="image"/> at <paramref name="r"/> (slide coordinates).</summary>
-    public static OpenXmlElement AddPicture(SlidePart sp, byte[] image, PartTypeInfo type, Rect r)
-    {
-        var img = sp.AddImagePart(type);
-        using (var s = img.GetStream(FileMode.Create)) s.Write(image);
-        var pic = new P.Picture($"""
-            <p:pic {Ns}><p:nvPicPr><p:cNvPr id="{NextId(sp)}" name="Picture"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
-            <p:blipFill><a:blip r:embed="{sp.GetIdOfPart(img)}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
-            <p:spPr><a:xfrm><a:off x="{(long)(r.X * SlideRenderer.Emu)}" y="{(long)(r.Y * SlideRenderer.Emu)}"/><a:ext cx="{(long)(r.Width * SlideRenderer.Emu)}" cy="{(long)(r.Height * SlideRenderer.Emu)}"/></a:xfrm>
-            <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
-            """);
-        AppendShape(sp, pic);
-        return pic;
-    }
-
-    static uint NextId(SlidePart sp) =>
-        sp.Slide!.Descendants<P.NonVisualDrawingProperties>().Select(p => p.Id?.Value ?? 0).DefaultIfEmpty(0u).Max() + 1;
-
-    // ---------- shape edits ----------
-
-    /// <summary>The speaker notes: the text of the notes page's body placeholder ("" when there are none).</summary>
-    public static string Notes(SlidePart sp)
-    {
-        var shapes = sp.NotesSlidePart?.NotesSlide?.CommonSlideData?.ShapeTree?.Elements<P.Shape>() ?? [];
-        var body = shapes.FirstOrDefault(s =>
-            s.NonVisualShapeProperties?.ApplicationNonVisualDrawingProperties?.PlaceholderShape?.Type?.Value == P.PlaceholderValues.Body);
-        return body == null ? "" : GetText(body).Trim();
-    }
-
-    /// <summary>A shape or table cell whose own text can be edited in place.</summary>
-    public static bool HasText(OpenXmlElement shape) => shape.LocalName is "sp" or "tc";
-
-    public static string GetText(OpenXmlElement shape) =>
-        string.Join("\n", (X.Child(shape, "txBody")?.Elements<A.Paragraph>() ?? []).Select(p =>
-            string.Concat(p.ChildElements.Select(c => c switch { A.Run r => r.Text?.Text, A.Field f => f.Text?.Text, A.Break => "\n", _ => "" }))));
-
-    /// <summary>Replaces the text, one paragraph per line, keeping each paragraph's and its first run's formatting.</summary>
-    public static void SetText(OpenXmlElement shape, string text)
-    {
-        var tx = X.Child(shape, "txBody") as P.TextBody;
-        if (tx == null) { tx = new P.TextBody(new A.BodyProperties(), new A.ListStyle()); shape.Append(tx); }
-        var old = tx.Elements<A.Paragraph>().ToList();
-        foreach (var o in old) o.Remove();
-        var lines = text.Replace("\r", "").Split('\n');
-        for (int i = 0; i < lines.Length; i++)
-        {
-            var tpl = old.Count > 0 ? old[Math.Min(i, old.Count - 1)] : null;
-            var p = new A.Paragraph();
-            if (tpl?.ParagraphProperties is { } pp) p.Append(pp.CloneNode(true));
-            var rPr = tpl?.Descendants<A.RunProperties>().FirstOrDefault();
-            var endPr = tpl?.GetFirstChild<A.EndParagraphRunProperties>();
-            if (lines[i].Length > 0)
-            {
-                var r = new A.Run();
-                if (rPr != null) r.Append(rPr.CloneNode(true));
-                else if (endPr != null) r.Append(Copy<A.RunProperties>(endPr));
-                r.Append(new A.Text(lines[i]));
-                p.Append(r);
-            }
-            if (endPr != null) p.Append(endPr.CloneNode(true));
-            else if (rPr != null) p.Append(Copy<A.EndParagraphRunProperties>(rPr));
-            tx.Append(p);
-        }
-    }
-
-    /// <summary>
-    /// Bold / italic / underline, font (the editor's font family, first name = the face), size (points as drawn,
-    /// i.e. after <see cref="FontScale"/>), strikethrough, color and highlight (RRGGBB) of one character as the editor shows it.
-    /// </summary>
-    public readonly record struct Fmt(bool B, bool I, bool U, string? Font = null, double Size = 0, bool S = false, string? Color = null, string? Hl = null);
-
-    /// <summary>
-    /// Formatting the editor changed on a character (null: as its run says). <see cref="Size"/> is in points as stored;
-    /// <see cref="Hl"/> "" takes the highlight away.
-    /// </summary>
-    readonly record struct Ovr(bool? B, bool? I, bool? U, string? Font = null, double? Size = null, bool? S = null, string? Color = null, string? Hl = null)
-    {
-        public bool Any => B != null || I != null || U != null || Font != null || Size != null || S != null || Color != null || Hl != null;
-
-        public void Apply(A.RunProperties r)
-        {
-            if (B is { } b) SetAttr(r, "b", b ? "1" : "0");
-            if (I is { } i) SetAttr(r, "i", i ? "1" : "0");
-            if (U is { } u) SetAttr(r, "u", u ? "sng" : "none");
-            if (S is { } s) SetAttr(r, "strike", s ? "sngStrike" : "noStrike");
-            if (Size is { } sz) SetAttr(r, "sz", ((int)Math.Round(sz * 100)).ToString());
-            if (Color is { Length: 6 } c) Put(r, RPrOrder, "solidFill", new A.SolidFill(new A.RgbColorModelHex { Val = c }));
-            if (Hl is { } h) SetHighlight(r, h);
-            if (Font is { } f) SetFont(r, f.Split(',')[0].Trim());
-        }
-    }
-
-    /// <summary>The shrink-on-overflow scale (normAutofit fontScale) the shape's text is drawn with.</summary>
-    public static double FontScale(OpenXmlElement shape) =>
-        (X.Long(X.Child(X.Child(X.Child(shape, "txBody"), "bodyPr"), "normAutofit"), "fontScale") ?? 100000) / 100000.0;
-
-    /// <summary>One character of a shape's text and the run / field / line break it came from (null: a paragraph end).</summary>
-    readonly record struct Ch(char C, OpenXmlElement? Src, int Para, bool Typed = false, Ovr O = default);
-
-    static List<Ch> Chars(List<A.Paragraph> paras)
-    {
-        var list = new List<Ch>();
-        for (int i = 0; i < paras.Count; i++)
-        {
-            if (i > 0) list.Add(new('\n', null, i - 1));
-            foreach (var e in paras[i].ChildElements)
-                switch (e)
-                {
-                    case A.Run r: foreach (var c in r.Text?.Text ?? "") list.Add(new(c, r, i)); break;
-                    case A.Field f: foreach (var c in f.Text?.Text ?? "") list.Add(new(c, f, i)); break;
-                    case A.Break: list.Add(new('\v', e, i)); break;
-                }
-        }
-        return list;
-    }
-
-    /// <summary>The text the in-place editor works on: paragraphs joined by '\n', line breaks (a:br) as '\v'.</summary>
-    /// <summary>For each character of <see cref="GetEditText"/>: the run / field / line break it belongs to (null: paragraph end).</summary>
-    internal static List<OpenXmlElement?> CharSources(OpenXmlElement shape) =>
-        Chars(X.Child(shape, "txBody")?.Elements<A.Paragraph>().ToList() ?? []).Select(c => c.Src).ToList();
-
-    public static string GetEditText(OpenXmlElement shape) =>
-        new(Chars(X.Child(shape, "txBody")?.Elements<A.Paragraph>().ToList() ?? []).Select(c => c.C).ToArray());
-
-    /// <summary>
-    /// Applies an edit of <see cref="GetEditText"/> keeping the formatting: unchanged characters keep their run,
-    /// typed text takes the formatting of the text it replaces or follows (as in PowerPoint),
-    /// a new paragraph copies the one it was split from, and untouched paragraphs are left as they are.
-    /// <paramref name="fmt"/> (per character of <paramref name="text"/>) and <paramref name="oldFmt"/> (per character of the
-    /// original text) are what the editor showed after and before: where they differ, bold / italic / underline / font / size is set on the run.
-    /// </summary>
-    /// <param name="scale">The font scale the editor showed the text at; default: the shape's <see cref="FontScale"/>.</param>
-    public static void SetEditText(OpenXmlElement shape, string text, IReadOnlyList<Fmt>? fmt = null, IReadOnlyList<Fmt>? oldFmt = null, double? scale = null)
-    {
-        var tx = X.Child(shape, "txBody");
-        var paras = tx?.Elements<A.Paragraph>().ToList() ?? [];
-        if (paras.Count == 0) { SetText(shape, text.Replace('\v', '\n')); return; }
-        var old = Chars(paras);
-        int n = old.Count, pre = 0, suf = 0;
-        while (pre < n && pre < text.Length && old[pre].C == text[pre]) pre++;
-        while (suf < n - pre && suf < text.Length - pre && old[n - 1 - suf].C == text[text.Length - 1 - suf]) suf++;
-
-        // the paragraph the edit starts in, and the formatting typed text takes
-        int at = pre == 0 ? 0 : old[pre - 1].Src == null ? old[pre - 1].Para + 1 : old[pre - 1].Para;
-        bool Styled(int i) => i >= 0 && i < n && old[i].Para == at && old[i].Src is A.Run or A.Field;
-        int styleAt = Styled(pre) && pre < n - suf ? pre // replacing a selection: its first character
-            : Styled(pre - 1) ? pre - 1 : Styled(pre) ? pre : -1;
-        var style = styleAt >= 0 ? old[styleAt].Src : null;
-
-        var items = old.Take(pre)
-            .Concat(text[pre..(text.Length - suf)].Select(c => new Ch(c, style, at, Typed: true)))
-            .Concat(old.Skip(n - suf)).ToList();
-        if (fmt != null && oldFmt != null)
-        {
-            double s = scale ?? FontScale(shape);
-            for (int k = 0; k < items.Count; k++)
-            {
-                int was = k < pre ? k : k >= text.Length - suf ? k - text.Length + n : styleAt; // the original character it compares to
-                Fmt a = was >= 0 ? oldFmt[was] : default, b = fmt[k];
-                // font and size only against a real character: an empty box's editor defaults are not a choice
-                bool font = was >= 0 && b.Font != null && a.Font != b.Font, size = was >= 0 && b.Size > 0 && Math.Abs(a.Size - b.Size) > 0.01;
-                bool color = was >= 0 && b.Color != null && a.Color != b.Color;
-                items[k] = items[k] with { O = new Ovr(a.B != b.B ? b.B : null, a.I != b.I ? b.I : null, a.U != b.U ? b.U : null,
-                    font ? b.Font : null, size ? b.Size / s : null, a.S != b.S ? b.S : null, color ? b.Color : null, a.Hl != b.Hl ? b.Hl ?? "" : null) };
-            }
-        }
-        var counts = paras.Select((_, i) => old.Count(c => c.Para == i && c.Src != null)).ToList();
-
-        var result = new List<A.Paragraph>();
-        int cur = items.Count > 0 && !items[0].Typed ? items[0].Para : at;
-        var line = new List<Ch>();
-        foreach (var it in items)
-        {
-            if (it.C != '\n') { line.Add(it); continue; }
-            result.Add(BuildParagraph(paras[cur], cur, line, counts[cur]));
-            line.Clear();
-            if (!it.Typed) cur = it.Para + 1; // a typed Enter splits: both halves copy the same paragraph
-        }
-        result.Add(BuildParagraph(paras[cur], cur, line, counts[cur]));
-
-        foreach (var p in paras) p.Remove();
-        foreach (var p in result) tx!.Append(p);
-    }
-
-    static A.Paragraph BuildParagraph(A.Paragraph tpl, int index, List<Ch> line, int count)
-    {
-        if (line.Count == count && line.All(c => !c.Typed && c.Para == index && !c.O.Any)) return (A.Paragraph)tpl.CloneNode(true);
-        var endPr = tpl.GetFirstChild<A.EndParagraphRunProperties>();
-        A.RunProperties? RPr(OpenXmlElement? src) =>
-            src?.GetFirstChild<A.RunProperties>()?.CloneNode(true) as A.RunProperties ?? (endPr != null ? Copy<A.RunProperties>(endPr) : null);
-
-        var p = new A.Paragraph();
-        if (tpl.ParagraphProperties is { } pp) p.Append(pp.CloneNode(true));
-        A.RunProperties? firstRPr = null;
-        for (int i = 0; i < line.Count;)
-        {
-            var it = line[i];
-            if (it.C == '\v')
-            {
-                if (!it.Typed) p.Append(it.Src!.CloneNode(true));
-                else { var br = new A.Break(); if (RPr(it.Src) is { } r) br.Append(r); p.Append(br); }
-                i++;
-                continue;
-            }
-            int j = i;
-            while (j < line.Count && line[j].C != '\v' && ReferenceEquals(line[j].Src, it.Src) && line[j].O == it.O
-                   && (it.Src is not A.Field || line[j].Typed == it.Typed)) j++; // text typed next to a field must not swallow it
-            var group = line.GetRange(i, j - i);
-            var s = new string(group.Select(c => c.C).ToArray());
-            if (it.Src is A.Field f && !it.O.Any && group.All(c => !c.Typed) && s == f.Text?.Text)
-                p.Append(f.CloneNode(true)); // an untouched field (slide number, date) stays a field
-            else
-            {
-                var run = new A.Run();
-                var r = RPr(it.Src);
-                if (it.O.Any) it.O.Apply(r ??= new A.RunProperties());
-                if (r != null) { run.Append(r); firstRPr ??= r; }
-                run.Append(new A.Text(s));
-                p.Append(run);
-            }
-            i = j;
-        }
-        if (endPr != null) p.Append(endPr.CloneNode(true));
-        else if (firstRPr != null) p.Append(Copy<A.EndParagraphRunProperties>(firstRPr));
-        return p;
-    }
-
-    static T Copy<T>(OpenXmlElement from) where T : OpenXmlCompositeElement, new()
-    {
-        var t = new T();
-        t.SetAttributes(from.GetAttributes());
-        foreach (var c in from.ChildElements) t.Append(c.CloneNode(true));
-        return t;
-    }
-
-    /// <summary>Applies <paramref name="f"/> to every run (and end-of-paragraph) property set in the shape.</summary>
-    public static void EditRuns(OpenXmlElement shape, Action<OpenXmlCompositeElement> f)
-    {
-        foreach (var p in Paragraphs(shape))
-        {
-            foreach (var r in p.Elements<A.Run>())
-                f(r.RunProperties ??= new A.RunProperties());
-            var end = p.GetFirstChild<A.EndParagraphRunProperties>();
-            if (end == null) p.Append(end = new A.EndParagraphRunProperties());
-            f(end);
-        }
-    }
-
-    public static string? FirstRun(OpenXmlElement shape, string attr) =>
-        TextBodies(shape).SelectMany(t => t.Descendants()).Where(e => e.LocalName is "rPr" or "endParaRPr").Select(e => X.Attr(e, attr)).FirstOrDefault(v => v != null);
-
-    public static string? FirstRunFont(OpenXmlElement shape) =>
-        TextBodies(shape).SelectMany(t => t.Descendants()).Where(e => e.LocalName == "latin").Select(e => X.Attr(e, "typeface")).FirstOrDefault(v => v != null && !v.StartsWith('+'));
-
-    public static void SetAttr(OpenXmlElement e, string name, string? value)
-    {
-        if (value == null) e.RemoveAttribute(name, "");
-        else e.SetAttribute(new OpenXmlAttribute(name, "", value));
-    }
-
-    public static void SetColor(OpenXmlCompositeElement rPr, Color c) => Put(rPr, RPrOrder, "solidFill", Solid(c));
-
-    public static void SetFont(OpenXmlCompositeElement rPr, string face)
-    {
-        Put(rPr, RPrOrder, "latin", new A.LatinFont { Typeface = face });
-        Put(rPr, RPrOrder, "ea", new A.EastAsianFont { Typeface = face });
-    }
-
-    public static void SetAlign(OpenXmlElement shape, string algn)
-    {
-        foreach (var p in Paragraphs(shape)) SetAlign(p, algn);
-    }
-
-    /// <summary>Moves/resizes a top-level shape. Placeholders without their own xfrm get one from their drawn bounds.</summary>
-    public static void SetBounds(OpenXmlElement shape, Rect r)
-    {
-        OpenXmlElement? xfrm = shape.LocalName == "graphicFrame" ? X.Child(shape, "xfrm") : null;
-        if (xfrm == null)
-        {
-            var owner = X.Child(shape, shape.LocalName == "grpSp" ? "grpSpPr" : "spPr");
-            if (owner == null) return;
-            xfrm = X.Child(owner, "xfrm");
-            if (xfrm == null) { xfrm = new A.Transform2D(new A.Offset(), new A.Extents()); owner.InsertAt(xfrm, 0); }
-        }
-        var off = xfrm.GetFirstChild<A.Offset>()!; var ext = xfrm.GetFirstChild<A.Extents>()!;
-        double min = shape.LocalName == "cxnSp" ? 0 : 1; // a straight line has no height (or width)
-        long cx = (long)(Math.Max(min, r.Width) * SlideRenderer.Emu), cy = (long)(Math.Max(min, r.Height) * SlideRenderer.Emu);
-        // a table is drawn from its column widths and row heights: a new size scales them
-        if (shape.LocalName == "graphicFrame" && Tbl(shape) is { } tbl && ext.Cx?.Value is > 0 and var ocx && ext.Cy?.Value is > 0 and var ocy && (cx != ocx || cy != ocy))
-        {
-            foreach (var col in X.Child(tbl, "tblGrid")?.ChildElements.Where(c => c.LocalName == "gridCol") ?? [])
-                SetAttr(col, "w", ((long)Math.Round((X.Long(col, "w") ?? 0) * (double)cx / ocx)).ToString());
-            foreach (var tr in Rows(tbl))
-                SetAttr(tr, "h", ((long)Math.Round((X.Long(tr, "h") ?? 0) * (double)cy / ocy)).ToString());
-        }
-        off.X = (long)(r.X * SlideRenderer.Emu); off.Y = (long)(r.Y * SlideRenderer.Emu);
-        ext.Cx = cx; ext.Cy = cy;
-    }
-
-    public static OpenXmlElement AddTextBox(SlidePart sp, Rect r, string text)
-    {
-        var shape = new P.Shape($"""
-            <p:sp {Ns}><p:nvSpPr><p:cNvPr id="{NextId(sp)}" name="TextBox"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
-            <p:spPr><a:xfrm><a:off x="{(long)(r.X * SlideRenderer.Emu)}" y="{(long)(r.Y * SlideRenderer.Emu)}"/><a:ext cx="{(long)(r.Width * SlideRenderer.Emu)}" cy="{(long)(r.Height * SlideRenderer.Emu)}"/></a:xfrm>
-            <a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>
-            <p:txBody><a:bodyPr wrap="square"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p><a:r><a:rPr lang="ko-KR" sz="2400"/><a:t></a:t></a:r></a:p></p:txBody></p:sp>
-            """);
-        shape.Descendants<A.Text>().First().Text = text;
-        AppendShape(sp, shape);
-        return shape;
-    }
-
-    // ---------- slide edits ----------
+    // ---------- slides ----------
 
     /// <summary>The slide's p:sldId id: stable while the deck is edited and across saves, unlike its position.</summary>
     public uint IdOf(SlidePart sp) =>

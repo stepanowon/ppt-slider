@@ -224,13 +224,18 @@ Add-AppxPackage bin\msix\PptSlider_<バージョン>_x64.msix
 build-msix.ps1          MSIX パッケージのビルド
 Package/                AppxManifest.xml、Assets (ロゴ)、StoreArt (Store 用画像)、make-assets.ps1、make-store-art.ps1
 screen/                 README と Store 用のスクリーンショット (ko、ja、en)
-docs/                   store-listing.md (Store の一覧の文言)
+docs/                   store-listing.md (Store の一覧の文言)、テスト計画・テスト結果 (バージョンごと、韓国語)
 src/
 ├─ App.xaml(.cs)        エントリ ポイント (--selftest の処理、起動時にファイルを開く)
 ├─ Views/               MainWindow (エディター)、ShowWindow (スライド ショー)、PresenterWindow (発表者ツール)、
 │                       InkOverlay (画面上の手書き)、BreakWindow (休憩タイマー)、ShortcutsWindow (ショートカットの設定)
-├─ Models/              Deck (.pptx ドキュメント・編集・保存・元に戻す)、PenState (手書きツールの状態)、InkHistory (手書きの元に戻す)
-├─ Rendering/           SlideRenderer (PPTX → WPF のレンダリング、SmartArt を含む)
+├─ Editing/             編集の部品 (IEditorHost だけに依存): ShapeSelection (選択)、SelectionAdorner (ハンドル)、StageInteraction (マウス)、
+│                       TextEditor (その場でのテキスト編集)、Shape・Text・Table・Insert・ClipboardCommands (コマンド)、FormatPainterTool (書式のコピー)、
+│                       EditingParts (部品の組み立て)
+├─ Models/              Deck (.pptx ドキュメント・保存・スライド一覧)、EditHistory (元に戻す)、ShapeFactory・ShapeLayout・ShapeStyle (図形)、
+│                       Tables (表)、TextContent・TextFormat (テキストと書式)、ShapeClipboard・FormatPainter (コピー)、SlideTree・Ooxml・X (XML ヘルパー)、
+│                       PenState (手書きツールの状態)、InkHistory (手書きの元に戻す)
+├─ Rendering/           SlideRenderer (PPTX → WPF のレンダリング、SmartArt を含む)、ShapeGeometry (図形の輪郭)、ColorMath (色)、TextPanel、ShapeHit
 ├─ Services/            Shortcuts (ショートカット)、Monitors (モニター一覧)、PdfExport (PDF)、
 │                       RecentFiles (最近使ったファイル)、AutoSave (自動保存)、AppPaths (アプリ データ フォルダー)、Loc (韓国語・日本語・英語の UI 文字列)
 └─ Diagnostics/         SelfTest (編集・スライド ショー・手書き・ビューアーの検査)、Screenshots (スクリーンショット)

@@ -224,13 +224,18 @@ Add-AppxPackage bin\msix\PptSlider_<버전>_x64.msix
 build-msix.ps1          MSIX 패키지 빌드
 Package/                AppxManifest.xml, Assets(로고), StoreArt(Store 이미지), make-assets.ps1, make-store-art.ps1
 screen/                 README와 Store용 스크린샷 (ko, ja, en)
-docs/                   store-listing.md(Store 목록 문구)
+docs/                   store-listing.md(Store 목록 문구), 테스트계획 · 테스트결과(버전별)
 src/
 ├─ App.xaml(.cs)        진입점 (--selftest 처리, 시작 시 파일 열기)
 ├─ Views/               MainWindow(편집기), ShowWindow(슬라이드 쇼), PresenterWindow(발표자 보기),
 │                       InkOverlay(화면 판서), BreakWindow(휴식 타이머), ShortcutsWindow(단축키 설정)
-├─ Models/              Deck(.pptx 문서 · 편집 · 저장 · 실행 취소), PenState(판서 도구 상태), InkHistory(판서 되돌리기)
-├─ Rendering/           SlideRenderer(PPTX → WPF 렌더링, SmartArt 포함)
+├─ Editing/             편집 부품(IEditorHost에만 의존): ShapeSelection(선택), SelectionAdorner(핸들), StageInteraction(마우스),
+│                       TextEditor(제자리 텍스트 편집), Shape · Text · Table · Insert · ClipboardCommands(명령), FormatPainterTool(서식 복사),
+│                       EditingParts(부품 조립)
+├─ Models/              Deck(.pptx 문서 · 저장 · 슬라이드 목록), EditHistory(실행 취소), ShapeFactory · ShapeLayout · ShapeStyle(도형),
+│                       Tables(표), TextContent · TextFormat(텍스트와 서식), ShapeClipboard · FormatPainter(복사), SlideTree · Ooxml · X(XML 도우미),
+│                       PenState(판서 도구 상태), InkHistory(판서 되돌리기)
+├─ Rendering/           SlideRenderer(PPTX → WPF 렌더링, SmartArt 포함), ShapeGeometry(도형 윤곽), ColorMath(색), TextPanel, ShapeHit
 ├─ Services/            Shortcuts(단축키), Monitors(모니터 목록), PdfExport(PDF),
 │                       RecentFiles(최근 파일), AutoSave(자동 저장), AppPaths(앱 데이터 폴더), Loc(한 · 일 · 영 UI 문자열)
 └─ Diagnostics/         SelfTest (편집 · 쇼 · 판서 · 뷰어 검사), Screenshots (스크린샷)

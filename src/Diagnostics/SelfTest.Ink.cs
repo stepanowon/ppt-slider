@@ -162,13 +162,13 @@ static partial class SelfTest
             int Pics() => sp.Slide!.Descendants<P.Picture>().Count();
             int before = Pics();
             int imagesBefore = sp.ImageParts.Count(); // the slide's own images (from the test deck)
-            check(main.InsertPicture(TinyPng(), Deck.PictureType(".png")!.Value), "picture: inserted");
+            check(main.InsertCommands.Picture(TinyPng(), ShapeFactory.PictureType(".png")!.Value), "picture: inserted");
             var hits = new List<ShapeHit>();
             main.Deck!.Renderer.Render(sp, hits);
             var h = hits.LastOrDefault(x => x.Element is P.Picture);
             double w = main.Deck.Renderer.Width, ht = main.Deck.Renderer.Height;
             check(Pics() == before + 1 && h != null && Math.Abs(h.Bounds.Width - 40) < 0.5 && Math.Abs(h.Bounds.X + 20 - w / 2) < 0.5 && Math.Abs(h.Bounds.Y + 10 - ht / 2) < 0.5
-                  && main.SelectedElement == h.Element && main.Deck.Dirty,
+                  && main.Selection.Primary == h.Element && main.Deck.Dirty,
                 $"picture: own size, centered, selected ({h?.Bounds})");
             main.Run("undo");
             check(Pics() == before, "picture: Ctrl+Z takes it out");
@@ -181,9 +181,9 @@ static partial class SelfTest
             check(Images(sp) == imagesBefore + 1, "picture: the undone image stays in memory (undo can bring it back)");
             using (var re = Deck.Open(saved))
                 check(Images(re.Slides[0]) == imagesBefore, "picture: saved file leaves out the undone picture's image");
-            var kept = Deck.AddPicture(sp, TinyPng(), Deck.PictureType(".png")!.Value, new Rect(10, 10, 40, 20));
+            var kept = ShapeFactory.AddPicture(sp, TinyPng(), ShapeFactory.PictureType(".png")!.Value, new Rect(10, 10, 40, 20));
             deck.Duplicate(0);
-            deck.Snapshot(sp);
+            deck.History.Snapshot(sp);
             kept.Remove(); // gone from slide 1, still on its duplicate (which shares the image part)
             deck.SaveCopy(saved);
             using (var re = Deck.Open(saved))
@@ -192,7 +192,7 @@ static partial class SelfTest
                     "picture: an image dropped from one slide stays for the duplicate that still shows it");
             var txt = Path.Combine(outDir, "not-a-picture.txt");
             File.WriteAllText(txt, "x");
-            check(!main.InsertPictureFile(txt) && Pics() == before, "picture: other files are ignored");
+            check(!main.InsertCommands.PictureFile(txt) && Pics() == before, "picture: other files are ignored");
         }
         finally { main.CloseForTest(); }
     }
@@ -218,20 +218,20 @@ static partial class SelfTest
                 .Select(p => p.Fill).OfType<ImageBrush>().Select(b => (b.ImageSource as BitmapSource)?.PixelWidth ?? -1).LastOrDefault(-1);
 
         using var deck = Deck.Open(file);
-        var png = Deck.PictureType(".png")!.Value;
+        var png = ShapeFactory.PictureType(".png")!.Value;
         var first = deck.NewSlide(0, blank: true);
-        Deck.AddPicture(first, Png(40, 20), png, new Rect(10, 10, 200, 100));
+        ShapeFactory.AddPicture(first, Png(40, 20), png, new Rect(10, 10, 200, 100));
         var firstUri = first.ImageParts.Single().Uri;
         check(DrawnWidth(deck.Renderer.Render(first)) == 40, "image cache: the first picture is drawn");
         deck.DeleteSlide(1);
         var second = deck.NewSlide(0, blank: true);
-        Deck.AddPicture(second, Png(80, 10), png, new Rect(10, 10, 200, 100));
+        ShapeFactory.AddPicture(second, Png(80, 10), png, new Rect(10, 10, 200, 100));
         var secondUri = second.ImageParts.Single().Uri;
         int w = DrawnWidth(deck.Renderer.Render(second));
         check(w == 80, $"image cache: a new picture is drawn as itself, not as a deleted one (part name {(secondUri == firstUri ? "reused" : "new")}, drawn {w}px wide)");
         // a picture replaced in place (its part deleted, a new one added to the same slide)
         second.DeletePart(second.ImageParts.Single());
-        Deck.AddPicture(second, Png(60, 60), png, new Rect(10, 10, 200, 100));
+        ShapeFactory.AddPicture(second, Png(60, 60), png, new Rect(10, 10, 200, 100));
         check(DrawnWidth(deck.Renderer.Render(second)) == 60, "image cache: a picture replaced on the same slide is drawn as the new one");
     }
 
@@ -241,7 +241,7 @@ static partial class SelfTest
         using var deck = Deck.Open(file);
         double w = deck.Renderer.Width, h = deck.Renderer.Height;
         var sp = deck.NewSlide(0, blank: true);
-        var box = Deck.AddTextBox(sp, new Rect(100, 100, 400, 40), string.Join('\n', Enumerable.Range(1, 8).Select(i => $"넘치는 줄 {i}")));
+        var box = ShapeFactory.AddTextBox(sp, new Rect(100, 100, 400, 40), string.Join('\n', Enumerable.Range(1, 8).Select(i => $"넘치는 줄 {i}")));
         box.Descendants<A.BodyProperties>().First().RemoveAllChildren(); // no autofit: the box keeps its 40 px height
         var canvas = deck.Renderer.Render(sp);
         canvas.Measure(new Size(w, h));
@@ -277,10 +277,10 @@ static partial class SelfTest
             main.MoveSlide(0, deck.Slides.Count);
             check(deck.Slides[^1] == order[0], "reorder: dropped below the last = the end");
             var path = Path.Combine(outDir, "reordered.pptx");
-            var first = Deck.GetText(deck.Slides[^1].Slide!.Descendants<P.Shape>().First(s => Deck.HasText(s)));
+            var first = TextContent.GetText(deck.Slides[^1].Slide!.Descendants<P.Shape>().First(s => TextContent.HasText(s)));
             deck.Save(path);
             using var saved = Deck.Open(path);
-            check(saved.Slides.Count == order.Count && saved.Slides[^1].Slide!.Descendants<P.Shape>().Any(s => Deck.HasText(s) && Deck.GetText(s) == first),
+            check(saved.Slides.Count == order.Count && saved.Slides[^1].Slide!.Descendants<P.Shape>().Any(s => TextContent.HasText(s) && TextContent.GetText(s) == first),
                 "reorder: the order is saved");
         }
         finally { main.CloseForTest(); }
@@ -292,11 +292,11 @@ static partial class SelfTest
         using var deck = Deck.Open(file);
         var sp = deck.Slides[0];
         var r = new Rect(60, 60, 300, 80);
-        var shape = Deck.AddTextBox(sp, r, string.Join("\n", Enumerable.Range(1, 5).Select(i => $"줄 {i} — 넘치는 텍스트")));
+        var shape = ShapeFactory.AddTextBox(sp, r, string.Join("\n", Enumerable.Range(1, 5).Select(i => $"줄 {i} — 넘치는 텍스트")));
         var body = shape.Descendants<A.BodyProperties>().First();
         body.RemoveAllChildren();
         body.Append(new A.NormalAutoFit());
-        Deck.EditRuns(shape, run => Deck.SetAttr(run, "sz", "2400"));
+        TextFormat.EditRuns(shape, run => Ooxml.SetAttr(run, "sz", "2400"));
         var hits = new List<ShapeHit>();
         var el = deck.Renderer.Render(sp, hits);
         var h = hits.First(x => x.Element == shape);

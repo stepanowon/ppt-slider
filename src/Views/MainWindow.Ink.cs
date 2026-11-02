@@ -132,7 +132,7 @@ public partial class MainWindow
 
     void OnPenChanged()
     {
-        if (Pen.Tool != Tool.Select) { CommitEdit(); selected = null; pendingShape = null; EndPainter(); Stage.Cursor = null; DrawSelection(); }
+        if (Pen.Tool != Tool.Select) { CommitEdit(); Selection.Primary = null; EndTools(); DrawSelection(); }
         UpdateOverlay();
         ToolSelect.IsChecked = Pen.Tool == Tool.Select;
         ToolPen.IsChecked = Pen.Tool == Tool.Pen;

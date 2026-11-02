@@ -147,8 +147,8 @@ static partial class SelfTest
             main.Open(path);
             main.AutoSaveNow();
             check(!File.Exists(copy), "autosave: nothing to copy without edits");
-            main.Deck!.Snapshot(main.Deck.Slides[0]);
-            Deck.SetText(FirstText(main.Deck), "자동 저장 테스트");
+            main.Deck!.History.Snapshot(main.Deck.Slides[0]);
+            TextContent.SetText(FirstText(main.Deck), "자동 저장 테스트");
             main.AutoSaveNow();
             check(File.Exists(copy) && AutoSave.Recoverable(path) == copy, "autosave: edits are copied aside, the copy is newer than the file");
         }
@@ -160,21 +160,21 @@ static partial class SelfTest
         {
             main.Open(path);
             var d = main.Deck!;
-            check(asked && d.Dirty && d.Path == path && Deck.GetText(FirstText(d)) == "자동 저장 테스트" && main.Title.Contains('*'),
+            check(asked && d.Dirty && d.Path == path && TextContent.GetText(FirstText(d)) == "자동 저장 테스트" && main.Title.Contains('*'),
                 "autosave: reopening offers the copy; yes = the edits are back, unsaved, under the file's own name");
             main.Run("save");
             check(!File.Exists(copy) && !d.Dirty, "autosave: saving removes the copy");
         }
         finally { main.CloseForTest(); }
         using (var d = Deck.Open(path))
-            check(Deck.GetText(FirstText(d)) == "자동 저장 테스트", "autosave: the recovered edits were saved into the file");
+            check(TextContent.GetText(FirstText(d)) == "자동 저장 테스트", "autosave: the recovered edits were saved into the file");
 
         main = new MainWindow();
         try
         {
             main.Open(path);
-            main.Deck!.Snapshot(main.Deck.Slides[0]);
-            Deck.SetText(FirstText(main.Deck), "버릴 편집");
+            main.Deck!.History.Snapshot(main.Deck.Slides[0]);
+            TextContent.SetText(FirstText(main.Deck), "버릴 편집");
             main.AutoSaveNow();
         }
         finally { main.CloseForTest(); }
@@ -183,7 +183,7 @@ static partial class SelfTest
         try
         {
             main.Open(path);
-            check(asked && !main.Deck!.Dirty && Deck.GetText(FirstText(main.Deck)) == "자동 저장 테스트" && !File.Exists(copy),
+            check(asked && !main.Deck!.Dirty && TextContent.GetText(FirstText(main.Deck)) == "자동 저장 테스트" && !File.Exists(copy),
                 "autosave: no = the file as it is, and the copy is removed");
         }
         finally { main.CloseForTest(); }
