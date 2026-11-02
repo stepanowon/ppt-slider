@@ -42,17 +42,12 @@ public partial class MainWindow : Window
     InkOverlay? overlay;
     bool inkHidden;
     List<ShapeHit> hits = [];
-    OpenXmlElement? selected;
     RichTextBox? editBox;
     FrameworkElement? editHidden; // the drawn text the editor covers
     List<Deck.Fmt> editStart = []; // bold / italic / underline per character when editing began
     double editScale = 1; // the font scale the editor shows the text at
     ShowWindow? show;
     bool syncing;
-    // dragging a selected shape
-    Point dragStart;
-    Rect dragOrig, dragRect;
-    bool dragging, resizing;
 
     public MainWindow()
     {
@@ -120,6 +115,8 @@ public partial class MainWindow : Window
         inkLog.Clear();
         inkLog.Track(desktopInk);
         selected = null;
+        cell = null;
+        clip = null; // its shapes belong to the file that was open
         StageFrame.Visibility = Visibility.Visible;
         EmptyPanel.Visibility = Visibility.Collapsed;
         Stage.Width = d.Renderer.Width;
@@ -270,7 +267,7 @@ public partial class MainWindow : Window
         if (Deck == null || Count == 0) return;
         i = Math.Clamp(i, 0, Count - 1);
         CommitEdit();
-        if (i != Current) selected = null;
+        if (i != Current) { selected = null; cell = null; }
         Current = i;
         RenderCurrent();
         syncing = true;
@@ -299,7 +296,7 @@ public partial class MainWindow : Window
     {
         hits = [];
         SlideHost.Content = Deck!.Renderer.Render(CurrentSlide!, hits);
-        if (selected != null && hits.All(h => h.Element != selected)) selected = null;
+        sel.RemoveAll(e => hits.All(h => h.Element != e));
         DrawSelection();
     }
 
@@ -372,15 +369,29 @@ public partial class MainWindow : Window
             case "save": Save(false); break;
             case "saveAs": Save(true); break;
             case "undo": OnUndo(null, null); break;
+            case "redo": OnRedo(null, null); break;
+            case "copy" when sel.Count > 0: CopyShapes(false); break;
+            case "cut" when sel.Count > 0: CopyShapes(true); break;
+            case "paste": if (!Paste()) return false; break;
+            case "selectAll": SelectAll(); break;
+            case "copyFormat": CopyFormat(); break;
+            case "pasteFormat": PasteFormat(); break;
             case "editText": BeginEdit(); break;
-            case "deleteShape" when selected != null: OnDeleteShape(null, null); break;
+            case "deleteShape" when sel.Count > 0: OnDeleteShape(null, null); break;
             case "bold": OnBold(null, null); break;
             case "italic": OnItalic(null, null); break;
             case "underline": OnUnderline(null, null); break;
+            case "strike": OnStrike(null, null); break;
+            case "indentMore": OnIndentMore(null, null); break;
+            case "indentLess": OnIndentLess(null, null); break;
+            case "bringToFront": Arrange("front"); break;
+            case "sendToBack": Arrange("back"); break;
+            case "bringForward": Arrange("forward"); break;
+            case "sendBackward": Arrange("backward"); break;
             case "grow": OnGrow(null, null); break;
             case "shrink": OnShrink(null, null); break;
             case "newSlide": OnNewSlide(null, null); break;
-            case "duplicate": OnDuplicate(null, null); break;
+            case "duplicate": if (sel.Count > 0) DuplicateShapes(); else OnDuplicate(null, null); break; // shapes first, as in PowerPoint
             case "help": OnHelp(null, null); break;
             case "settings": OnShortcutSettings(null, null); break;
             default: return false;
@@ -393,25 +404,41 @@ public partial class MainWindow : Window
 
     void OnKey(object sender, KeyEventArgs e)
     {
+        if (editBox == null && Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes
+        if (HandleKey(Gesture.From(e))) e.Handled = true;
+    }
+
+    /// <summary>A key press in the editor window; true when it was used. The key handler and the self-test come here.</summary>
+    internal bool HandleKey(Gesture g)
+    {
         if (editBox != null)
         {
-            if (e.Key == Key.Escape) { CommitEdit(cancel: true); e.Handled = true; }
-            else if (Shortcuts.Find(Gesture.From(e), inShow: false) is { } id)
+            if (g.Key == Key.Escape) { CommitEdit(cancel: true); return true; }
+            if (g.Key == Key.Tab && editBox.Tag is OpenXmlElement { LocalName: "tc" } tc) // table: to the next / previous cell
             {
-                if (id is "bold" or "italic" or "underline") { ToggleInEditor(id); e.Handled = true; }
-                else if (id is "grow" or "shrink") e.Handled = Run(id); // on the selected characters
+                NextCell(tc, g.Mods.HasFlag(ModifierKeys.Shift) ? -1 : 1);
+                return true;
             }
-            return;
+            if (Shortcuts.Find(g, inShow: false) is { } id)
+            {
+                if (id is "bold" or "italic" or "underline" or "strike") { ToggleInEditor(id); return true; }
+                if (id is "grow" or "shrink" or "indentMore" or "indentLess") return Run(id); // on the selected characters / paragraphs
+            }
+            return false;
         }
-        if (Keyboard.FocusedElement is TextBox) return; // typing in the font / size boxes
-        var g = Gesture.From(e);
-        if (g is { Key: Key.V, Mods: ModifierKeys.Control } && PastePicture()) { e.Handled = true; return; }
         if (g is { Key: Key.Escape, Mods: ModifierKeys.None })
         {
-            Pen.SetTool(Tool.Select); selected = null; DrawSelection();
-            e.Handled = true;
+            if (pendingShape != null || painter != null) { pendingShape = null; EndPainter(); Stage.Cursor = null; UpdateStatus(); }
+            else { Pen.SetTool(Tool.Select); selected = null; DrawSelection(); }
+            return true;
         }
-        else if (Shortcuts.Find(g, inShow: false) is { } id) e.Handled = Run(id);
+        if (sel.Count > 0 && Pen.Tool == Tool.Select && g.Key is Key.Left or Key.Right or Key.Up or Key.Down && g.Mods is ModifierKeys.None or ModifierKeys.Control)
+        {
+            double step = g.Mods == ModifierKeys.Control ? 1 : 8; // arrow keys move the selected shapes, as in PowerPoint
+            Nudge(g.Key switch { Key.Left => -step, Key.Right => step, _ => 0 }, g.Key switch { Key.Up => -step, Key.Down => step, _ => 0 });
+            return true;
+        }
+        return Shortcuts.Find(g, inShow: false) is { } cmd && Run(cmd);
     }
 
     // ---------- window ----------

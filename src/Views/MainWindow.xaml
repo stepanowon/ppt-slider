@@ -94,7 +94,18 @@
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.edit}" Style="{StaticResource Grp}">
-                        <Button Style="{StaticResource Rb}" Tag="&#xE7A7;" Content="{local:Loc undo}" Click="OnUndo" ToolTip="{local:Loc undo}" local:Shortcuts.For="undo"/>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource Rb}" Tag="&#xE77F;" Content="{local:Loc paste}" Click="OnPaste" ToolTip="{local:Loc pasteTip}" local:Shortcuts.For="paste"/>
+                            <StackPanel>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8C6;" Click="OnCut" ToolTip="{local:Loc cut}" local:Shortcuts.For="cut"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8C8;" Click="OnCopy" ToolTip="{local:Loc copy}" local:Shortcuts.For="copy"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE771;" Click="OnFormatPainter" ToolTip="{local:Loc formatPainterTip}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <Button Style="{StaticResource Small}" Tag="&#xE7A7;" Click="OnUndo" ToolTip="{local:Loc undo}" local:Shortcuts.For="undo"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE7A6;" Click="OnRedo" ToolTip="{local:Loc redo}" local:Shortcuts.For="redo"/>
+                            </StackPanel>
+                        </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.slides}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
@@ -115,22 +126,88 @@
                                 <Button Style="{StaticResource Small}" Tag="&#xE8DD;" Click="OnBold" ToolTip="{local:Loc bold}" local:Shortcuts.For="bold"/>
                                 <Button Style="{StaticResource Small}" Tag="&#xE8DB;" Click="OnItalic" ToolTip="{local:Loc italic}" local:Shortcuts.For="italic"/>
                                 <Button Style="{StaticResource Small}" Tag="&#xE8DC;" Click="OnUnderline" ToolTip="{local:Loc underline}" local:Shortcuts.For="underline"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xEDE0;" Click="OnStrike" ToolTip="{local:Loc strike}" local:Shortcuts.For="strike"/>
                                 <Button x:Name="ColorBtn" Style="{StaticResource Small}" Tag="&#xE8D3;" Click="OnFontColor" ToolTip="{local:Loc fontColor}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE7E6;" Click="OnHighlight" ToolTip="{local:Loc highlight}"/>
                             </StackPanel>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.paragraph}" Style="{StaticResource Grp}">
-                        <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Small}" Tag="&#xE8E4;" Click="OnAlign" CommandParameter="l" ToolTip="{local:Loc alignLeft}"/>
-                            <Button Style="{StaticResource Small}" Tag="&#xE8E3;" Click="OnAlign" CommandParameter="ctr" ToolTip="{local:Loc alignCenter}"/>
-                            <Button Style="{StaticResource Small}" Tag="&#xE8E2;" Click="OnAlign" CommandParameter="r" ToolTip="{local:Loc alignRight}"/>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,2">
+                                <Button Style="{StaticResource Small}" Tag="&#xE8FD;" Click="OnBullets" ToolTip="{local:Loc bullets}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE9D5;" Click="OnNumbering" ToolTip="{local:Loc numbering}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE290;" Click="OnIndentLess" ToolTip="{local:Loc indentLess}" local:Shortcuts.For="indentLess"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE291;" Click="OnIndentMore" ToolTip="{local:Loc indentMore}" local:Shortcuts.For="indentMore"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,2">
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E4;" Click="OnAlign" CommandParameter="l" ToolTip="{local:Loc alignLeft}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E3;" Click="OnAlign" CommandParameter="ctr" ToolTip="{local:Loc alignCenter}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8E2;" Click="OnAlign" CommandParameter="r" ToolTip="{local:Loc alignRight}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE292;" Click="OnAlign" CommandParameter="just" ToolTip="{local:Loc alignJustify}"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE8A4;" Click="OnLineSpacing" ToolTip="{local:Loc lineSpacing}"/>
+                            </StackPanel>
                         </StackPanel>
+                    </HeaderedContentControl>
+                    <HeaderedContentControl Header="{local:Loc grp.drawing}" Style="{StaticResource Grp}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="{local:Loc textBox}" Click="OnAddText"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF157;" Content="{local:Loc shapes}" Click="OnShapes" ToolTip="{local:Loc shapesTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF156;" Content="{local:Loc arrange}" Click="OnArrangeMenu" ToolTip="{local:Loc arrangeTip}"/>
+                            <StackPanel>
+                                <Button Style="{StaticResource Small}" Tag="&#xEB9F;" Click="OnAddPicture" ToolTip="{local:Loc pictureTip}" local:Shortcuts.For="picture"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE894;" Click="OnDeleteShape" ToolTip="{local:Loc deleteShapeTip}" local:Shortcuts.For="deleteShape"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </HeaderedContentControl>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="{local:Loc tab.insert}">
+                <StackPanel Orientation="Horizontal">
+                    <HeaderedContentControl Header="{local:Loc grp.slides}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE710;" Content="{local:Loc newSlide}" Click="OnNewSlide" ToolTip="{local:Loc newSlideTip}" local:Shortcuts.For="newSlide"/>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.insert}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="{local:Loc textBox}" Click="OnAddText"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE80A;" Content="{local:Loc table}" Click="OnInsertTable" ToolTip="{local:Loc tableTip}"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xEB9F;" Content="{local:Loc picture}" Click="OnAddPicture" ToolTip="{local:Loc pictureTip}" local:Shortcuts.For="picture"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF157;" Content="{local:Loc shapes}" Click="OnShapes" ToolTip="{local:Loc shapesTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8D2;" Content="{local:Loc textBox}" Click="OnAddText"/>
+                        </StackPanel>
+                    </HeaderedContentControl>
+                </StackPanel>
+            </TabItem>
+            <TabItem Header="{local:Loc tab.format}">
+                <StackPanel Orientation="Horizontal">
+                    <HeaderedContentControl Header="{local:Loc grp.shapeStyle}" Style="{StaticResource Grp}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource Rb}" Tag="&#xF16D;" Content="{local:Loc shapeFill}" Click="OnShapeFill" ToolTip="{local:Loc shapeFillTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF16B;" Content="{local:Loc shapeOutline}" Click="OnShapeOutline" ToolTip="{local:Loc shapeOutlineTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE771;" Content="{local:Loc formatPainter}" Click="OnFormatPainter" ToolTip="{local:Loc formatPainterTip}"/>
+                        </StackPanel>
+                    </HeaderedContentControl>
+                    <HeaderedContentControl Header="{local:Loc grp.arrange}" Style="{StaticResource Grp}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74A;" Content="{local:Loc toFront}" Click="OnFront" ToolTip="{local:Loc bringToFront}" local:Shortcuts.For="bringToFront"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74B;" Content="{local:Loc toBack}" Click="OnBack" ToolTip="{local:Loc sendToBack}" local:Shortcuts.For="sendToBack"/>
+                            <StackPanel>
+                                <Button Style="{StaticResource Small}" Tag="&#xE70E;" Click="OnForward" ToolTip="{local:Loc bringForward}" local:Shortcuts.For="bringForward"/>
+                                <Button Style="{StaticResource Small}" Tag="&#xE70D;" Click="OnBackward" ToolTip="{local:Loc sendBackward}" local:Shortcuts.For="sendBackward"/>
+                            </StackPanel>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE8A9;" Content="{local:Loc align}" Click="OnAlignMenu" ToolTip="{local:Loc alignTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE7AD;" Content="{local:Loc rotate}" Click="OnRotateMenu" ToolTip="{local:Loc rotateTip}"/>
                             <Button Style="{StaticResource Rb}" Tag="&#xE894;" Content="{local:Loc deleteShape}" Click="OnDeleteShape" ToolTip="{local:Loc deleteShapeTip}" local:Shortcuts.For="deleteShape"/>
+                        </StackPanel>
+                    </HeaderedContentControl>
+                    <HeaderedContentControl Header="{local:Loc grp.table}" Style="{StaticResource Grp}">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource Rb}" Tag="&#xF164;" Content="{local:Loc rowAbove}" Click="OnRowAbove" ToolTip="{local:Loc rowAboveTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF164;" Content="{local:Loc rowBelow}" Click="OnRowBelow" ToolTip="{local:Loc rowBelowTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF164;" Content="{local:Loc colLeft}" Click="OnColLeft" ToolTip="{local:Loc colLeftTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF164;" Content="{local:Loc colRight}" Click="OnColRight" ToolTip="{local:Loc colRightTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF166;" Content="{local:Loc deleteRow}" Click="OnDeleteRow" ToolTip="{local:Loc deleteRowTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xF166;" Content="{local:Loc deleteCol}" Click="OnDeleteCol" ToolTip="{local:Loc deleteColTip}"/>
+                            <Button Style="{StaticResource Rb}" Tag="&#xE74D;" Content="{local:Loc deleteTable}" Click="OnDeleteTable"/>
                         </StackPanel>
                     </HeaderedContentControl>
                 </StackPanel>

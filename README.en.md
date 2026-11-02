@@ -56,9 +56,15 @@ To run without the Store, build it as described under [Build](#build) and run `P
 
 ### Editing
 
-- Select objects, drag to move, resize from the bottom-right corner, delete
+- Select objects (Shift/Ctrl+click, drag a marquee, Ctrl+A for several), drag to move, resize with eight handles (Shift keeps the aspect ratio), rotate handle, nudge with the arrow keys, delete
+- Cut / copy / paste (across slides, pictures included), duplicate objects with Ctrl+D, undo / redo
+- Object order (to front / to back / forward / backward), align (left · center · right · top · middle · bottom), rotate 90° · flip vertical / horizontal
+- Format painter (brush button, Ctrl+Shift+C / Ctrl+Shift+V)
 - Double-click (or F2) to edit text in place (the original font, size, color, alignment and other formatting are kept)
 - Bold / Italic / Underline, font, size, color, paragraph alignment (while editing text, bold, italic, underline, font and size apply only to the selected characters, and the font and size boxes show the values of the selected characters)
+- Strikethrough, text highlight color, bullets and numbering, list level (indent / outdent), justify, line spacing
+- Insert shapes (rectangles, ovals, triangles, arrows, stars, lines and more, 19 in all) with fill, outline color, weight and dashes
+- Insert tables (pick rows × columns), edit cell text (Tab moves to the next cell; Tab in the last cell adds a row), insert and delete rows and columns
 - Insert text boxes and pictures (pictures: the [Picture] button, paste with Ctrl+V, or drop an image file); new, duplicate and delete slides; undo
 - Drag thumbnails to change the slide order
 - Text set to "shrink text on overflow" (normAutofit) is drawn smaller to fit its box.
@@ -117,10 +123,16 @@ Ink tools picked in Presenter View draw on the show's screen, and it uses the sa
 | Show | Spot highlight | S |
 | Show | Break Time | T |
 | File | Open / Save / Save As | Ctrl+O / Ctrl+S / Ctrl+Shift+S |
-| Edit | Undo (ink first) · edit text · delete object | Ctrl+Z · F2 · Delete |
+| Edit | Undo (ink first) / redo · edit text · delete object | Ctrl+Z / Ctrl+Y · F2 · Delete |
+| Edit | Cut / copy / paste / select all | Ctrl+X / Ctrl+C / Ctrl+V / Ctrl+A |
+| Edit | Copy / paste formatting | Ctrl+Shift+C / Ctrl+Shift+V |
+| Edit | Move objects (nudge) | Arrows (Ctrl+arrows) |
+| Edit | To front / to back, forward / backward | Ctrl+Shift+] / Ctrl+Shift+[, Ctrl+] / Ctrl+[ |
+| Edit | Increase / decrease list level | Alt+Shift+→ / Alt+Shift+← |
+| Edit | Next / previous table cell | Tab / Shift+Tab |
 | Edit | Bold / Italic / Underline | Ctrl+B / Ctrl+I / Ctrl+U |
 | Edit | Increase / decrease font size | Ctrl+Shift+. / Ctrl+Shift+, |
-| Slides | New slide / duplicate | Ctrl+M / Ctrl+D |
+| Slides | New slide / duplicate (the selected objects, if any) | Ctrl+M / Ctrl+D |
 | Help | Shortcut list | F1 |
 
 In the show, the number keys are shared by go-to-slide and pen colors. A single number with nothing after it for 1 second sets the pen color; Enter or another number within that time makes it a slide number.
@@ -150,7 +162,7 @@ The build output folders (`bin/`, `obj/`) are moved to the root by `src/Director
 PptSlider.exe --selftest deck.pptx outDir
 ```
 
-Renders every slide to PNG and checks the edit → save → reopen round trip, plus the slide show, Presenter View, screen ink, picture insert, reordering, text autofit, PDF, SmartArt, recent files, autosave and the UI text in all three languages.
+Renders every slide to PNG and checks the edit → save → reopen round trip, plus the slide show, Presenter View, screen ink, picture insert, reordering, text autofit, shapes, tables, clipboard, format painter, mouse / keyboard editing, duplicate shortcuts, PDF, SmartArt, recent files, autosave and the UI text in all three languages.
 The show and presenter windows open off screen and key presses go only to them, so you can keep working while it runs.
 Results are written to `outDir\selftest.txt`; exit code 0 means pass. App data goes to `outDir\local`, so your real recent files and autosaves are not touched. The self-test always runs in Korean.
 

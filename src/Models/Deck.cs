@@ -11,7 +11,7 @@ using P = DocumentFormat.OpenXml.Presentation;
 namespace PptSlider;
 
 /// <summary>An open .pptx held in memory. Edits change the OpenXML DOM directly so saving keeps everything we don't render.</summary>
-public sealed class Deck : IDisposable
+public sealed partial class Deck : IDisposable
 {
     const string Ns = "xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"";
 
@@ -21,6 +21,7 @@ public sealed class Deck : IDisposable
     public SlideRenderer Renderer { get; }
     public bool Dirty { get; private set; }
     readonly Stack<(SlidePart part, string xml)> undo = new();
+    readonly Stack<(SlidePart part, string xml)> redo = new();
 
     Deck(string path, PresentationDocument doc)
     {
@@ -60,15 +61,23 @@ public sealed class Deck : IDisposable
     public void Snapshot(SlidePart sp)
     {
         undo.Push((sp, sp.Slide!.OuterXml));
+        redo.Clear(); // a new edit: what was undone can no longer be redone
         Dirty = true;
     }
 
-    public SlidePart? Undo()
+    public SlidePart? Undo() => Restore(undo, redo);
+
+    /// <summary>Puts back the last edit <see cref="Undo"/> took back (Ctrl+Y).</summary>
+    public SlidePart? Redo() => Restore(redo, undo);
+
+    SlidePart? Restore(Stack<(SlidePart part, string xml)> from, Stack<(SlidePart part, string xml)> to)
     {
-        while (undo.TryPop(out var u))
+        while (from.TryPop(out var u))
         {
             if (!Slides.Contains(u.part)) continue; // slide was deleted since
+            to.Push((u.part, u.part.Slide!.OuterXml));
             u.part.Slide = new P.Slide(u.xml);
+            Dirty = true;
             return u.part;
         }
         return null;
@@ -147,7 +156,7 @@ public sealed class Deck : IDisposable
             <p:spPr><a:xfrm><a:off x="{(long)(r.X * SlideRenderer.Emu)}" y="{(long)(r.Y * SlideRenderer.Emu)}"/><a:ext cx="{(long)(r.Width * SlideRenderer.Emu)}" cy="{(long)(r.Height * SlideRenderer.Emu)}"/></a:xfrm>
             <a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>
             """);
-        sp.Slide!.CommonSlideData!.ShapeTree!.Append(pic);
+        AppendShape(sp, pic);
         return pic;
     }
 
@@ -165,7 +174,8 @@ public sealed class Deck : IDisposable
         return body == null ? "" : GetText(body).Trim();
     }
 
-    public static bool HasText(OpenXmlElement shape) => shape.LocalName == "sp";
+    /// <summary>A shape or table cell whose own text can be edited in place.</summary>
+    public static bool HasText(OpenXmlElement shape) => shape.LocalName is "sp" or "tc";
 
     public static string GetText(OpenXmlElement shape) =>
         string.Join("\n", (X.Child(shape, "txBody")?.Elements<A.Paragraph>() ?? []).Select(p =>
@@ -201,22 +211,28 @@ public sealed class Deck : IDisposable
     }
 
     /// <summary>
-    /// Bold / italic / underline, font (the editor's font family, first name = the face) and size (points as drawn,
-    /// i.e. after <see cref="FontScale"/>) of one character as the editor shows it.
+    /// Bold / italic / underline, font (the editor's font family, first name = the face), size (points as drawn,
+    /// i.e. after <see cref="FontScale"/>), strikethrough, color and highlight (RRGGBB) of one character as the editor shows it.
     /// </summary>
-    public readonly record struct Fmt(bool B, bool I, bool U, string? Font = null, double Size = 0);
+    public readonly record struct Fmt(bool B, bool I, bool U, string? Font = null, double Size = 0, bool S = false, string? Color = null, string? Hl = null);
 
-    /// <summary>Formatting the editor changed on a character (null: as its run says). <see cref="Size"/> is in points as stored.</summary>
-    readonly record struct Ovr(bool? B, bool? I, bool? U, string? Font = null, double? Size = null)
+    /// <summary>
+    /// Formatting the editor changed on a character (null: as its run says). <see cref="Size"/> is in points as stored;
+    /// <see cref="Hl"/> "" takes the highlight away.
+    /// </summary>
+    readonly record struct Ovr(bool? B, bool? I, bool? U, string? Font = null, double? Size = null, bool? S = null, string? Color = null, string? Hl = null)
     {
-        public bool Any => B != null || I != null || U != null || Font != null || Size != null;
+        public bool Any => B != null || I != null || U != null || Font != null || Size != null || S != null || Color != null || Hl != null;
 
         public void Apply(A.RunProperties r)
         {
             if (B is { } b) SetAttr(r, "b", b ? "1" : "0");
             if (I is { } i) SetAttr(r, "i", i ? "1" : "0");
             if (U is { } u) SetAttr(r, "u", u ? "sng" : "none");
+            if (S is { } s) SetAttr(r, "strike", s ? "sngStrike" : "noStrike");
             if (Size is { } sz) SetAttr(r, "sz", ((int)Math.Round(sz * 100)).ToString());
+            if (Color is { Length: 6 } c) Put(r, RPrOrder, "solidFill", new A.SolidFill(new A.RgbColorModelHex { Val = c }));
+            if (Hl is { } h) SetHighlight(r, h);
             if (Font is { } f) SetFont(r, f.Split(',')[0].Trim());
         }
     }
@@ -290,8 +306,9 @@ public sealed class Deck : IDisposable
                 Fmt a = was >= 0 ? oldFmt[was] : default, b = fmt[k];
                 // font and size only against a real character: an empty box's editor defaults are not a choice
                 bool font = was >= 0 && b.Font != null && a.Font != b.Font, size = was >= 0 && b.Size > 0 && Math.Abs(a.Size - b.Size) > 0.01;
+                bool color = was >= 0 && b.Color != null && a.Color != b.Color;
                 items[k] = items[k] with { O = new Ovr(a.B != b.B ? b.B : null, a.I != b.I ? b.I : null, a.U != b.U ? b.U : null,
-                    font ? b.Font : null, size ? b.Size / s : null) };
+                    font ? b.Font : null, size ? b.Size / s : null, a.S != b.S ? b.S : null, color ? b.Color : null, a.Hl != b.Hl ? b.Hl ?? "" : null) };
             }
         }
         var counts = paras.Select((_, i) => old.Count(c => c.Para == i && c.Src != null)).ToList();
@@ -366,7 +383,7 @@ public sealed class Deck : IDisposable
     /// <summary>Applies <paramref name="f"/> to every run (and end-of-paragraph) property set in the shape.</summary>
     public static void EditRuns(OpenXmlElement shape, Action<OpenXmlCompositeElement> f)
     {
-        foreach (var p in X.Child(shape, "txBody")?.Elements<A.Paragraph>() ?? [])
+        foreach (var p in Paragraphs(shape))
         {
             foreach (var r in p.Elements<A.Run>())
                 f(r.RunProperties ??= new A.RunProperties());
@@ -377,10 +394,10 @@ public sealed class Deck : IDisposable
     }
 
     public static string? FirstRun(OpenXmlElement shape, string attr) =>
-        X.Child(shape, "txBody")?.Descendants().Where(e => e.LocalName is "rPr" or "endParaRPr").Select(e => X.Attr(e, attr)).FirstOrDefault(v => v != null);
+        TextBodies(shape).SelectMany(t => t.Descendants()).Where(e => e.LocalName is "rPr" or "endParaRPr").Select(e => X.Attr(e, attr)).FirstOrDefault(v => v != null);
 
     public static string? FirstRunFont(OpenXmlElement shape) =>
-        X.Child(shape, "txBody")?.Descendants().Where(e => e.LocalName == "latin").Select(e => X.Attr(e, "typeface")).FirstOrDefault(v => v != null && !v.StartsWith('+'));
+        TextBodies(shape).SelectMany(t => t.Descendants()).Where(e => e.LocalName == "latin").Select(e => X.Attr(e, "typeface")).FirstOrDefault(v => v != null && !v.StartsWith('+'));
 
     public static void SetAttr(OpenXmlElement e, string name, string? value)
     {
@@ -388,26 +405,17 @@ public sealed class Deck : IDisposable
         else e.SetAttribute(new OpenXmlAttribute(name, "", value));
     }
 
-    public static void SetColor(OpenXmlCompositeElement rPr, Color c)
-    {
-        foreach (var f in rPr.ChildElements.Where(e => e.LocalName is "solidFill" or "noFill" or "gradFill").ToList()) f.Remove();
-        var fill = new A.SolidFill(new A.RgbColorModelHex { Val = $"{c.R:X2}{c.G:X2}{c.B:X2}" });
-        // schema order: ln comes before the fill
-        if (X.Child(rPr, "ln") is { } ln) ln.InsertAfterSelf(fill); else rPr.PrependChild(fill);
-    }
+    public static void SetColor(OpenXmlCompositeElement rPr, Color c) => Put(rPr, RPrOrder, "solidFill", Solid(c));
 
     public static void SetFont(OpenXmlCompositeElement rPr, string face)
     {
-        foreach (var f in rPr.ChildElements.Where(e => e.LocalName is "latin" or "ea").ToList()) f.Remove();
-        var before = rPr.ChildElements.FirstOrDefault(e => e.LocalName is "cs" or "sym" or "hlinkClick" or "hlinkMouseOver" or "rtl" or "extLst");
-        foreach (var el in new OpenXmlElement[] { new A.LatinFont { Typeface = face }, new A.EastAsianFont { Typeface = face } })
-            if (before != null) before.InsertBeforeSelf(el); else rPr.Append(el);
+        Put(rPr, RPrOrder, "latin", new A.LatinFont { Typeface = face });
+        Put(rPr, RPrOrder, "ea", new A.EastAsianFont { Typeface = face });
     }
 
     public static void SetAlign(OpenXmlElement shape, string algn)
     {
-        foreach (var p in X.Child(shape, "txBody")?.Elements<A.Paragraph>() ?? [])
-            SetAttr(p.ParagraphProperties ??= new A.ParagraphProperties(), "algn", algn);
+        foreach (var p in Paragraphs(shape)) SetAlign(p, algn);
     }
 
     /// <summary>Moves/resizes a top-level shape. Placeholders without their own xfrm get one from their drawn bounds.</summary>
@@ -422,8 +430,18 @@ public sealed class Deck : IDisposable
             if (xfrm == null) { xfrm = new A.Transform2D(new A.Offset(), new A.Extents()); owner.InsertAt(xfrm, 0); }
         }
         var off = xfrm.GetFirstChild<A.Offset>()!; var ext = xfrm.GetFirstChild<A.Extents>()!;
+        double min = shape.LocalName == "cxnSp" ? 0 : 1; // a straight line has no height (or width)
+        long cx = (long)(Math.Max(min, r.Width) * SlideRenderer.Emu), cy = (long)(Math.Max(min, r.Height) * SlideRenderer.Emu);
+        // a table is drawn from its column widths and row heights: a new size scales them
+        if (shape.LocalName == "graphicFrame" && Tbl(shape) is { } tbl && ext.Cx?.Value is > 0 and var ocx && ext.Cy?.Value is > 0 and var ocy && (cx != ocx || cy != ocy))
+        {
+            foreach (var col in X.Child(tbl, "tblGrid")?.ChildElements.Where(c => c.LocalName == "gridCol") ?? [])
+                SetAttr(col, "w", ((long)Math.Round((X.Long(col, "w") ?? 0) * (double)cx / ocx)).ToString());
+            foreach (var tr in Rows(tbl))
+                SetAttr(tr, "h", ((long)Math.Round((X.Long(tr, "h") ?? 0) * (double)cy / ocy)).ToString());
+        }
         off.X = (long)(r.X * SlideRenderer.Emu); off.Y = (long)(r.Y * SlideRenderer.Emu);
-        ext.Cx = (long)(Math.Max(1, r.Width) * SlideRenderer.Emu); ext.Cy = (long)(Math.Max(1, r.Height) * SlideRenderer.Emu);
+        ext.Cx = cx; ext.Cy = cy;
     }
 
     public static OpenXmlElement AddTextBox(SlidePart sp, Rect r, string text)
@@ -435,7 +453,7 @@ public sealed class Deck : IDisposable
             <p:txBody><a:bodyPr wrap="square"><a:spAutoFit/></a:bodyPr><a:lstStyle/><a:p><a:r><a:rPr lang="ko-KR" sz="2400"/><a:t></a:t></a:r></a:p></p:txBody></p:sp>
             """);
         shape.Descendants<A.Text>().First().Text = text;
-        sp.Slide!.CommonSlideData!.ShapeTree!.Append(shape);
+        AppendShape(sp, shape);
         return shape;
     }
 

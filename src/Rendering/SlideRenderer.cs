@@ -52,18 +52,23 @@ public class SlideRenderer
         }
     }
 
+    static OpenXmlElement? Tree(OpenXmlElement? root) => X.Child(X.Child(root, "cSld"), "spTree");
+
+    Ctx CtxOf(SlidePart slide)
+    {
+        var layout = slide.SlideLayoutPart!;
+        var master = layout.SlideMasterPart!;
+        var clrMap = X.Child(master.SlideMaster, "clrMap")?.GetAttributes().ToDictionary(a => a.LocalName, a => a.Value ?? "")
+                     ?? new Dictionary<string, string>();
+        return new Ctx(slide, ThemeOf(master), clrMap, Tree(layout.SlideLayout), Tree(master.SlideMaster),
+            X.Child(master.SlideMaster, "txStyles"), X.Child(pres.Presentation, "defaultTextStyle"));
+    }
+
     public Canvas Render(SlidePart slide, List<ShapeHit>? hits = null)
     {
         var layout = slide.SlideLayoutPart!;
         var master = layout.SlideMasterPart!;
-        var theme = ThemeOf(master);
-        var clrMap = X.Child(master.SlideMaster, "clrMap")?.GetAttributes().ToDictionary(a => a.LocalName, a => a.Value ?? "")
-                     ?? new Dictionary<string, string>();
-        var txStyles = X.Child(master.SlideMaster, "txStyles");
-        var defText = X.Child(pres.Presentation, "defaultTextStyle");
-        OpenXmlElement? Tree(OpenXmlElement? root) => X.Child(X.Child(root, "cSld"), "spTree");
-
-        var slideCtx = new Ctx(slide, theme, clrMap, Tree(layout.SlideLayout), Tree(master.SlideMaster), txStyles, defText);
+        var slideCtx = CtxOf(slide);
         var layoutCtx = slideCtx with { Part = layout, LayoutTree = null };
         var masterCtx = slideCtx with { Part = master, LayoutTree = null, MasterTree = null };
 
@@ -213,15 +218,28 @@ public class SlideRenderer
             bool fh = X.Attr(xfrm, "flipH") == "1", fv = X.Attr(xfrm, "flipV") == "1";
             if (fh || fv) { path.RenderTransformOrigin = new Point(0.5, 0.5); path.RenderTransform = new ScaleTransform(fh ? -1 : 1, fv ? -1 : 1); }
             host.Children.Add(path);
+            if (geom is LineGeometry && stroke != null && X.Child(spPr, "ln") is { } ln)
+            {
+                // the line as drawn (flips applied): head at its start, tail at its end
+                Point a = new(fh ? r.Width : 0, fv ? r.Height : 0), b = new(fh ? 0 : r.Width, fv ? 0 : r.Height);
+                foreach (var (end, from, to) in new[] { ("tailEnd", a, b), ("headEnd", b, a) })
+                {
+                    if (X.Attr(X.Child(ln, end), "type") is null or "none") continue;
+                    var dir = to - from;
+                    if (dir.Length < 0.01) continue;
+                    dir.Normalize();
+                    double len = Math.Max(sw * 3, 6);
+                    var n = new Vector(-dir.Y, dir.X) * len / 2;
+                    var back = to - dir * len;
+                    var fig = new PathFigure(to, [new LineSegment(back + n, true), new LineSegment(back - n, true)], true);
+                    host.Children.Add(new Path { Data = new PathGeometry([fig]), Fill = stroke });
+                }
+            }
         }
 
         if (X.Child(el, "txBody") is { } tx)
         {
-            var lists = new List<OpenXmlElement?> { X.Child(tx, "lstStyle") };
-            lists.AddRange(chain.Select(s => X.Child(X.Child(s, "txBody"), "lstStyle")));
-            if (phType != null)
-                lists.Add(X.Child(c.TxStyles, NormPh(phType) switch { "title" => "titleStyle", "body" => "bodyStyle", _ => "otherStyle" }));
-            else { lists.Add(c.DefaultText); lists.Add(X.Child(c.TxStyles, "otherStyle")); }
+            var lists = Lists(tx, chain, phType, c);
             var bodies = all.Select(s => X.Child(X.Child(s, "txBody"), "bodyPr")).ToList();
             var fontRef = ColorOf(X.Child(style, "fontRef"), c);
             if (Text(tx, lists, bodies, c, fontRef) is { } text)
@@ -234,6 +252,34 @@ public class SlideRenderer
         }
         target.Children.Add(host);
         return r;
+    }
+
+    /// <summary>The list styles a shape's paragraphs take their level settings from, nearest first.</summary>
+    static List<OpenXmlElement?> Lists(OpenXmlElement tx, List<OpenXmlElement> chain, string? phType, Ctx c)
+    {
+        var lists = new List<OpenXmlElement?> { X.Child(tx, "lstStyle") };
+        lists.AddRange(chain.Select(s => X.Child(X.Child(s, "txBody"), "lstStyle")));
+        if (phType != null)
+            lists.Add(X.Child(c.TxStyles, NormPh(phType) switch { "title" => "titleStyle", "body" => "bodyStyle", _ => "otherStyle" }));
+        else { lists.Add(c.DefaultText); lists.Add(X.Child(c.TxStyles, "otherStyle")); }
+        return lists;
+    }
+
+    /// <summary>The bullet paragraph <paramref name="p"/> of a shape or table cell shows: "buChar", "buAutoNum" or null (none).</summary>
+    public string? BulletKind(SlidePart slide, OpenXmlElement shape, OpenXmlElement p)
+    {
+        var c = CtxOf(slide);
+        List<OpenXmlElement?> lists = [c.DefaultText, X.Child(c.TxStyles, "otherStyle")];
+        if (shape.LocalName != "tc" && X.Child(shape, "txBody") is { } tx)
+        {
+            var (chain, phType) = PhChain(shape, c);
+            lists = Lists(tx, chain, phType, c);
+        }
+        var pPr = X.Child(p, "pPr");
+        int lvl = (int)(X.Long(pPr, "lvl") ?? 0);
+        var levels = lists.Select(l => X.Child(l, $"lvl{lvl + 1}pPr")).Prepend(pPr).OfType<OpenXmlElement>();
+        var def = levels.Select(l => l.ChildElements.FirstOrDefault(ch => ch.LocalName is "buNone" or "buChar" or "buAutoNum")).FirstOrDefault(v => v != null);
+        return def?.LocalName is "buChar" or "buAutoNum" ? def.LocalName : null;
     }
 
     Rect? DrawGroup(OpenXmlElement el, Ctx c, Map m, Panel target)
@@ -313,6 +359,7 @@ public class SlideRenderer
                 var fill = Fill(tcPr, c, out var hasFill);
                 var cell = new Border
                 {
+                    Tag = tc, // for finding the cell under the mouse
                     MinHeight = h,
                     BorderBrush = medium2 ? Brushes.White : Brushes.Gray, BorderThickness = new Thickness(medium2 ? 1 : 0.75),
                     Background = hasFill ? fill : styleFill,
@@ -450,8 +497,11 @@ public class SlideRenderer
                 // only set when on, so a table header can still make the whole cell bold
                 if (R(rPr, "b") is "1" or "true") run.FontWeight = FontWeights.Bold;
                 if (R(rPr, "i") is "1" or "true") run.FontStyle = FontStyles.Italic;
-                if (R(rPr, "u") is { } u && u != "none") run.TextDecorations = TextDecorations.Underline;
-                if (R(rPr, "strike") is "sngStrike" or "dblStrike") run.TextDecorations = TextDecorations.Strikethrough;
+                var deco = new TextDecorationCollection();
+                if (R(rPr, "u") is { } u && u != "none") foreach (var d in TextDecorations.Underline) deco.Add(d);
+                if (R(rPr, "strike") is "sngStrike" or "dblStrike") foreach (var d in TextDecorations.Strikethrough) deco.Add(d);
+                if (deco.Count > 0) run.TextDecorations = deco;
+                if (X.Child(rPr, "highlight") is { } hl && ColorOf(hl, c) is { } hc) run.Background = new SolidColorBrush(hc);
                 tb.Inlines.Add(run);
             }
             panel.Children.Add(tb);
@@ -483,7 +533,7 @@ public class SlideRenderer
                 var copy = new Run(r.Text)
                 {
                     FontSize = r.FontSize, FontFamily = r.FontFamily, Foreground = r.Foreground,
-                    FontWeight = r.FontWeight, FontStyle = r.FontStyle, TextDecorations = r.TextDecorations,
+                    FontWeight = r.FontWeight, FontStyle = r.FontStyle, TextDecorations = r.TextDecorations, Background = r.Background,
                 };
                 if (r.Tag != Bullet) { p.Inlines.Add(copy); continue; }
                 if (bullet == null) p.Inlines.Add(new InlineUIContainer(bullet = new TextBlock()) { BaselineAlignment = BaselineAlignment.Baseline });
@@ -685,9 +735,30 @@ public class SlideRenderer
                 return kind == "rightArrow"
                     ? Poly(0, y0, w - hl, y0, w - hl, 0, w, h / 2, w - hl, h, w - hl, y1, 0, y1)
                     : Poly(w, y0, hl, y0, hl, 0, 0, h / 2, hl, h, hl, y1, w, y1);
+            case "upArrow":
+            case "downArrow":
+            {
+                double shaft = w * Adj("adj1", 0.5), head = mn * Adj("adj2", 0.5), x0 = (w - shaft) / 2, x1 = (w + shaft) / 2;
+                return kind == "upArrow"
+                    ? Poly(x0, h, x0, head, 0, head, w / 2, 0, w, head, x1, head, x1, h)
+                    : Poly(x0, 0, x1, 0, x1, h - head, w, h - head, w / 2, h, 0, h - head, x0, h - head);
+            }
+            case "pentagon": return Poly(w / 2, 0, w, h * 0.382, w * 0.809, h, w * 0.191, h, 0, h * 0.382);
+            case "star5":
+            {
+                // ten points on two circles, stretched to fill the box
+                var pts = Enumerable.Range(0, 10).Select(i => new Point(Math.Cos(-Math.PI / 2 + i * Math.PI / 5) * (i % 2 == 0 ? 1 : 0.382), Math.Sin(-Math.PI / 2 + i * Math.PI / 5) * (i % 2 == 0 ? 1 : 0.382))).ToList();
+                double minX = pts.Min(p => p.X), maxX = pts.Max(p => p.X), minY = pts.Min(p => p.Y), maxY = pts.Max(p => p.Y);
+                return Poly(pts.SelectMany(p => new[] { (p.X - minX) / (maxX - minX) * w, (p.Y - minY) / (maxY - minY) * h }).ToArray());
+            }
             default: return new RectangleGeometry(new Rect(0, 0, w, h)); // ponytail: other presets drawn as rectangles
         }
     }
+
+    /// <summary>A preset shape's outline at a size, for the Shapes gallery.</summary>
+    public static Geometry PresetGeometry(string prst, double w, double h) =>
+        Geometry(new DocumentFormat.OpenXml.Presentation.ShapeProperties(
+            $"""<p:spPr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><a:prstGeom prst="{prst}"><a:avLst/></a:prstGeom></p:spPr>"""), w, h, 1, 1);
 
     static Geometry Custom(OpenXmlElement cust, double w, double h, double extW, double extH)
     {
