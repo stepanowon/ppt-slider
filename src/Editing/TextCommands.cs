@@ -44,6 +44,8 @@ sealed class TextCommands(IEditorHost host, ShapeSelection selection, TextEditor
 
     public void SetFontFace(string face)
     {
+        if (FontNames.Safe(face) is not { } name) return; // a path or list is not a font name (see FontNames)
+        face = name;
         if (text.IsEditing) text.Apply(TextElement.FontFamilyProperty, new FontFamily(face));
         else edits.OnText(s => TextFormat.EditRuns(s, r => TextFormat.SetFont(r, face)));
     }

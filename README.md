@@ -235,7 +235,7 @@ src/
 ├─ Models/              Deck(.pptx 문서 · 저장 · 슬라이드 목록), EditHistory(실행 취소), ShapeFactory · ShapeLayout · ShapeStyle(도형),
 │                       Tables(표), TextContent · TextFormat(텍스트와 서식), ShapeClipboard · FormatPainter(복사), SlideTree · Ooxml · X(XML 도우미),
 │                       PenState(판서 도구 상태), InkHistory(판서 되돌리기)
-├─ Rendering/           SlideRenderer(PPTX → WPF 렌더링, SmartArt 포함), ShapeGeometry(도형 윤곽), ColorMath(색), TextPanel, ShapeHit
+├─ Rendering/           SlideRenderer(PPTX → WPF 렌더링, SmartArt 포함), ShapeGeometry(도형 윤곽), ColorMath(색), FontNames(글꼴 이름 검사), TextPanel, ShapeHit
 ├─ Services/            Shortcuts(단축키), Monitors(모니터 목록), PdfExport(PDF),
 │                       RecentFiles(최근 파일), AutoSave(자동 저장), AppPaths(앱 데이터 폴더), Loc(한 · 일 · 영 UI 문자열)
 └─ Diagnostics/         SelfTest (편집 · 쇼 · 판서 · 뷰어 검사), Screenshots (스크린샷)

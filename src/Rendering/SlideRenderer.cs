@@ -440,7 +440,7 @@ public class SlideRenderer
             {
                 string Face(string n) => X.Attr(X.Child(rPr, n), "typeface") ?? defs.Select(d => X.Attr(X.Child(d, n), "typeface")).FirstOrDefault(v => v != null) ?? (n == "latin" ? "+mn-lt" : "+mn-ea");
                 string Res(string f) => f.StartsWith('+') ? c.T.Fonts.GetValueOrDefault(f, "") : f;
-                return new FontFamily(string.Join(", ", new[] { Res(Face("latin")), Res(Face("ea")), "Malgun Gothic" }.Where(f => f != "")));
+                return FontNames.Family([Res(Face("latin")), Res(Face("ea"))]);
             }
 
             var runs = p.ChildElements.Where(e => e.LocalName is "r" or "br" or "fld").ToList();
@@ -478,7 +478,7 @@ public class SlideRenderer
                     Foreground = Solid(ColorOf(PC("buClr"), c)) ?? Fore(firstRPr),
                     FontSize = size * (X.Long(PC("buSzPct"), "val") ?? 100000) / 100000.0,
                 };
-                if (X.Attr(PC("buFont"), "typeface") is { } bf && !bf.StartsWith('+')) bu.FontFamily = new FontFamily(bf);
+                if (X.Attr(PC("buFont"), "typeface") is { } bf && !bf.StartsWith('+') && FontNames.Safe(bf) is { } face) bu.FontFamily = new FontFamily(face);
                 bu.Tag = Bullet;
                 tb.Inlines.Add(bu);
                 tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6, Tag = Bullet });

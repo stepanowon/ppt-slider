@@ -235,7 +235,7 @@ src/
 ├─ Models/              Deck (.pptx document · saving · slide list), EditHistory (undo), ShapeFactory · ShapeLayout · ShapeStyle (shapes),
 │                       Tables, TextContent · TextFormat (text and its format), ShapeClipboard · FormatPainter (copying), SlideTree · Ooxml · X (XML helpers),
 │                       PenState (ink tool state), InkHistory (ink undo)
-├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt), ShapeGeometry (shape outlines), ColorMath (colors), TextPanel, ShapeHit
+├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt), ShapeGeometry (shape outlines), ColorMath (colors), FontNames (font name check), TextPanel, ShapeHit
 ├─ Services/            Shortcuts, Monitors (monitor list), PdfExport (PDF),
 │                       RecentFiles, AutoSave, AppPaths (app data folder), Loc (Korean · Japanese · English UI text)
 └─ Diagnostics/         SelfTest (editing · show · ink · viewer checks), Screenshots (screenshots)

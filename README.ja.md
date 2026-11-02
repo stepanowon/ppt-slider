@@ -235,7 +235,7 @@ src/
 ├─ Models/              Deck (.pptx ドキュメント・保存・スライド一覧)、EditHistory (元に戻す)、ShapeFactory・ShapeLayout・ShapeStyle (図形)、
 │                       Tables (表)、TextContent・TextFormat (テキストと書式)、ShapeClipboard・FormatPainter (コピー)、SlideTree・Ooxml・X (XML ヘルパー)、
 │                       PenState (手書きツールの状態)、InkHistory (手書きの元に戻す)
-├─ Rendering/           SlideRenderer (PPTX → WPF のレンダリング、SmartArt を含む)、ShapeGeometry (図形の輪郭)、ColorMath (色)、TextPanel、ShapeHit
+├─ Rendering/           SlideRenderer (PPTX → WPF のレンダリング、SmartArt を含む)、ShapeGeometry (図形の輪郭)、ColorMath (色)、FontNames (フォント名の検査)、TextPanel、ShapeHit
 ├─ Services/            Shortcuts (ショートカット)、Monitors (モニター一覧)、PdfExport (PDF)、
 │                       RecentFiles (最近使ったファイル)、AutoSave (自動保存)、AppPaths (アプリ データ フォルダー)、Loc (韓国語・日本語・英語の UI 文字列)
 └─ Diagnostics/         SelfTest (編集・スライド ショー・手書き・ビューアーの検査)、Screenshots (スクリーンショット)
