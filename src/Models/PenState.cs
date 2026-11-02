@@ -62,6 +62,9 @@ public class PenState
             Tool.Eraser => InkCanvasEditingMode.EraseByStroke,
             _ => InkCanvasEditingMode.None,
         };
+        // InkCanvas's own pen cursor is a dot the size of the pen tip (3 px by default): next to invisible on a slide
+        ic.UseCustomCursor = Tool is Tool.Pen or Tool.Highlighter;
+        ic.Cursor = ic.UseCustomCursor ? Cursors.Pen : null;
         ic.DefaultDrawingAttributes = new DrawingAttributes
         {
             Color = Color,

@@ -10,7 +10,8 @@
     <Grid x:Name="Root">
         <InkCanvas x:Name="Ink" Background="{x:Null}"/>
 
-        <!-- its own toolbar: the show's or editor's tools are underneath while drawing -->
+        <!-- its own toolbar: the show's or editor's tools are underneath while drawing.
+             Over a show it is the show's only toolbar (the show hides its own), so it gets the show's buttons too. -->
         <Border x:Name="Bar" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,12,0,0" Padding="4" Cursor="Arrow"
                 Background="#E0202020" CornerRadius="8" Opacity="0.35" MouseEnter="OnBarEnter" MouseLeave="OnBarLeave">
             <Border.RenderTransform><TranslateTransform x:Name="BarMove"/></Border.RenderTransform>
@@ -19,7 +20,14 @@
                         MouseLeftButtonDown="OnGripDown" MouseMove="OnGripMove" MouseLeftButtonUp="OnGripUp">
                     <TextBlock Text="&#xE76F;" FontFamily="Segoe MDL2 Assets" Foreground="#99FFFFFF" VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 </Border>
+                <StackPanel x:Name="ShowNav" Orientation="Horizontal" Visibility="Collapsed">
+                    <Button Style="{StaticResource Tb}" Tag="&#xE76B;" Click="OnPrev" ToolTip="{local:Loc prev}" local:Shortcuts.For="prev"/>
+                    <Button x:Name="TNext" Style="{StaticResource Tb}" Tag="&#xE76C;" Click="OnNext" ToolTip="{local:Loc next}" local:Shortcuts.For="next"/>
+                    <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
+                </StackPanel>
                 <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="{local:Loc inkPointer}" local:Shortcuts.For="select"/>
+                <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="{local:Loc laser}" local:Shortcuts.For="laser" Visibility="Collapsed"/>
+                <ToggleButton x:Name="TSpot" Style="{StaticResource Tb}" Tag="&#xEA80;" Click="OnSpot" ToolTip="{local:Loc spotlight}" local:Shortcuts.For="spotlight" Visibility="Collapsed"/>
                 <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
                 <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
                 <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
@@ -33,6 +41,11 @@
                 <Button x:Name="TUndo" Style="{StaticResource Tb}" Tag="&#xE7A7;" Click="OnUndo" ToolTip="{local:Loc undoInk}" local:Shortcuts.For="undo"/>
                 <Button Style="{StaticResource Tb}" Tag="&#xE75C;" Click="OnClear" ToolTip="{local:Loc clearInk}" local:Shortcuts.For="clearInk"/>
                 <Button x:Name="THide" Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnHide" ToolTip="{local:Loc hideInk}"/>
+                <StackPanel x:Name="ShowEnd" Orientation="Horizontal" Visibility="Collapsed">
+                    <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
+                    <Button Style="{StaticResource Tb}" Tag="&#xE916;" Click="OnBreak" ToolTip="Break Time" local:Shortcuts.For="break"/>
+                    <Button x:Name="TEnd" Style="{StaticResource Tb}" Tag="&#xE711;" Click="OnEnd" ToolTip="{local:Loc endShow}"/>
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -24,6 +25,7 @@ public partial class ShowWindow : Window
     {
         InitializeComponent();
         this.main = main;
+        this.test = test;
         Monitor = monitor;
         if (test)
         {
@@ -60,6 +62,7 @@ public partial class ShowWindow : Window
             main.Pen.Changed -= OnPen;
             main.ShowStateChanged -= OnShowState;
             main.LaserMoved -= DrawLaser;
+            FollowCursor(false);
         };
         Refresh();
         OnPen();
@@ -83,7 +86,48 @@ public partial class ShowWindow : Window
         Cover.Fill = Root.Background = b == Blank.White ? Brushes.White : Brushes.Black;
         JumpBox.Visibility = main.Jump == "" ? Visibility.Collapsed : Visibility.Visible;
         JumpText.Text = L.F("slideN", main.Jump);
+        TSpot.IsChecked = main.Spotlight;
+        if (!main.Spotlight) SpotAt(null);
+        FollowCursor(main.Spotlight && !test); // the self-test places the circle itself
     }
+
+    // ---------- spot highlight: a circle that follows the mouse pointer ----------
+
+    readonly bool test;
+    bool following;
+
+    /// <summary>
+    /// Every frame while on: the pointer is read from Windows, not from this window's mouse events, because while
+    /// drawing the ink overlay above has the mouse.
+    /// </summary>
+    void FollowCursor(bool on)
+    {
+        if (on == following) return;
+        following = on;
+        if (on) CompositionTarget.Rendering += OnFrame;
+        else CompositionTarget.Rendering -= OnFrame;
+    }
+
+    void OnFrame(object? sender, EventArgs e)
+    {
+        if (!GetCursorPos(out var c) || PresentationSource.FromVisual(Root) == null) return;
+        var p = Root.PointFromScreen(new Point(c.X, c.Y)); // physical pixels, like the per-monitor-DPI cursor position
+        SpotAt(new Rect(Root.RenderSize).Contains(p) ? p : null);
+    }
+
+    /// <summary>Centers the circle on <paramref name="p"/> (on <see cref="Root"/>); null hides it (pointer off this screen).</summary>
+    internal void SpotAt(Point? p)
+    {
+        Spot.Visibility = p != null && main.Spotlight ? Visibility.Visible : Visibility.Collapsed;
+        if (p is not { } at) return;
+        Canvas.SetLeft(Spot, at.X - Spot.Width / 2);
+        Canvas.SetTop(Spot, at.Y - Spot.Height / 2);
+    }
+
+    void OnSpot(object sender, RoutedEventArgs e) => main.SetSpotlight(!main.Spotlight);
+
+    [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
 
     void OnPen()
     {

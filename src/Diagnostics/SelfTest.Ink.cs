@@ -161,6 +161,7 @@ static partial class SelfTest
             var sp = main.CurrentSlide!;
             int Pics() => sp.Slide!.Descendants<P.Picture>().Count();
             int before = Pics();
+            int imagesBefore = sp.ImageParts.Count(); // the slide's own images (from the test deck)
             check(main.InsertPicture(TinyPng(), Deck.PictureType(".png")!.Value), "picture: inserted");
             var hits = new List<ShapeHit>();
             main.Deck!.Renderer.Render(sp, hits);
@@ -171,11 +172,91 @@ static partial class SelfTest
                 $"picture: own size, centered, selected ({h?.Bounds})");
             main.Run("undo");
             check(Pics() == before, "picture: Ctrl+Z takes it out");
+
+            // the undone picture's image is not written to the file, but a picture still shown keeps its image
+            var deck = main.Deck;
+            int Images(SlidePart s) => s.ImageParts.Count();
+            var saved = Path.Combine(outDir, "picture-undone.pptx");
+            deck.SaveCopy(saved);
+            check(Images(sp) == imagesBefore + 1, "picture: the undone image stays in memory (undo can bring it back)");
+            using (var re = Deck.Open(saved))
+                check(Images(re.Slides[0]) == imagesBefore, "picture: saved file leaves out the undone picture's image");
+            var kept = Deck.AddPicture(sp, TinyPng(), Deck.PictureType(".png")!.Value, new Rect(10, 10, 40, 20));
+            deck.Duplicate(0);
+            deck.Snapshot(sp);
+            kept.Remove(); // gone from slide 1, still on its duplicate (which shares the image part)
+            deck.SaveCopy(saved);
+            using (var re = Deck.Open(saved))
+                check(Images(re.Slides[0]) == imagesBefore && re.Slides[1].Slide!.Descendants<P.Picture>().Count() == before + 1
+                      && re.Slides[1].ImageParts.Count() == imagesBefore + 1 && re.Renderer.Render(re.Slides[1]) != null,
+                    "picture: an image dropped from one slide stays for the duplicate that still shows it");
             var txt = Path.Combine(outDir, "not-a-picture.txt");
             File.WriteAllText(txt, "x");
             check(!main.InsertPictureFile(txt) && Pics() == before, "picture: other files are ignored");
         }
         finally { main.CloseForTest(); }
+    }
+
+    /// <summary>
+    /// The renderer caches decoded images. A slide deleted with its picture frees the image's part name, and a new
+    /// picture can get the same name: it must be drawn as itself, not as the old picture.
+    /// </summary>
+    static void ImageCacheTests(string file, string outDir, Action<bool, string> check)
+    {
+        static byte[] Png(int w, int h)
+        {
+            var px = new byte[w * h * 4];
+            for (int i = 0; i < px.Length; i += 4) { px[i] = 200; px[i + 1] = 80; px[i + 2] = 20; px[i + 3] = 255; }
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(BitmapSource.Create(w, h, 96, 96, PixelFormats.Bgra32, null, px, w * 4)));
+            using var ms = new MemoryStream();
+            enc.Save(ms);
+            return ms.ToArray();
+        }
+        static int DrawnWidth(Canvas c) =>
+            c.Children.OfType<Grid>().SelectMany(g => g.Children.OfType<System.Windows.Shapes.Path>())
+                .Select(p => p.Fill).OfType<ImageBrush>().Select(b => (b.ImageSource as BitmapSource)?.PixelWidth ?? -1).LastOrDefault(-1);
+
+        using var deck = Deck.Open(file);
+        var png = Deck.PictureType(".png")!.Value;
+        var first = deck.NewSlide(0, blank: true);
+        Deck.AddPicture(first, Png(40, 20), png, new Rect(10, 10, 200, 100));
+        var firstUri = first.ImageParts.Single().Uri;
+        check(DrawnWidth(deck.Renderer.Render(first)) == 40, "image cache: the first picture is drawn");
+        deck.DeleteSlide(1);
+        var second = deck.NewSlide(0, blank: true);
+        Deck.AddPicture(second, Png(80, 10), png, new Rect(10, 10, 200, 100));
+        var secondUri = second.ImageParts.Single().Uri;
+        int w = DrawnWidth(deck.Renderer.Render(second));
+        check(w == 80, $"image cache: a new picture is drawn as itself, not as a deleted one (part name {(secondUri == firstUri ? "reused" : "new")}, drawn {w}px wide)");
+        // a picture replaced in place (its part deleted, a new one added to the same slide)
+        second.DeletePart(second.ImageParts.Single());
+        Deck.AddPicture(second, Png(60, 60), png, new Rect(10, 10, 200, 100));
+        check(DrawnWidth(deck.Renderer.Render(second)) == 60, "image cache: a picture replaced on the same slide is drawn as the new one");
+    }
+
+    /// <summary>Text longer than its box shows below it, as in PowerPoint, instead of being cut off at the box's bottom.</summary>
+    static void OverflowTests(string file, string outDir, Action<bool, string> check)
+    {
+        using var deck = Deck.Open(file);
+        double w = deck.Renderer.Width, h = deck.Renderer.Height;
+        var sp = deck.NewSlide(0, blank: true);
+        var box = Deck.AddTextBox(sp, new Rect(100, 100, 400, 40), string.Join('\n', Enumerable.Range(1, 8).Select(i => $"넘치는 줄 {i}")));
+        box.Descendants<A.BodyProperties>().First().RemoveAllChildren(); // no autofit: the box keeps its 40 px height
+        var canvas = deck.Renderer.Render(sp);
+        canvas.Measure(new Size(w, h));
+        canvas.Arrange(new Rect(0, 0, w, h));
+        canvas.UpdateLayout();
+        var bmp = new RenderTargetBitmap((int)w, (int)h, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(canvas);
+        // ink (dark pixels) well below the box: lines 3..8 of the text
+        int top = 200, rows = 150, stride = (int)w * 4;
+        var px = new byte[stride * rows];
+        bmp.CopyPixels(new Int32Rect(0, top, (int)w, rows), px, stride, 0);
+        int dark = 0;
+        for (int i = 0; i < px.Length; i += 4) if (px[i] < 100 && px[i + 1] < 100 && px[i + 2] < 100) dark++;
+        check(dark > 200, $"text overflow: text taller than its box is drawn below it, not cut off ({dark} dark px below the box)");
+        Png(canvas, Path.Combine(outDir, "text-overflow.png"));
     }
 
     /// <summary>Dragging a thumbnail moves the slide; the order is saved.</summary>

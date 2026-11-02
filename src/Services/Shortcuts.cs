@@ -78,6 +78,7 @@ public static class Shortcuts
         new("black", L.T("g.show"), L.T("black"), true, [K(Key.B), K(Key.OemPeriod)]),
         new("white", L.T("g.show"), L.T("white"), true, [K(Key.W), K(Key.OemComma)]),
         new("zoom", L.T("g.show"), L.T("zoom"), true, [K(Key.Z)]),
+        new("spotlight", L.T("g.show"), L.T("spotlight"), true, [K(Key.S)]),
         new("open", L.T("g.file"), L.T("open"), false, [K(Key.O, Ctrl)]),
         new("save", L.T("g.file"), L.T("save"), false, [K(Key.S, Ctrl)]),
         new("saveAs", L.T("g.file"), L.T("saveAs"), false, [K(Key.S, CtrlShift)]),

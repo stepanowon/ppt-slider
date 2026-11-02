@@ -94,7 +94,7 @@ static partial class SelfTest
         catch (Exception ex) { Check(false, ex.ToString()); }
         try { EditorSnaps(file, outDir, Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
-        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, OverlayTests, PictureTests, ReorderTests, AutofitTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests, ThumbMenuTests })
+        foreach (var test in new Action<string, string, Action<bool, string>>[] { ZoomTests, BlankPageTests, StraightTests, OverlayTests, PictureTests, ImageCacheTests, ReorderTests, AutofitTests, OverflowTests, PdfTests, SmartArtTests, RecentTests, AutoSaveTests, ThumbMenuTests })
         {
             try { test(file, outDir, Check); }
             catch (Exception ex) { Check(false, $"{test.Method.Name}: {ex}"); }

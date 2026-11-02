@@ -42,6 +42,18 @@ public partial class InkOverlay : Window
             Monitors.PlaceFullScreen(this, monitor);
             Owner = over; // owned windows stay above their owner, even when the show is clicked
         }
+        if (over != null)
+        {
+            // the one toolbar of the show: where the show's own was, with its buttons
+            Bar.HorizontalAlignment = HorizontalAlignment.Left;
+            Bar.VerticalAlignment = VerticalAlignment.Bottom;
+            Bar.Margin = new Thickness(16);
+            ShowNav.Visibility = TLaser.Visibility = TSpot.Visibility = ShowEnd.Visibility = Visibility.Visible;
+            main.ShowStateChanged += OnShowState;
+            Closed += (_, _) => main.ShowStateChanged -= OnShowState;
+            OnShowState();
+            THide.Tag = ""; // "hide ink" must not look like the show's ✕ (end the show)
+        }
         foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
         {
             var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = L.T("penColor") };
@@ -67,7 +79,8 @@ public partial class InkOverlay : Window
         var pen = main.Pen;
         pen.Apply(Ink);
         Ink.Background = main.Drawing ? Catch : null; // pointer mode: clicks go through to the window underneath
-        TSelect.IsChecked = pen.Tool is Tool.Select or Tool.Laser;
+        TSelect.IsChecked = pen.Tool == Tool.Select || (pen.Tool == Tool.Laser && Over == null);
+        TLaser.IsChecked = pen.Tool == Tool.Laser;
         TPen.IsChecked = pen.Tool == Tool.Pen;
         THi.IsChecked = pen.Tool == Tool.Highlighter;
         TEraser.IsChecked = pen.Tool == Tool.Eraser;
@@ -82,13 +95,20 @@ public partial class InkOverlay : Window
     internal bool Press(Gesture g) => main.InkPress(g);
 
     void OnTool(object sender, RoutedEventArgs e) =>
-        main.Pen.SetTool(sender == TPen ? Tool.Pen : sender == THi ? Tool.Highlighter : sender == TEraser ? Tool.Eraser : Tool.Select);
+        main.Pen.SetTool(sender == TPen ? Tool.Pen : sender == THi ? Tool.Highlighter : sender == TEraser ? Tool.Eraser : sender == TLaser ? Tool.Laser : Tool.Select);
 
     void OnThinner(object sender, RoutedEventArgs e) => main.Pen.Grow(-1);
     void OnThicker(object sender, RoutedEventArgs e) => main.Pen.Grow(1);
     void OnUndo(object sender, RoutedEventArgs e) => main.UndoShowInk();
     void OnClear(object sender, RoutedEventArgs e) => main.OverlayInk.Clear();
     void OnHide(object sender, RoutedEventArgs e) => main.HideInk();
+    // over a show only
+    void OnPrev(object sender, RoutedEventArgs e) => main.Go(main.Current - 1);
+    void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
+    void OnBreak(object sender, RoutedEventArgs e) => main.OpenBreak();
+    void OnEnd(object sender, RoutedEventArgs e) => Over?.Close();
+    void OnSpot(object sender, RoutedEventArgs e) => main.SetSpotlight(!main.Spotlight);
+    void OnShowState() => TSpot.IsChecked = main.Spotlight;
     void OnBarEnter(object sender, MouseEventArgs e) => Bar.Opacity = 1;
     void OnBarLeave(object sender, MouseEventArgs e) => Bar.Opacity = main.Drawing ? 0.9 : 0.35;
 

@@ -107,8 +107,23 @@ public sealed class Deck : IDisposable
     public void SaveCopy(string path)
     {
         var tmp = path + ".tmp";
-        using (Doc.Clone(tmp, true)) { }
+        using (var copy = Doc.Clone(tmp, true)) DropUnusedImages(copy);
         File.Move(tmp, path, true); // never leave a half-written file in place of the original
+    }
+
+    /// <summary>
+    /// Pictures a slide no longer shows (inserted then undone, or deleted) keep their image part in memory, so undo can
+    /// bring them back; the file written leaves out every slide image nothing in the slide refers to.
+    /// </summary>
+    static void DropUnusedImages(PresentationDocument doc)
+    {
+        foreach (var sp in SlidesOf(doc.PresentationPart!))
+        {
+            var used = sp.Slide!.Descendants().SelectMany(e => e.GetAttributes())
+                .Where(a => a.NamespaceUri.Contains("relationships", StringComparison.Ordinal)).Select(a => a.Value).ToHashSet();
+            foreach (var rel in sp.Parts.Where(r => r.OpenXmlPart is ImagePart && !used.Contains(r.RelationshipId)).ToList())
+                sp.DeletePart(rel.RelationshipId);
+        }
     }
 
     /// <summary>Picture formats <see cref="AddPicture"/> takes, by file extension.</summary>

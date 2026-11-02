@@ -304,6 +304,7 @@ public static class L
         ["showFromCurrent"] = ["현재 슬라이드부터 슬라이드 쇼", "現在のスライドからスライド ショー", "Slide show from the current slide"],
         ["breakTimer"] = ["Break Time 타이머", "Break Time タイマー", "Break Time timer"],
         ["zoom"] = ["화면 확대 (영역 드래그)", "画面の拡大 (範囲をドラッグ)", "Zoom in (drag an area)"],
+        ["spotlight"] = ["스팟 하이라이트 (마우스 포인터 주위에 원)", "スポット ハイライト (マウス ポインターの周りに円)", "Spot highlight (a circle around the mouse pointer)"],
         ["undoInkFirst"] = ["실행 취소 (판서 우선)", "元に戻す (手書きを優先)", "Undo (ink first)"],
         ["editText"] = ["텍스트 편집", "テキストの編集", "Edit text"],
     };

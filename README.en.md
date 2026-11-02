@@ -82,7 +82,7 @@ so you can draw over the editor, the slide show and other apps too (the show's m
 
 From the beginning (F5) / from the current slide (Shift+F5). You can choose the monitor for the show (default: the secondary monitor).
 
-- Black / white screen, laser pointer, go to a slide by number (number + Enter), zoom (Z, then drag an area)
+- Black / white screen, laser pointer, go to a slide by number (number + Enter), zoom (Z, then drag an area), spot highlight (S: a yellow circle around the mouse pointer, also while drawing)
 - Current time and elapsed time in the bottom-right corner; the cursor hides after 3 seconds without mouse movement
 
 ### Presenter View
@@ -114,6 +114,7 @@ Ink tools picked in Presenter View draw on the show's screen, and it uses the sa
 | Show | From beginning / from current slide | F5 / Shift+F5 |
 | Show | Black screen / white screen | B `.` / W `,` |
 | Show | Zoom | Z |
+| Show | Spot highlight | S |
 | Show | Break Time | T |
 | File | Open / Save / Save As | Ctrl+O / Ctrl+S / Ctrl+Shift+S |
 | Edit | Undo (ink first) · edit text · delete object | Ctrl+Z · F2 · Delete |

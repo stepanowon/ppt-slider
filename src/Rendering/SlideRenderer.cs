@@ -22,7 +22,8 @@ public class SlideRenderer
 {
     public const double Emu = 9525; // EMU per WPF DIP (96 dpi)
     readonly PresentationPart pres;
-    readonly Dictionary<Uri, ImageSource?> images = new();
+    /// <summary>Decoded images by part, not by part name: a name can stand for another picture after its part is gone.</summary>
+    readonly Dictionary<ImagePart, ImageSource?> images = new(ReferenceEqualityComparer.Instance);
     readonly Dictionary<SlideMasterPart, Theme> themes = new();
     public double Width { get; }
     public double Height { get; }
@@ -364,7 +365,7 @@ public class SlideRenderer
         double fontScale = (X.Long(X.Child(X.Child(tx, "bodyPr"), "normAutofit"), "fontScale") ?? 100000) / 100000.0 * shrink;
         bool wrap = B("wrap") != "none";
 
-        var panel = new StackPanel
+        var panel = new TextPanel
         {
             Tag = fontScale,
             Margin = new Thickness(Ins("lIns", 91440), Ins("tIns", 45720), Ins("rIns", 91440), Ins("bIns", 45720)),
@@ -560,7 +561,7 @@ public class SlideRenderer
     ImageSource? Image(OpenXmlPart part, string rid)
     {
         if (!part.TryGetPartById(rid, out var p) || p is not ImagePart ip) return null;
-        if (images.TryGetValue(ip.Uri, out var cached)) return cached;
+        if (images.TryGetValue(ip, out var cached)) return cached;
         ImageSource? img = null;
         try
         {
@@ -577,7 +578,7 @@ public class SlideRenderer
             }
         }
         catch (Exception) { }
-        return images[ip.Uri] = img;
+        return images[ip] = img;
     }
 
     /// <summary>WPF can't draw EMF/WMF; rasterize through GDI+ (common for pictures pasted from Office).</summary>
@@ -720,6 +721,15 @@ public class SlideRenderer
         }
         return geo;
     }
+}
+
+/// <summary>
+/// A shape's text. Text taller than its shape overflows it, as in PowerPoint (below a top-anchored box, both ways when
+/// centered, above when bottom-anchored), instead of being cut off at the box. The slide's own edge still clips.
+/// </summary>
+public sealed class TextPanel : StackPanel
+{
+    protected override Geometry? GetLayoutClip(Size layoutSlotSize) => null;
 }
 
 /// <summary>Tiny helpers for walking OpenXML by local name, which tolerates every namespace variant.</summary>

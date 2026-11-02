@@ -5,22 +5,31 @@ namespace PptSlider;
 /// <summary>Undo for ink: remembers every change to a tracked stroke collection (a stroke drawn, erased, or all cleared).</summary>
 public sealed class InkHistory
 {
-    readonly Dictionary<StrokeCollection, Stack<(StrokeCollection Added, StrokeCollection Removed)>> log = [];
+    readonly Dictionary<StrokeCollection, (Stack<(StrokeCollection Added, StrokeCollection Removed)> Changes, StrokeCollectionChangedEventHandler Handler)> log = [];
     bool undoing;
 
     public void Track(StrokeCollection strokes)
     {
         if (log.ContainsKey(strokes)) return;
-        var changes = log[strokes] = new();
-        strokes.StrokesChanged += (_, e) => { if (!undoing && log.ContainsKey(strokes)) changes.Push((new(e.Added), new(e.Removed))); };
+        var changes = new Stack<(StrokeCollection, StrokeCollection)>();
+        StrokeCollectionChangedEventHandler handler = (_, e) => { if (!undoing) changes.Push((new(e.Added), new(e.Removed))); };
+        strokes.StrokesChanged += handler;
+        log[strokes] = (changes, handler);
     }
 
-    public bool CanUndo(StrokeCollection strokes) => log.TryGetValue(strokes, out var c) && c.Count > 0;
+    /// <summary>Forgets <paramref name="strokes"/> and its changes (a deleted slide, a blank screen that is gone).</summary>
+    public void Untrack(StrokeCollection strokes)
+    {
+        if (!log.Remove(strokes, out var entry)) return;
+        strokes.StrokesChanged -= entry.Handler;
+    }
+
+    public bool CanUndo(StrokeCollection strokes) => log.TryGetValue(strokes, out var c) && c.Changes.Count > 0;
 
     /// <summary>Reverses the last change to <paramref name="strokes"/>; false when there is none.</summary>
     public bool Undo(StrokeCollection strokes)
     {
-        if (!log.TryGetValue(strokes, out var changes) || !changes.TryPop(out var last)) return false;
+        if (!log.TryGetValue(strokes, out var entry) || !entry.Changes.TryPop(out var last)) return false;
         undoing = true;
         try
         {
@@ -31,5 +40,8 @@ public sealed class InkHistory
         return true;
     }
 
-    public void Clear() => log.Clear();
+    public void Clear()
+    {
+        foreach (var strokes in log.Keys.ToList()) Untrack(strokes);
+    }
 }

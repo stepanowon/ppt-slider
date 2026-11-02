@@ -29,6 +29,61 @@ static partial class SelfTest
             void Press(Key k, ModifierKeys m = ModifierKeys.None) => show.Press(new Gesture(k, m));
             const ModifierKeys Ctrl = ModifierKeys.Control;
 
+            // one ink toolbar: the show's, or the overlay's while the overlay is over the show (never both)
+            bool OnlyShowBar() => show.Bar.IsVisible && main.InkView is not { IsVisible: true };
+            bool OnlyOverlayBar() => main.InkView is { IsVisible: true } o && o.Over == show && o.Bar.IsVisible && !show.Bar.IsVisible;
+            check(OnlyShowBar(), "show bar: pointer without ink = the show's toolbar only");
+            Press(Key.P);
+            var tb = main.InkView;
+            check(OnlyOverlayBar() && tb!.ShowNav.IsVisible && tb.TLaser.IsVisible && tb.ShowEnd.IsVisible
+                  && tb.Bar.HorizontalAlignment == HorizontalAlignment.Left && tb.Bar.VerticalAlignment == VerticalAlignment.Bottom,
+                "show bar: drawing = the overlay's toolbar only, bottom left, with the show's buttons");
+            Snap(tb!.Root, Path.Combine(outDir, "show-one-toolbar.png"));
+            Click(tb.TNext);
+            check(main.Current == 1 && OnlyOverlayBar(), "show bar: the overlay toolbar's → moves the show");
+            main.OverlayInk.Add(Line(100, 100, 400, 200));
+            Press(Key.Escape);
+            check(main.Pen.Tool == Tool.Select && OnlyOverlayBar(), "show bar: pointer over a slide with ink = still only the overlay's toolbar");
+            tb.TLaser.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            check(main.Pen.Tool == Tool.Laser && tb.TLaser.IsChecked == true && tb.TSelect.IsChecked != true, "show bar: the overlay toolbar's laser button");
+            Press(Key.L, Ctrl);
+            Press(Key.C);
+            check(main.Pen.Tool == Tool.Select && OnlyShowBar(), "show bar: ink cleared in pointer mode = back to the show's toolbar");
+            Press(Key.Home);
+            Wait(100);
+
+            // pen cursor: a real cursor, not InkCanvas's dot the size of the pen tip
+            Press(Key.P);
+            var ink = main.InkView!.Ink;
+            check(ink.UseCustomCursor && ink.Cursor == Cursors.Pen, "show: the pen has a visible cursor");
+            Press(Key.H);
+            check(ink.UseCustomCursor && ink.Cursor == Cursors.Pen, "show: the highlighter has a visible cursor");
+            Press(Key.E);
+            check(!ink.UseCustomCursor, "show: the eraser keeps InkCanvas's eraser cursor");
+
+            // spot highlight: S toggles a circle around the pointer; both toolbars show its state
+            Press(Key.P);
+            Press(Key.S);
+            show.SpotAt(new Point(300, 200));
+            check(main.Spotlight && show.Spot.IsVisible && main.InkView!.TSpot.IsChecked == true && show.TSpot.IsChecked == true
+                  && Math.Abs(System.Windows.Controls.Canvas.GetLeft(show.Spot) + show.Spot.Width / 2 - 300) < 0.5 && Math.Abs(System.Windows.Controls.Canvas.GetTop(show.Spot) + show.Spot.Height / 2 - 200) < 0.5,
+                "spotlight: S = a circle centered on the pointer, also while drawing");
+            Snap(show.Root, Path.Combine(outDir, "show-spotlight.png"));
+            show.SpotAt(null);
+            check(!show.Spot.IsVisible && main.Spotlight, "spotlight: hidden while the pointer is off the show screen");
+            Press(Key.Right);
+            show.SpotAt(new Point(640, 360));
+            check(show.Spot.IsVisible, "spotlight: stays on on the next slide");
+            Press(Key.S);
+            show.SpotAt(new Point(640, 360));
+            check(!main.Spotlight && !show.Spot.IsVisible && show.TSpot.IsChecked != true, "spotlight: S again = off");
+            show.TSpot.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            check(main.Spotlight, "spotlight: the show toolbar's button turns it on");
+            main.InkView!.TSpot.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            check(!main.Spotlight, "spotlight: the overlay toolbar's button turns it off");
+            Press(Key.Escape);
+            Press(Key.Home);
+
             // blank screen
             Press(Key.B);
             check(main.Blanked == Blank.Black && show.Cover.IsVisible, "show: B = black screen");

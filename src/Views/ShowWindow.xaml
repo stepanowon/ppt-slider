@@ -23,6 +23,11 @@
             </Grid>
         </Viewbox>
 
+        <!-- spot highlight (S): a circle around the mouse pointer, the same size on screen at any zoom -->
+        <Canvas IsHitTestVisible="False">
+            <Ellipse x:Name="Spot" Width="72" Height="72" Fill="#45FFE14D" Stroke="#E6FFC400" StrokeThickness="3" Visibility="Collapsed"/>
+        </Canvas>
+
         <!-- zoom: the area being dragged, and what to do -->
         <Canvas IsHitTestVisible="False">
             <Rectangle x:Name="PickBox" Visibility="Collapsed" Stroke="#FFFFA040" StrokeThickness="2" StrokeDashArray="4 2" Fill="#22FFA040"/>
@@ -41,6 +46,7 @@
                 <Rectangle Width="1" Fill="#66FFFFFF" Margin="4,6"/>
                 <RadioButton x:Name="TSelect" Style="{StaticResource Tb}" Tag="&#xE8B0;" Click="OnTool" ToolTip="{local:Loc pointer}" local:Shortcuts.For="select"/>
                 <RadioButton x:Name="TLaser" Style="{StaticResource Tb}" Tag="&#xE7C8;" Click="OnTool" ToolTip="{local:Loc laser}" local:Shortcuts.For="laser"/>
+                <ToggleButton x:Name="TSpot" Style="{StaticResource Tb}" Tag="&#xEA80;" Click="OnSpot" ToolTip="{local:Loc spotlight}" local:Shortcuts.For="spotlight"/>
                 <RadioButton x:Name="TPen" Style="{StaticResource Tb}" Tag="&#xEE56;" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
                 <RadioButton x:Name="THi" Style="{StaticResource Tb}" Tag="&#xE7E6;" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
                 <RadioButton x:Name="TEraser" Style="{StaticResource Tb}" Tag="&#xED60;" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
