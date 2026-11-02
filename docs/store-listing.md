@@ -32,7 +32,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ■ 슬라이드 쇼와 발표자 보기
 쇼를 띄울 모니터를 고를 수 있고, 다른 모니터에는 현재·다음 슬라이드, 발표자 노트, 경과 시간을 보여 주는 발표자 보기를 띄울 수 있습니다.
-검은 화면/흰 화면, 레이저 포인터, 화면 확대, 번호로 이동, 휴식 타이머(Break Time)를 지원합니다.
+검은 화면/흰 화면, 레이저 포인터, 포인터 주변을 원으로 비추는 스팟 하이라이트, 화면 확대, 번호로 이동, 휴식 타이머(Break Time)를 지원합니다.
 
 ■ 간단한 편집
 텍스트를 제자리에서 고치고(글꼴·크기·색·굵게·기울임꼴·밑줄·정렬), 텍스트 상자와 그림을 넣고, 개체를 옮기거나 크기를 바꿀 수 있습니다.
@@ -55,12 +55,14 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 이 버전의 새로운 기능
 
-첫 버전입니다.
-- 슬라이드별로 기억되는 화면 판서
-- 슬라이드 쇼, 발표자 보기, 레이저 포인터, 화면 확대, 휴식 타이머
-- 텍스트·그림 편집, 썸네일 끌어다 놓기로 순서 바꾸기
-- 판서 노트 PDF 내보내기
-- 한국어·일본어·영어 지원
+버전 0.1.2
+- 스팟 하이라이트: 슬라이드 쇼 중 S 키나 도구 모음의 전구 버튼을 누르면 마우스 포인터 주변에 원이 표시되어, 청중이 가리키는 위치를 쉽게 찾을 수 있습니다.
+- 슬라이드 쇼에서 판서할 때 도구 패널이 두 개 나타나던 문제를 고쳐, 하나의 패널로 통일했습니다.
+- 펜·형광펜으로 판서할 때 마우스 포인터가 보이지 않던 문제를 고쳤습니다.
+- 텍스트가 도형 영역보다 길 때 잘려 보이던 문제를 고쳤습니다. 이제 영역 밖까지 이어서 표시됩니다.
+- 그림을 삽입했다가 되돌린 경우, 저장한 파일에 쓰이지 않는 그림이 남던 문제를 고쳤습니다.
+- 슬라이드를 추가·삭제·이동할 때 썸네일 목록이 더 빠르게 갱신됩니다.
+- 판서 되돌리기 관련 메모리 사용을 개선했습니다.
 
 ### 제품 기능
 
@@ -68,7 +70,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 2. 판서를 슬라이드별로 기억해 슬라이드를 넘기면 그 판서가 다시 나타남
 3. 편집 화면, 슬라이드 쇼, 다른 앱 위 어디에나 판서
 4. 쇼 모니터 선택과 발표자 보기(현재·다음 슬라이드, 노트, 경과 시간)
-5. 검은 화면/흰 화면, 레이저 포인터, 화면 확대, 번호로 이동
+5. 검은 화면/흰 화면, 레이저 포인터, 스팟 하이라이트, 화면 확대, 번호로 이동
 6. 텍스트 제자리 편집(글꼴·크기·색·굵게·기울임꼴·밑줄·정렬)
 7. 텍스트 상자·그림 삽입(붙여넣기, 끌어다 놓기 지원)
 8. 썸네일을 끌어다 놓아 슬라이드 순서 바꾸기
@@ -120,7 +122,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ■ スライド ショーと発表者ツール
 スライド ショーを表示するモニターを選べ、別のモニターには現在と次のスライド、発表者ノート、経過時間を表示する発表者ツールを表示できます。
-黒い画面/白い画面、レーザー ポインター、画面の拡大、番号でジャンプ、休憩タイマー (Break Time) に対応しています。
+黒い画面/白い画面、レーザー ポインター、ポインターの周りを円で照らすスポットハイライト、画面の拡大、番号でジャンプ、休憩タイマー (Break Time) に対応しています。
 
 ■ 手軽な編集
 テキストをその場で編集 (フォント・サイズ・色・太字・斜体・下線・配置) し、テキスト ボックスや画像を挿入し、オブジェクトの移動やサイズ変更ができます。
@@ -143,12 +145,14 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### このバージョンの新機能
 
-最初のバージョンです。
-- スライドごとに記憶される画面上の手書き
-- スライド ショー、発表者ツール、レーザー ポインター、画面の拡大、休憩タイマー
-- テキスト・画像の編集、サムネイルのドラッグによる順序の変更
-- 手書きノート PDF の出力
-- 日本語・韓国語・英語に対応
+バージョン 0.1.2
+- スポットハイライト：スライドショー中に S キーまたはツールバーの電球ボタンを押すと、マウスポインターの周りに円が表示され、指している位置が聴衆に分かりやすくなります。
+- スライドショーで書き込みをするとき、ツールパネルが 2 つ表示されていた問題を修正し、1 つのパネルに統一しました。
+- ペン・蛍光ペンで書き込むときにマウスポインターが見えなかった問題を修正しました。
+- テキストが図形の領域より長いときに切れて表示されていた問題を修正しました。領域の外まで続けて表示されます。
+- 画像を挿入して元に戻した場合、保存したファイルに使われていない画像が残っていた問題を修正しました。
+- スライドの追加・削除・移動時にサムネイル一覧がより速く更新されます。
+- 書き込みの元に戻す機能のメモリ使用量を改善しました。
 
 ### 製品の機能
 
@@ -156,7 +160,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 2. 手書きをスライドごとに記憶し、スライドを切り替えると再表示
 3. 編集画面、スライド ショー、ほかのアプリの上のどこにでも手書き
 4. 表示モニターの選択と発表者ツール (現在と次のスライド、ノート、経過時間)
-5. 黒い画面/白い画面、レーザー ポインター、画面の拡大、番号でジャンプ
+5. 黒い画面/白い画面、レーザー ポインター、スポットハイライト、画面の拡大、番号でジャンプ
 6. テキストのその場編集 (フォント・サイズ・色・太字・斜体・下線・配置)
 7. テキスト ボックス・画像の挿入 (貼り付け、ドラッグ アンド ドロップに対応)
 8. サムネイルのドラッグでスライドの順序を変更
@@ -208,7 +212,7 @@ Hold Shift for a straight line, press Ctrl+Z to undo a stroke, and Ctrl+Enter to
 
 ■ Slide show and Presenter View
 Choose which monitor shows the slide show, and open Presenter View on another one with the current and next slides, speaker notes and elapsed time.
-Black and white screens, laser pointer, zoom, jump to a slide by number, and a full-screen break timer (Break Time).
+Black and white screens, laser pointer, a spotlight that circles the mouse pointer, zoom, jump to a slide by number, and a full-screen break timer (Break Time).
 
 ■ Quick editing
 Edit text in place (font, size, color, bold, italic, underline, alignment), insert text boxes and pictures, and move or resize objects.
@@ -231,12 +235,14 @@ A lightweight app to open and edit .pptx presentations and present with screen i
 
 ### What's new in this version
 
-First release.
-- Screen ink remembered per slide
-- Slide show, Presenter View, laser pointer, zoom, break timer
-- Text and picture editing, drag thumbnails to reorder slides
-- Ink Notes PDF export
-- English, Korean and Japanese
+Version 0.1.2
+- Spotlight: during a slide show, press S or the light bulb button on the toolbar to show a circle around the mouse pointer, so your audience can easily see where you are pointing.
+- Fixed two ink toolbars appearing during a slide show; there is now a single toolbar.
+- Fixed the mouse pointer being invisible while drawing with the pen or highlighter.
+- Fixed text being cut off when it is longer than its shape. Text now continues outside the shape.
+- Fixed unused pictures remaining in the saved file after inserting a picture and then undoing it.
+- The thumbnail list updates faster when adding, deleting, or moving slides.
+- Reduced memory use of ink undo.
 
 ### Product features
 
@@ -244,7 +250,7 @@ First release.
 2. Ink remembered per slide and shown again when you return to it
 3. Draw anywhere: over the editor, the slide show or other apps
 4. Choose the show monitor; Presenter View with current and next slides, notes and elapsed time
-5. Black/white screen, laser pointer, zoom, jump to slide by number
+5. Black/white screen, laser pointer, spotlight, zoom, jump to slide by number
 6. In-place text editing (font, size, color, bold, italic, underline, alignment)
 7. Insert text boxes and pictures (paste or drag and drop)
 8. Drag thumbnails to reorder slides
