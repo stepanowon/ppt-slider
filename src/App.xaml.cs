@@ -24,6 +24,17 @@ public partial class App : Application
         Shortcuts.Load();
         var w = new MainWindow();
         w.Show();
-        if (e.Args.FirstOrDefault() is { } path) w.Open(path); // file association / "Open with"
+        if (FileToOpen(e.Args) is { } path) w.Open(path); // file association / "Open with" / restart after a language change
+    }
+
+    /// <summary>The file named on the command line, if any: a blank argument (an older restart passed one) is no file.</summary>
+    internal static string? FileToOpen(string[] args) => args.FirstOrDefault() is { } a && !string.IsNullOrWhiteSpace(a) ? a : null;
+
+    /// <summary>Starts the app again, with <paramref name="path"/> open in it when there is one.</summary>
+    internal static System.Diagnostics.ProcessStartInfo RestartInfo(string? path)
+    {
+        var info = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        if (!string.IsNullOrWhiteSpace(path)) info.ArgumentList.Add(path); // no file open: no argument at all
+        return info;
     }
 }

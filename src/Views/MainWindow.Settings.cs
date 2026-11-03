@@ -59,7 +59,7 @@ public partial class MainWindow
             || !ConfirmDiscard()) return; // the choice still applies at the next start
         var path = Deck?.Path;
         restarting = true; // already asked about unsaved edits
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { ArgumentList = { path ?? "" }, UseShellExecute = false });
+        System.Diagnostics.Process.Start(App.RestartInfo(path));
         Close();
     }
 

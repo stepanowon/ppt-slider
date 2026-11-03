@@ -26,6 +26,7 @@ static partial class SelfTest
         void Check(bool ok, string what) { log.Add($"{(ok ? "PASS" : "FAIL")} {what}"); if (!ok) failed = true; }
         failed = false;
         LocTests(Check);
+        StartupArgTests(Check);
         try { TextEdits(Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
         try
