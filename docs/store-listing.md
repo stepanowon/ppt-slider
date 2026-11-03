@@ -34,8 +34,11 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 쇼를 띄울 모니터를 고를 수 있고, 다른 모니터에는 현재·다음 슬라이드, 발표자 노트, 경과 시간을 보여 주는 발표자 보기를 띄울 수 있습니다.
 검은 화면/흰 화면, 레이저 포인터, 포인터 주변을 원으로 비추는 스팟 하이라이트, 화면 확대, 번호로 이동, 휴식 타이머(Break Time)를 지원합니다.
 
-■ 간단한 편집
-텍스트를 제자리에서 고치고(글꼴·크기·색·굵게·기울임꼴·밑줄·정렬), 텍스트 상자와 그림을 넣고, 개체를 옮기거나 크기를 바꿀 수 있습니다.
+■ 편집
+텍스트를 제자리에서 고칩니다. 글꼴·크기·색·굵게·기울임꼴·밑줄·취소선·텍스트 강조 색, 글머리 기호·번호·목록 수준, 정렬·줄 간격을 바꿀 수 있고, 편집 중에는 선택한 글자에만 적용됩니다.
+사각형·원·화살표·별·선 등 도형 19종, 표, 텍스트 상자, 그림을 넣을 수 있습니다. 도형은 채우기·윤곽선 색과 두께·대시, 회전·대칭, 순서(맨 앞·맨 뒤), 맞춤을 바꿀 수 있습니다.
+표는 셀을 바로 편집하고(Tab으로 다음 셀), 행·열을 넣거나 지울 수 있습니다. 병합된 셀도 처리합니다.
+여러 개체를 한꺼번에 선택해 옮기거나 크기를 바꾸고 회전할 수 있으며, 잘라내기·복사·붙여넣기(다른 슬라이드로, 그림 포함), 복제, 서식 복사, 실행 취소·다시 실행을 지원합니다.
 슬라이드 추가·복제·삭제와 썸네일 끌어다 놓기로 순서 바꾸기를 지원합니다.
 앱이 표시하지 못하는 요소도 파일 안에 그대로 남겨 두므로, 저장해도 원래 내용이 손상되지 않습니다.
 
@@ -51,7 +54,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 짧은 설명
 
-.pptx 프레젠테이션을 열어 간단히 편집하고, 화면 판서와 발표자 보기로 발표하는 가벼운 앱. 판서는 슬라이드별로 기억되고 판서 노트 PDF로 내보낼 수 있습니다.
+.pptx 프레젠테이션을 열어 텍스트·도형·표를 편집하고, 화면 판서와 발표자 보기로 발표하는 가벼운 앱. 판서는 슬라이드별로 기억되고 판서 노트 PDF로 내보낼 수 있습니다.
 
 ### 이 버전의 새로운 기능
 
@@ -66,11 +69,16 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 3. 편집 화면, 슬라이드 쇼, 다른 앱 위 어디에나 판서
 4. 쇼 모니터 선택과 발표자 보기(현재·다음 슬라이드, 노트, 경과 시간)
 5. 검은 화면/흰 화면, 레이저 포인터, 스팟 하이라이트, 화면 확대, 번호로 이동
-6. 텍스트 제자리 편집(글꼴·크기·색·굵게·기울임꼴·밑줄·정렬)
-7. 텍스트 상자·그림 삽입(붙여넣기, 끌어다 놓기 지원)
-8. 썸네일을 끌어다 놓아 슬라이드 순서 바꾸기
-9. 판서한 슬라이드만 모은 판서 노트 PDF와 전체 PDF 내보내기
-10. 자동 저장·복구, 최근 파일, 단축키 사용자 지정, 휴식 타이머
+6. 텍스트 제자리 편집(글꼴·크기·색·굵게·기울임꼴·밑줄·취소선·강조 색·정렬)
+7. 글머리 기호·번호, 목록 수준, 줄 간격
+8. 도형 19종 삽입(사각형·원·화살표·별·선 등), 채우기·윤곽선·회전·대칭
+9. 표 삽입과 셀 편집, 행·열 삽입·삭제(병합된 셀 포함)
+10. 텍스트 상자·그림 삽입(붙여넣기, 끌어다 놓기 지원)
+11. 여러 개체 선택, 크기·회전 핸들, 순서와 맞춤
+12. 잘라내기·복사·붙여넣기, 복제, 서식 복사, 실행 취소·다시 실행
+13. 썸네일을 끌어다 놓아 슬라이드 순서 바꾸기
+14. 판서한 슬라이드만 모은 판서 노트 PDF와 전체 PDF 내보내기
+15. 자동 저장·복구, 최근 파일, 단축키 사용자 지정, 휴식 타이머
 
 ### 스크린샷 캡션
 
@@ -119,8 +127,11 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 スライド ショーを表示するモニターを選べ、別のモニターには現在と次のスライド、発表者ノート、経過時間を表示する発表者ツールを表示できます。
 黒い画面/白い画面、レーザー ポインター、ポインターの周りを円で照らすスポットハイライト、画面の拡大、番号でジャンプ、休憩タイマー (Break Time) に対応しています。
 
-■ 手軽な編集
-テキストをその場で編集 (フォント・サイズ・色・太字・斜体・下線・配置) し、テキスト ボックスや画像を挿入し、オブジェクトの移動やサイズ変更ができます。
+■ 編集
+テキストをその場で編集できます。フォント・サイズ・色・太字・斜体・下線・取り消し線・蛍光ペンの色、箇条書き・段落番号・リストのレベル、配置・行間を変更でき、編集中は選択した文字だけに適用されます。
+四角形・円・矢印・星・線など 19 種類の図形、表、テキスト ボックス、画像を挿入できます。図形は塗りつぶしと枠線の色・太さ・破線、回転・反転、順序 (最前面・最背面)、配置を変更できます。
+表はセルをそのまま編集し (Tab で次のセル)、行・列の挿入と削除ができます。結合セルにも対応しています。
+複数のオブジェクトをまとめて選択して移動・サイズ変更・回転でき、切り取り・コピー・貼り付け (別のスライドへ、画像を含む)、複製、書式のコピー、元に戻す・やり直しに対応しています。
 スライドの追加・複製・削除、サムネイルのドラッグによる順序の変更に対応しています。
 アプリが表示できない要素もファイル内にそのまま残すため、保存しても元の内容は損なわれません。
 
@@ -136,7 +147,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### 短い説明
 
-.pptx プレゼンテーションを開いて手軽に編集し、画面上の手書きと発表者ツールで発表できる軽量アプリ。手書きはスライドごとに記憶され、手書きノート PDF に出力できます。
+.pptx プレゼンテーションを開いてテキスト・図形・表を編集し、画面上の手書きと発表者ツールで発表できる軽量アプリ。手書きはスライドごとに記憶され、手書きノート PDF に出力できます。
 
 ### このバージョンの新機能
 
@@ -151,11 +162,16 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 3. 編集画面、スライド ショー、ほかのアプリの上のどこにでも手書き
 4. 表示モニターの選択と発表者ツール (現在と次のスライド、ノート、経過時間)
 5. 黒い画面/白い画面、レーザー ポインター、スポットハイライト、画面の拡大、番号でジャンプ
-6. テキストのその場編集 (フォント・サイズ・色・太字・斜体・下線・配置)
-7. テキスト ボックス・画像の挿入 (貼り付け、ドラッグ アンド ドロップに対応)
-8. サムネイルのドラッグでスライドの順序を変更
-9. 手書きしたスライドだけの手書きノート PDF と、全スライドの PDF 出力
-10. 自動保存と復元、最近使ったファイル、ショートカットの変更、休憩タイマー
+6. テキストのその場編集 (フォント・サイズ・色・太字・斜体・下線・取り消し線・蛍光ペンの色・配置)
+7. 箇条書き・段落番号、リストのレベル、行間
+8. 19 種類の図形の挿入 (四角形・円・矢印・星・線など)、塗りつぶし・枠線・回転・反転
+9. 表の挿入とセルの編集、行・列の挿入と削除 (結合セルにも対応)
+10. テキスト ボックス・画像の挿入 (貼り付け、ドラッグ アンド ドロップに対応)
+11. 複数のオブジェクトの選択、サイズ・回転ハンドル、順序と配置
+12. 切り取り・コピー・貼り付け、複製、書式のコピー、元に戻す・やり直し
+13. サムネイルのドラッグでスライドの順序を変更
+14. 手書きしたスライドだけの手書きノート PDF と、全スライドの PDF 出力
+15. 自動保存と復元、最近使ったファイル、ショートカットの変更、休憩タイマー
 
 ### スクリーンショットのキャプション
 
@@ -204,8 +220,11 @@ Hold Shift for a straight line, press Ctrl+Z to undo a stroke, and Ctrl+Enter to
 Choose which monitor shows the slide show, and open Presenter View on another one with the current and next slides, speaker notes and elapsed time.
 Black and white screens, laser pointer, a spotlight that circles the mouse pointer, zoom, jump to a slide by number, and a full-screen break timer (Break Time).
 
-■ Quick editing
-Edit text in place (font, size, color, bold, italic, underline, alignment), insert text boxes and pictures, and move or resize objects.
+■ Editing
+Edit text in place: font, size, color, bold, italic, underline, strikethrough and highlight color, bullets, numbering and list levels, alignment and line spacing. While editing, formatting applies only to the selected characters.
+Insert 19 shapes (rectangles, ellipses, arrows, stars, lines and more), tables, text boxes and pictures. Change a shape's fill and outline color, weight and dashes, rotate and flip it, and set its order (bring to front, send to back) and alignment.
+Edit table cells in place (Tab to the next cell) and insert or delete rows and columns, merged cells included.
+Select several objects at once to move, resize or rotate them. Cut, copy and paste (across slides, pictures included), duplicate, Format Painter, undo and redo.
 Add, duplicate and delete slides, and drag thumbnails to change their order.
 Elements the app does not display are kept in the file as they are, so saving never damages your original content.
 
@@ -221,7 +240,7 @@ Note: the app does not collect personal data or send anything over the internet.
 
 ### Short description
 
-A lightweight app to open and edit .pptx presentations and present with screen ink and Presenter View. Ink is remembered per slide and can be exported as Ink Notes PDF.
+A lightweight app to open .pptx presentations, edit text, shapes and tables, and present with screen ink and Presenter View. Ink is remembered per slide and can be exported as Ink Notes PDF.
 
 ### What's new in this version
 
@@ -236,11 +255,16 @@ Version 0.2.1
 3. Draw anywhere: over the editor, the slide show or other apps
 4. Choose the show monitor; Presenter View with current and next slides, notes and elapsed time
 5. Black/white screen, laser pointer, spotlight, zoom, jump to slide by number
-6. In-place text editing (font, size, color, bold, italic, underline, alignment)
-7. Insert text boxes and pictures (paste or drag and drop)
-8. Drag thumbnails to reorder slides
-9. Ink Notes PDF of only the slides you drew on, or a PDF of all slides
-10. Autosave and recovery, recent files, custom shortcuts, break timer
+6. In-place text editing (font, size, color, bold, italic, underline, strikethrough, highlight, alignment)
+7. Bullets and numbering, list levels, line spacing
+8. Insert 19 shapes (rectangles, ellipses, arrows, stars, lines and more) with fill, outline, rotate and flip
+9. Insert tables, edit cells, insert and delete rows and columns (merged cells included)
+10. Insert text boxes and pictures (paste or drag and drop)
+11. Multiple selection, resize and rotation handles, order and alignment
+12. Cut, copy and paste, duplicate, Format Painter, undo and redo
+13. Drag thumbnails to reorder slides
+14. Ink Notes PDF of only the slides you drew on, or a PDF of all slides
+15. Autosave and recovery, recent files, custom shortcuts, break timer
 
 ### Screenshot captions
 
