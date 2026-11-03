@@ -45,3 +45,26 @@ $store = Join-Path $PSScriptRoot 'StoreArt'
 New-Item -ItemType Directory -Force $store | Out-Null
 foreach ($n in 300, 150, 71) { Draw "StoreIcon-${n}x$n.png" $n $n $store }
 Get-ChildItem $dir *.png | ForEach-Object { "$($_.Name)" }
+
+# The exe's icon (title bar, taskbar, Explorer): the same picture at the sizes Windows asks for, PNG-compressed in one .ico.
+$icoDir = Join-Path $PSScriptRoot '..\src\Assets'
+New-Item -ItemType Directory -Force $icoDir | Out-Null
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ('pptslider-ico-' + [Guid]::NewGuid())
+New-Item -ItemType Directory -Force $tmp | Out-Null
+$sizes = 16, 20, 24, 32, 40, 48, 64, 128, 256
+$images = foreach ($n in $sizes) { Draw "$n.png" $n $n $tmp; , [IO.File]::ReadAllBytes((Join-Path $tmp "$n.png")) }
+Remove-Item -Recurse -Force $tmp
+$ms = New-Object IO.MemoryStream
+$bw = New-Object IO.BinaryWriter $ms
+$bw.Write([uint16]0); $bw.Write([uint16]1); $bw.Write([uint16]$sizes.Count)   # ICONDIR: reserved, type 1 = icon, count
+$offset = 6 + 16 * $sizes.Count
+for ($i = 0; $i -lt $sizes.Count; $i++) {                                      # ICONDIRENTRY per size (0 means 256)
+    $n = $sizes[$i]
+    $bw.Write([byte]($n % 256)); $bw.Write([byte]($n % 256)); $bw.Write([byte]0); $bw.Write([byte]0)
+    $bw.Write([uint16]1); $bw.Write([uint16]32); $bw.Write([uint32]$images[$i].Length); $bw.Write([uint32]$offset)
+    $offset += $images[$i].Length
+}
+foreach ($img in $images) { $bw.Write([byte[]]$img) }
+$bw.Flush()
+[IO.File]::WriteAllBytes((Join-Path $icoDir 'PptSlider.ico'), $ms.ToArray())
+"src\Assets\PptSlider.ico ($($sizes -join ', '))"

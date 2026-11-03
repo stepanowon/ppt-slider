@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:PptSlider"
         Title="PPT Slider" Width="1400" Height="860" WindowStartupLocation="CenterScreen"
         FontFamily="{x:Static local:L.UiFont}" FontSize="12" Background="#F3F3F3"
-        AllowDrop="True" Drop="OnDrop" PreviewKeyDown="OnKey" Closing="OnClosing">
+        AllowDrop="True" Drop="OnDrop" PreviewKeyDown="OnKey" PreviewMouseDown="OnWindowMouseDown" Closing="OnClosing">
     <Window.Resources>
         <SolidColorBrush x:Key="Accent" Color="#C43E1C"/>
         <!-- Ribbon button: MDL2 glyph in Tag, label in Content -->
@@ -117,7 +117,7 @@
                     <HeaderedContentControl Header="{local:Loc grp.font}" Style="{StaticResource Grp}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,2">
-                                <ComboBox x:Name="FontBox" Width="150" IsEditable="True" SelectionChanged="OnFontPicked" ToolTip="{local:Loc grp.font}"/>
+                                <ComboBox x:Name="FontBox" Width="150" IsEditable="True" SelectionChanged="OnFontPicked" KeyDown="OnFontKey" ToolTip="{local:Loc grp.font}"/>
                                 <ComboBox x:Name="SizeBox" Width="58" Margin="4,0,0,0" IsEditable="True" SelectionChanged="OnSizePicked" KeyDown="OnSizeKey" ToolTip="{local:Loc fontSizeTip}"/>
                                 <Button Style="{StaticResource Small}" Tag="&#xE8E8;" Click="OnGrow" ToolTip="{local:Loc grow}" local:Shortcuts.For="grow"/>
                                 <Button Style="{StaticResource Small}" Tag="&#xE8E7;" Click="OnShrink" ToolTip="{local:Loc shrink}" local:Shortcuts.For="shrink"/>
@@ -316,7 +316,8 @@
                 <Grid x:Name="StageFrame" Visibility="Collapsed">
                     <!-- shadow on a sibling so the effect doesn't slow down rendering; ink is drawn on the screen above (InkOverlay) -->
                     <Border Background="White"><Border.Effect><DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.25"/></Border.Effect></Border>
-                    <Grid x:Name="Stage" ClipToBounds="True"
+                    <!-- Focusable: the caret goes here when it leaves the font / size boxes, so the slide keys reach the window -->
+                    <Grid x:Name="Stage" ClipToBounds="True" Focusable="True" FocusVisualStyle="{x:Null}"
                           MouseLeftButtonDown="OnStageDown" MouseMove="OnStageMove" MouseLeftButtonUp="OnStageUp">
                         <ContentControl x:Name="SlideHost" Focusable="False"/>
                         <Canvas x:Name="Overlay" Background="Transparent"/>

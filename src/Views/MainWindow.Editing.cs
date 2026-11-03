@@ -107,19 +107,65 @@ public partial class MainWindow : IEditorHost
         syncing = false;
     }
 
+    // The boxes keep the caret after they are used, and the thumbnails, the slide and the ribbon buttons can't take it, so
+    // without this the slide keys (arrows, PgUp / PgDn) went on changing the box's choice, which applied a font to the slide.
+    // A choice applies when it is picked from the open list or confirmed with Enter, and then the caret leaves the box;
+    // a click anywhere else takes it out too.
+
+    /// <summary>
+    /// Takes the caret out of the font / size boxes unless the text editor has it: to the slide, whose keys then bubble to the
+    /// window. (Focusing the window itself would hand the caret straight back: it remembers the box as its focused element.)
+    /// </summary>
+    void LeaveFormatBoxes()
+    {
+        if (TextEditor.IsEditing || !InFormatBoxes(Keyboard.FocusedElement as DependencyObject)) return;
+        if (Stage.IsVisible && Stage.Focus()) return;
+        FocusManager.SetFocusedElement(this, null); // no slide shown: nothing focused, keys still reach the window
+        Keyboard.ClearFocus();
+    }
+
+    /// <summary>Window PreviewMouseDown: a click outside the boxes ends typing in them.</summary>
+    void OnWindowMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!InFormatBoxes(e.OriginalSource as DependencyObject)) LeaveFormatBoxes();
+    }
+
+    /// <summary>After a choice was applied: once the list has closed, the caret goes back.</summary>
+    void FormatChosen() => Dispatcher.BeginInvoke(LeaveFormatBoxes, System.Windows.Threading.DispatcherPriority.Input);
+
     void OnSizePicked(object sender, SelectionChangedEventArgs e)
     {
-        if (!syncing && SizeBox.SelectedItem is double pt) TextCommands.SetFontSize(pt);
+        if (syncing || !SizeBox.IsDropDownOpen || SizeBox.SelectedItem is not double pt) return; // arrows with the list closed only browse
+        TextCommands.SetFontSize(pt);
+        FormatChosen();
     }
 
     void OnSizeKey(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Enter && double.TryParse(SizeBox.Text, out var pt) && pt is >= 1 and <= 400) TextCommands.SetFontSize(pt);
+        if (e.Key == Key.Escape) { SyncFormatUi(); LeaveFormatBoxes(); e.Handled = true; return; }
+        if (e.Key != Key.Enter) return;
+        if (double.TryParse(SizeBox.Text, out var pt) && pt is >= 1 and <= 400) TextCommands.SetFontSize(pt);
+        FormatChosen();
+        e.Handled = true;
     }
 
     void OnFontPicked(object sender, SelectionChangedEventArgs e)
     {
-        if (!syncing && FontBox.SelectedItem is string face) TextCommands.SetFontFace(face);
+        if (syncing || !FontBox.IsDropDownOpen || FontBox.SelectedItem is not string face) return;
+        TextCommands.SetFontFace(face);
+        FormatChosen();
+    }
+
+    void OnFontKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { SyncFormatUi(); LeaveFormatBoxes(); e.Handled = true; return; }
+        if (e.Key != Key.Enter) return;
+        // a typed name applies when it is an installed font (in any case); the list's own spelling is used
+        if (FontBox.Items.Cast<string>().FirstOrDefault(f => string.Equals(f, FontBox.Text.Trim(), StringComparison.CurrentCultureIgnoreCase)) is { } face)
+            TextCommands.SetFontFace(face);
+        else SyncFormatUi();
+        FormatChosen();
+        e.Handled = true;
     }
 
     // ---------- ribbon: text ----------

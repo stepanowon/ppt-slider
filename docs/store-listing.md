@@ -55,14 +55,9 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 이 버전의 새로운 기능
 
-버전 0.1.2
-- 스팟 하이라이트: 슬라이드 쇼 중 S 키나 도구 모음의 전구 버튼을 누르면 마우스 포인터 주변에 원이 표시되어, 청중이 가리키는 위치를 쉽게 찾을 수 있습니다.
-- 슬라이드 쇼에서 판서할 때 도구 패널이 두 개 나타나던 문제를 고쳐, 하나의 패널로 통일했습니다.
-- 펜·형광펜으로 판서할 때 마우스 포인터가 보이지 않던 문제를 고쳤습니다.
-- 텍스트가 도형 영역보다 길 때 잘려 보이던 문제를 고쳤습니다. 이제 영역 밖까지 이어서 표시됩니다.
-- 그림을 삽입했다가 되돌린 경우, 저장한 파일에 쓰이지 않는 그림이 남던 문제를 고쳤습니다.
-- 슬라이드를 추가·삭제·이동할 때 썸네일 목록이 더 빠르게 갱신됩니다.
-- 판서 되돌리기 관련 메모리 사용을 개선했습니다.
+버전 0.2.1
+- 글꼴 상자를 쓴 뒤 슬라이드를 클릭하고 화살표·PgUp·PgDn 키를 누르면 슬라이드가 넘어가지 않고 글꼴이 바뀌던 문제를 고쳤습니다. 글꼴과 크기는 목록에서 고르거나 Enter를 누를 때 적용됩니다.
+- 앱 아이콘이 창 제목 표시줄, 작업 표시줄, 실행 파일에도 표시됩니다.
 
 ### 제품 기능
 
@@ -145,14 +140,9 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### このバージョンの新機能
 
-バージョン 0.1.2
-- スポットハイライト：スライドショー中に S キーまたはツールバーの電球ボタンを押すと、マウスポインターの周りに円が表示され、指している位置が聴衆に分かりやすくなります。
-- スライドショーで書き込みをするとき、ツールパネルが 2 つ表示されていた問題を修正し、1 つのパネルに統一しました。
-- ペン・蛍光ペンで書き込むときにマウスポインターが見えなかった問題を修正しました。
-- テキストが図形の領域より長いときに切れて表示されていた問題を修正しました。領域の外まで続けて表示されます。
-- 画像を挿入して元に戻した場合、保存したファイルに使われていない画像が残っていた問題を修正しました。
-- スライドの追加・削除・移動時にサムネイル一覧がより速く更新されます。
-- 書き込みの元に戻す機能のメモリ使用量を改善しました。
+バージョン 0.2.1
+- フォント ボックスを使った後にスライドをクリックして矢印キー・PgUp・PgDn を押すと、スライドが切り替わらずにフォントが変わっていた問題を修正しました。フォントとサイズは、一覧から選ぶか Enter を押したときに適用されます。
+- アプリのアイコンがウィンドウのタイトル バー、タスク バー、実行ファイルにも表示されるようになりました。
 
 ### 製品の機能
 
@@ -235,14 +225,9 @@ A lightweight app to open and edit .pptx presentations and present with screen i
 
 ### What's new in this version
 
-Version 0.1.2
-- Spotlight: during a slide show, press S or the light bulb button on the toolbar to show a circle around the mouse pointer, so your audience can easily see where you are pointing.
-- Fixed two ink toolbars appearing during a slide show; there is now a single toolbar.
-- Fixed the mouse pointer being invisible while drawing with the pen or highlighter.
-- Fixed text being cut off when it is longer than its shape. Text now continues outside the shape.
-- Fixed unused pictures remaining in the saved file after inserting a picture and then undoing it.
-- The thumbnail list updates faster when adding, deleting, or moving slides.
-- Reduced memory use of ink undo.
+Version 0.2.1
+- Fixed the arrow keys, PgUp and PgDn changing the font instead of the slide after using the font box and then clicking a slide. A font or size now applies when you pick it from the list or press Enter.
+- The app icon now also appears in the window title bar, the taskbar and the program file.
 
 ### Product features
 

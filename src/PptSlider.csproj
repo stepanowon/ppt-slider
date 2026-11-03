@@ -7,7 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.2.0</Version>
+    <!-- exe, title bar and taskbar icon; drawn by Package\make-assets.ps1 like the MSIX logos -->
+    <ApplicationIcon>Assets\PptSlider.ico</ApplicationIcon>
+    <Version>0.2.1</Version>
     <Product>PPT Slider</Product>
     <Copyright>Copyright (c) 2026 StephenWon</Copyright>
   </PropertyGroup>
