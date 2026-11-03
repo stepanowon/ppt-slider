@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace PptSlider;
 
@@ -18,6 +18,13 @@ public partial class App : Application
             L.Init(e.Args.Length > 3 ? e.Args[3] : null);
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             Shutdown(SelfTest.Screens(deck, dir, e.Args.Length > 4 ? int.Parse(e.Args[4]) : 0));
+            return;
+        }
+        if (e.Args is ["--render", var src, var to, ..] && e.Args.Length <= 4)
+        {
+            L.Init("ko");
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Shutdown(SelfTest.RenderAll(src, to, e.Args.Length > 3 ? int.Parse(e.Args[3]) : 1280));
             return;
         }
         L.Init();

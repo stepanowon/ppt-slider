@@ -13,8 +13,9 @@ static class ColorMath
             switch (name)
             {
                 case "alpha": a = v; break;
-                case "shade": r *= v; g *= v; b *= v; break;
-                case "tint": r = 1 - (1 - r) * v; g = 1 - (1 - g) * v; b = 1 - (1 - b) * v; break;
+                // PowerPoint shades and tints in linear light: tint 40% of #00A4F6 is #CBE0FB, not #99DBFB
+                case "shade": (r, g, b) = (Gamma(Lin(r) * v), Gamma(Lin(g) * v), Gamma(Lin(b) * v)); break;
+                case "tint": (r, g, b) = (Gamma(1 - (1 - Lin(r)) * v), Gamma(1 - (1 - Lin(g)) * v), Gamma(1 - (1 - Lin(b)) * v)); break;
                 case "lumMod" or "lumOff" or "satMod":
                     var (hh, ss, ll) = ToHsl(r, g, b);
                     if (name == "lumMod") ll *= v; else if (name == "lumOff") ll += v; else ss *= v;
@@ -25,6 +26,9 @@ static class ColorMath
         static byte B(double x) => (byte)Math.Round(Math.Clamp(x, 0, 1) * 255);
         return Color.FromArgb(B(a), B(r), B(g), B(b));
     }
+
+    static double Lin(double c) => c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
+    static double Gamma(double c) => c <= 0.0031308 ? c * 12.92 : 1.055 * Math.Pow(Math.Clamp(c, 0, 1), 1 / 2.4) - 0.055;
 
     static (double h, double s, double l) ToHsl(double r, double g, double b)
     {

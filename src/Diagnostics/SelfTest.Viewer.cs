@@ -67,7 +67,7 @@ static partial class SelfTest
         }
         static List<FrameworkElement> All(DependencyObject root) =>
             LogicalTreeHelper.GetChildren(root).OfType<FrameworkElement>().SelectMany(e => All(e).Prepend(e)).ToList();
-        static string TextOf(FrameworkElement e) => string.Concat(All(e).OfType<TextBlock>().Select(t => t.Text + string.Concat(t.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text))));
+        static string TextOf(FrameworkElement e) => SlideRenderer.Plain(string.Concat(All(e).OfType<TextBlock>().Select(t => t.Text + string.Concat(t.Inlines.OfType<System.Windows.Documents.Run>().Select(r => r.Text)))));
 
         static int Paths(FrameworkElement e) => All(e).OfType<System.Windows.Shapes.Path>().Count();
         var smart = AddSmartArt(withDrawing: true);

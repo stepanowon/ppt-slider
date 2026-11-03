@@ -13,7 +13,9 @@ namespace PptSlider;
 /// <summary>
 /// Draws PPTX slides as WPF visuals: backgrounds, master/layout graphics, shapes, text, pictures, groups, tables.
 /// SmartArt is drawn from the shapes PowerPoint saved with it (drawing.xml).
-/// ponytail: charts, effects, table styles and animations are not rendered; add when decks need them.
+/// Text layout follows PowerPoint where WPF differs (see SelfTest.Fidelity, checked against PowerPoint's own export:
+/// `PptSlider.exe --render deck.pptx outDir` beside PowerPoint's Slide.Export).
+/// ponytail: charts, effects, table styles other than the default and animations are not rendered; add when decks need them.
 /// </summary>
 public class SlideRenderer
 {
@@ -37,7 +39,7 @@ public class SlideRenderer
     record Theme(Dictionary<string, Color> Colors, Dictionary<string, string> Fonts, List<double> LineWidths);
 
     record Ctx(OpenXmlPart Part, Theme T, Dictionary<string, string> ClrMap,
-        OpenXmlElement? LayoutTree, OpenXmlElement? MasterTree, OpenXmlElement? TxStyles, OpenXmlElement? DefaultText);
+        OpenXmlElement? LayoutTree, OpenXmlElement? MasterTree, OpenXmlElement? TxStyles, OpenXmlElement? DefaultText, int Num = 0);
 
     readonly record struct Map(double Ox, double Oy, double Sx, double Sy)
     {
@@ -57,8 +59,10 @@ public class SlideRenderer
         var master = layout.SlideMasterPart!;
         var clrMap = X.Child(master.SlideMaster, "clrMap")?.GetAttributes().ToDictionary(a => a.LocalName, a => a.Value ?? "")
                      ?? new Dictionary<string, string>();
+        var relId = pres.GetIdOfPart(slide);
+        int num = pres.Presentation?.SlideIdList?.Elements<DocumentFormat.OpenXml.Presentation.SlideId>().Select(s => s.RelationshipId?.Value).ToList().IndexOf(relId) ?? -1;
         return new Ctx(slide, ThemeOf(master), clrMap, Tree(layout.SlideLayout), Tree(master.SlideMaster),
-            X.Child(master.SlideMaster, "txStyles"), X.Child(pres.Presentation, "defaultTextStyle"));
+            X.Child(master.SlideMaster, "txStyles"), X.Child(pres.Presentation, "defaultTextStyle"), num + 1);
     }
 
     public Canvas Render(SlidePart slide, List<ShapeHit>? hits = null)
@@ -214,7 +218,9 @@ public class SlideRenderer
             var path = new Path { Data = geom, Fill = fill, Stroke = stroke, StrokeThickness = sw, StrokeDashArray = dash };
             bool fh = X.Attr(xfrm, "flipH") == "1", fv = X.Attr(xfrm, "flipV") == "1";
             if (fh || fv) { path.RenderTransformOrigin = new Point(0.5, 0.5); path.RenderTransform = new ScaleTransform(fh ? -1 : 1, fv ? -1 : 1); }
-            host.Children.Add(path);
+            // a horizontal or vertical line has no height or width: in the Grid, layout would clip its stroke away entirely
+            if (r.Width < 1 || r.Height < 1) host.Children.Add(new Canvas { Children = { path } });
+            else host.Children.Add(path);
             if (geom is LineGeometry && stroke != null && X.Child(spPr, "ln") is { } ln)
             {
                 // the line as drawn (flips applied): head at its start, tail at its end
@@ -332,12 +338,14 @@ public class SlideRenderer
         var grid = new Grid();
         foreach (var col in X.Child(tbl, "tblGrid")?.ChildElements ?? Enumerable.Empty<OpenXmlElement>())
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength((X.Long(col, "w") ?? 0) * m.Sx) });
-        var lists = new List<OpenXmlElement?> { c.DefaultText, X.Child(c.TxStyles, "otherStyle") };
+        // the table style's text (tcTxStyle fontRef minor) comes before the presentation's default text style
+        var lists = new List<OpenXmlElement?> { TableText, X.Child(c.TxStyles, "otherStyle"), c.DefaultText };
         // PowerPoint's default table style "Medium Style 2 - Accent 1"; ponytail: other table styles render unstyled
         var tblPr = X.Child(tbl, "tblPr");
         var styleId = X.Child(tblPr, "tableStyleId")?.InnerText;
         bool medium2 = styleId is null or "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}";
         bool firstRow = X.Attr(tblPr, "firstRow") is "1" or "true", band = X.Attr(tblPr, "bandRow") is "1" or "true";
+        bool firstCol = X.Attr(tblPr, "firstCol") is "1" or "true";
         var accent = Scheme("accent1", c);
         Color Tint(double t) => ColorMath.Apply(accent, [("tint", t)]);
         int ri = 0;
@@ -345,12 +353,13 @@ public class SlideRenderer
         {
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             double h = (X.Long(tr, "h") ?? 0) * m.Sy;
-            bool header = medium2 && firstRow && ri == 0;
+            bool headerRow = medium2 && firstRow && ri == 0;
             int dataRow = ri - (firstRow ? 1 : 0);
-            Brush? styleFill = !medium2 ? null : new SolidColorBrush(header ? accent : band && dataRow % 2 == 0 ? Tint(0.4) : Tint(0.2));
             int ci = 0;
             foreach (var tc in tr.ChildElements.Where(e => e.LocalName == "tc"))
             {
+                bool header = headerRow || medium2 && firstCol && ci == 0;
+                Brush? styleFill = !medium2 ? null : new SolidColorBrush(header ? accent : band && dataRow % 2 == 0 ? Tint(0.4) : Tint(0.2));
                 if (X.Attr(tc, "hMerge") == "1" || X.Attr(tc, "vMerge") == "1") { ci++; continue; }
                 var tcPr = X.Child(tc, "tcPr");
                 var fill = Fill(tcPr, c, out var hasFill);
@@ -406,7 +415,9 @@ public class SlideRenderer
         string? B(string n) => bodies.Select(b => X.Attr(b, n)).FirstOrDefault(v => v != null);
         // bodyPr uses lIns/tIns/..., table cells (tcPr) use marL/marT/...
         double Ins(string n, long d) => (long.TryParse(B(n) ?? B("mar" + char.ToUpper(n[0])), out var v) ? v : d) / Emu;
-        double fontScale = (X.Long(X.Child(X.Child(tx, "bodyPr"), "normAutofit"), "fontScale") ?? 100000) / 100000.0 * shrink;
+        var autofit = X.Child(X.Child(tx, "bodyPr"), "normAutofit");
+        double fontScale = (X.Long(autofit, "fontScale") ?? 100000) / 100000.0 * shrink;
+        long lnReduce = X.Long(autofit, "lnSpcReduction") ?? 0; // "shrink on overflow" also tightens the lines
         bool wrap = B("wrap") != "none";
 
         var panel = new TextPanel
@@ -416,6 +427,7 @@ public class SlideRenderer
             VerticalAlignment = B("anchor") switch { "ctr" => VerticalAlignment.Center, "b" => VerticalAlignment.Bottom, _ => VerticalAlignment.Top },
         };
         int autoNum = 0;
+        bool firstPara = true;
         foreach (var p in tx.ChildElements.Where(e => e.LocalName == "p"))
         {
             var pPr = X.Child(p, "pPr");
@@ -444,9 +456,15 @@ public class SlideRenderer
             }
 
             var runs = p.ChildElements.Where(e => e.LocalName is "r" or "br" or "fld").ToList();
+            // PowerPoint wraps Korean between any two syllables when eaLnBrk and latinLnBrk are both on, otherwise only at spaces
+            bool anyBreak = P("latinLnBrk") is "1" or "true" && P("eaLnBrk") is null or "1" or "true";
+            char prev = ' ';
+            double natural = 0, spacing = 0; // the runs' width without and with their character spacing (spc)
             var endPr = X.Child(p, "endParaRPr");
             var firstRPr = runs.Select(r => X.Child(r, "rPr")).FirstOrDefault(r => r != null) ?? endPr;
             double size = Size(firstRPr);
+            // a line is as tall as its largest text
+            double lineSize = runs.Where(r => r.LocalName != "br").Select(r => Size(X.Child(r, "rPr"))).DefaultIfEmpty(size).Max();
             var tb = new TextBlock
             {
                 TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
@@ -457,16 +475,21 @@ public class SlideRenderer
             {
                 var s = PC(n);
                 if (X.Child(s, "spcPts") is { } pts) return (X.Long(pts, "val") ?? 0) / 100.0 * 96 / 72;
-                if (X.Child(s, "spcPct") is { } pct) return size * 1.2 * (X.Long(pct, "val") ?? 0) / 100000.0;
+                if (X.Child(s, "spcPct") is { } pct) return lineSize * 1.2 * (X.Long(pct, "val") ?? 0) / 100000.0;
                 return 0;
             }
             double marL = (long.TryParse(P("marL"), out var ml) ? ml : 0) / Emu, indent = (long.TryParse(P("indent"), out var ind) ? ind : 0) / Emu;
-            tb.Margin = new Thickness(Math.Max(0, marL + indent), Spc("spcBef"), 0, Spc("spcAft"));
-            if (X.Child(PC("lnSpc"), "spcPct") is { } lnPct)
-            {
-                tb.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
-                tb.LineHeight = Math.Max(1, size * 1.2 * (X.Long(lnPct, "val") ?? 100000) / 100000.0);
-            }
+            // PowerPoint leaves out the space before a box's first paragraph
+            // PowerPoint keeps a word on the line when its last glyph just touches the box edge; WPF also counts the glyph's
+            // trailing side bearing, so left-aligned text gets that much room past the edge
+            double slack = tb.TextAlignment is TextAlignment.Left or TextAlignment.Justify && wrap ? -lineSize * 0.4 : 0;
+            tb.Margin = new Thickness(Math.Max(0, marL + indent), firstPara ? 0 : Spc("spcBef"), slack, Spc("spcAft"));
+            firstPara = false;
+            // PowerPoint's single line is 1.2 × the font size, whatever the font's own line gap (WPF's default would use that)
+            tb.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+            tb.LineHeight = Math.Max(1, X.Child(PC("lnSpc"), "spcPts") is { } lnPts
+                ? (X.Long(lnPts, "val") ?? 0) / 100.0 * 96 / 72 * fontScale
+                : lineSize * 1.2 * ((X.Long(X.Child(PC("lnSpc"), "spcPct"), "val") ?? 100000) - lnReduce) / 100000.0);
 
             bool hasText = runs.Any(r => r.LocalName != "br" && !string.IsNullOrEmpty(X.Child(r, "t")?.InnerText));
             var bulletDef = levels.Select(l => l.ChildElements.FirstOrDefault(ch => ch.LocalName is "buNone" or "buChar" or "buAutoNum")).FirstOrDefault(v => v != null);
@@ -480,14 +503,26 @@ public class SlideRenderer
                 };
                 if (X.Attr(PC("buFont"), "typeface") is { } bf && !bf.StartsWith('+') && FontNames.Safe(bf) is { } face) bu.FontFamily = new FontFamily(face);
                 bu.Tag = Bullet;
-                tb.Inlines.Add(bu);
-                tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6, Tag = Bullet });
+                double hang = -indent;
+                if (hang >= 1 && marL >= hang)
+                {
+                    // hanging indent: the bullet sits in the first line's indent, every line of text starts at marL
+                    tb.Margin = tb.Margin with { Left = marL };
+                    tb.Inlines.Add(HangingBullet(bu, hang));
+                }
+                else
+                {
+                    tb.Inlines.Add(bu);
+                    tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6, Tag = Bullet });
+                }
             }
             foreach (var r in runs)
             {
-                if (r.LocalName == "br") { tb.Inlines.Add(new LineBreak()); continue; }
+                if (r.LocalName == "br") { tb.Inlines.Add(new LineBreak()); prev = ' '; continue; }
                 var rPr = X.Child(r, "rPr");
-                var run = new Run(X.Child(r, "t")?.InnerText ?? "")
+                var s = r.LocalName == "fld" && X.Attr(r, "type") == "slidenum" && c.Num > 0 ? c.Num.ToString() : X.Child(r, "t")?.InnerText ?? "";
+                s = Wrapping(s, anyBreak, ref prev);
+                var run = new Run(s)
                 {
                     FontSize = Size(rPr), FontFamily = Font(rPr), Foreground = Fore(rPr),
                 };
@@ -500,13 +535,63 @@ public class SlideRenderer
                 if (deco.Count > 0) run.TextDecorations = deco;
                 if (X.Child(rPr, "highlight") is { } hl && ColorOf(hl, c) is { } hc) run.Background = new SolidColorBrush(hc);
                 tb.Inlines.Add(run);
+                var plain = Plain(s);
+                if (plain.Length > 0)
+                {
+                    double w = new FormattedText(plain, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                        new Typeface(run.FontFamily, run.FontStyle, run.FontWeight, FontStretches.Normal), run.FontSize, Brushes.Black, 1).WidthIncludingTrailingWhitespace;
+                    natural += w;
+                    spacing += long.TryParse(R(rPr, "spc"), out var spc) ? plain.Length * spc / 100.0 * 96 / 72 * fontScale : 0;
+                }
             }
+            // WPF has no character spacing: squeeze or stretch the paragraph so its lines are as long as PowerPoint's
+            if (spacing != 0 && natural > 0)
+                tb.LayoutTransform = new ScaleTransform(Math.Clamp((natural + spacing) / natural, 0.7, 1.3), 1);
             panel.Children.Add(tb);
         }
         return panel;
     }
 
     static readonly object Bullet = new();
+
+    /// <summary>Table text takes the theme's minor font (the table style's tcTxStyle fontRef), at every level.</summary>
+    static readonly OpenXmlElement TableText = new DocumentFormat.OpenXml.Drawing.ListStyle(
+        "<a:lstStyle xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">" + string.Concat(Enumerable.Range(1, 9).Select(i =>
+        $"<a:lvl{i}pPr><a:defRPr><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/></a:defRPr></a:lvl{i}pPr>")) + "</a:lstStyle>");
+
+    /// <summary>Zero-width space and word joiner: make WPF wrap where PowerPoint would; taken out again for editing.</summary>
+    public const char Wrap = '​', NoWrap = '⁠';
+
+    /// <summary>The text without the marks <see cref="Wrapping"/> added.</summary>
+    public static string Plain(string s) => s.Replace(Wrap.ToString(), "").Replace(NoWrap.ToString(), "");
+
+    static bool Cjk(char ch) => ch is >= '가' and <= '힣' or >= 'ᄀ' and <= 'ᇿ' or >= '㄰' and <= '㆏' or >= '一' and <= '鿿' or >= '぀' and <= 'ヿ';
+
+    /// <summary>
+    /// WPF breaks lines between any two Korean syllables; PowerPoint does that only when <paramref name="anyBreak"/>
+    /// (latinLnBrk="1"), and never inside a Latin word or between a word and the syllable glued to it ("diff를").
+    /// <paramref name="prev"/>: the last character before <paramref name="s"/> in its paragraph.
+    /// </summary>
+    static string Wrapping(string s, bool anyBreak, ref char prev)
+    {
+        var sb = new System.Text.StringBuilder(s.Length * 2);
+        foreach (var ch in s)
+        {
+            if (char.IsLetterOrDigit(ch) && char.IsLetterOrDigit(prev) && (Cjk(ch) || Cjk(prev)))
+                sb.Append(anyBreak && Cjk(ch) && Cjk(prev) ? Wrap : NoWrap);
+            else if (ch is '(' or '[' or '{' && !char.IsWhiteSpace(prev))
+                sb.Append(NoWrap); // PowerPoint keeps "f(x" and "items[*]" together
+            sb.Append(prev = ch);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>A bullet drawn <paramref name="hang"/> to the left of where its line's text starts, taking no room in the line.</summary>
+    static InlineUIContainer HangingBullet(Run bullet, double hang)
+    {
+        var box = new TextBlock(bullet) { Width = hang, Margin = new Thickness(-hang, 0, 0, 0), Tag = hang };
+        return new InlineUIContainer(box) { BaselineAlignment = BaselineAlignment.Baseline, Tag = Bullet };
+    }
 
     /// <summary>
     /// The text a <see cref="Text"/> panel drew, as an editable document that looks the same.
@@ -519,15 +604,21 @@ public class SlideRenderer
         {
             var p = new Paragraph
             {
-                Margin = tb.Margin, TextAlignment = tb.TextAlignment, LineHeight = tb.LineHeight, LineStackingStrategy = tb.LineStackingStrategy,
+                Margin = tb.Margin with { Right = Math.Max(0, tb.Margin.Right) }, // a paragraph takes no negative margin (the wrap slack)
+                TextAlignment = tb.TextAlignment, LineHeight = tb.LineHeight, LineStackingStrategy = tb.LineStackingStrategy,
                 FontSize = tb.FontSize, FontFamily = tb.FontFamily, Foreground = tb.Foreground,
             };
             TextBlock? bullet = null;
             foreach (var inl in tb.Inlines)
             {
                 if (inl is LineBreak) { p.Inlines.Add(new LineBreak()); continue; }
+                if (inl is InlineUIContainer { Tag: var t, Child: TextBlock { Tag: double hang } hb } && t == Bullet && hb.Inlines.FirstInline is Run hr)
+                {
+                    p.Inlines.Add(HangingBullet(new Run(hr.Text) { FontSize = hr.FontSize, FontFamily = hr.FontFamily, Foreground = hr.Foreground }, hang));
+                    continue;
+                }
                 if (inl is not Run r) continue;
-                var copy = new Run(r.Text)
+                var copy = new Run(Plain(r.Text))
                 {
                     FontSize = r.FontSize, FontFamily = r.FontFamily, Foreground = r.Foreground,
                     FontWeight = r.FontWeight, FontStyle = r.FontStyle, TextDecorations = r.TextDecorations, Background = r.Background,
@@ -573,6 +664,7 @@ public class SlideRenderer
         var lnRef = X.Child(style, "lnRef");
         int idx = (int)(X.Long(lnRef, "idx") ?? 0);
         double w = (X.Long(ln, "w") ?? (idx > 0 && idx <= c.T.LineWidths.Count ? (long)c.T.LineWidths[idx - 1] : 12700)) / Emu;
+        w = Math.Max(w, 1); // PowerPoint draws a hairline at least a pixel wide; thinner, it would fade to almost nothing
         var dash = X.Attr(X.Child(ln, "prstDash"), "val") switch
         {
             "dash" or "lgDash" => new DoubleCollection { 4, 3 },
