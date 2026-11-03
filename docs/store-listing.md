@@ -58,9 +58,13 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 이 버전의 새로운 기능
 
-버전 0.2.1
-- 글꼴 상자를 쓴 뒤 슬라이드를 클릭하고 화살표·PgUp·PgDn 키를 누르면 슬라이드가 넘어가지 않고 글꼴이 바뀌던 문제를 고쳤습니다. 글꼴과 크기는 목록에서 고르거나 Enter를 누를 때 적용됩니다.
-- 앱 아이콘이 창 제목 표시줄, 작업 표시줄, 실행 파일에도 표시됩니다.
+버전 0.2.3
+- 슬라이드가 PowerPoint에서 보는 것과 더 가깝게 표시됩니다. 줄 간격, 첫 문단 간격, 글머리 기호의 내어쓰기, 글자 간격이 PowerPoint와 같아져 텍스트가 상자 밖으로 넘치거나 줄이 다르게 바뀌던 문제가 줄었습니다.
+- 한글 줄바꿈을 PowerPoint 규칙대로 처리합니다. 단어 단위와 글자 단위 설정을 따르고, 영문 단어에 붙은 조사는 떼지 않습니다.
+- 슬라이드 번호가 표시됩니다.
+- 표의 글꼴, 첫 열 강조, 밝게·어둡게 한 색이 PowerPoint와 같게 나옵니다.
+- 아주 가는 선과 구분선이 사라지지 않고 표시됩니다.
+- 파일을 열지 않은 상태에서 언어를 바꿔 다시 시작할 때 "The path is empty" 오류가 나던 문제를 고쳤습니다.
 
 ### 제품 기능
 
@@ -151,9 +155,13 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### このバージョンの新機能
 
-バージョン 0.2.1
-- フォント ボックスを使った後にスライドをクリックして矢印キー・PgUp・PgDn を押すと、スライドが切り替わらずにフォントが変わっていた問題を修正しました。フォントとサイズは、一覧から選ぶか Enter を押したときに適用されます。
-- アプリのアイコンがウィンドウのタイトル バー、タスク バー、実行ファイルにも表示されるようになりました。
+バージョン 0.2.3
+- スライドが PowerPoint での表示により近くなりました。行間、最初の段落の間隔、箇条書きのぶら下げインデント、文字間隔が PowerPoint と同じになり、テキストがボックスからはみ出したり改行位置が変わったりする問題が減りました。
+- 韓国語の改行を PowerPoint の規則どおりに処理します。単語単位と文字単位の設定に従い、英単語に続く助詞は切り離しません。
+- スライド番号が表示されるようになりました。
+- 表のフォント、最初の列の強調、明るく・暗くした色が PowerPoint と同じになりました。
+- ごく細い線や区切り線が消えずに表示されるようになりました。
+- ファイルを開いていない状態で言語を変えて再起動すると "The path is empty" エラーが出る問題を修正しました。
 
 ### 製品の機能
 
@@ -244,9 +252,13 @@ A lightweight app to open .pptx presentations, edit text, shapes and tables, and
 
 ### What's new in this version
 
-Version 0.2.1
-- Fixed the arrow keys, PgUp and PgDn changing the font instead of the slide after using the font box and then clicking a slide. A font or size now applies when you pick it from the list or press Enter.
-- The app icon now also appears in the window title bar, the taskbar and the program file.
+Version 0.2.3
+- Slides now look much closer to PowerPoint. Line spacing, the spacing of the first paragraph, hanging indents for bullets and character spacing now match PowerPoint, so text no longer overflows its box or wraps differently as often.
+- Korean text wraps by PowerPoint's rules: it follows the word or character wrapping setting and keeps a particle attached to the English word before it.
+- Slide numbers are shown.
+- Table fonts, first-column emphasis and lightened or darkened colors now match PowerPoint.
+- Very thin lines and separators are no longer missing.
+- Fixed the "The path is empty" error when restarting after changing the language with no file open.
 
 ### Product features
 
