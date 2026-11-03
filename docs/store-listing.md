@@ -58,6 +58,11 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 이 버전의 새로운 기능
 
+버전 0.2.4
+- 슬라이드 쇼를 시작하고 끝낼 때마다 메모리가 조금씩 늘어나던 문제를 고쳤습니다. 강의 중 쇼를 여러 번 열고 닫아도 메모리가 쌓이지 않습니다.
+- 오래 편집해도 메모리가 계속 늘지 않도록, 실행 취소는 최근 100번의 편집(판서는 슬라이드마다 최근 200번)까지 기억합니다.
+- 내부 구조를 정리해 안정성을 높였습니다.
+
 버전 0.2.3
 - 슬라이드가 PowerPoint에서 보는 것과 더 가깝게 표시됩니다. 줄 간격, 첫 문단 간격, 글머리 기호의 내어쓰기, 글자 간격이 PowerPoint와 같아져 텍스트가 상자 밖으로 넘치거나 줄이 다르게 바뀌던 문제가 줄었습니다.
 - 한글 줄바꿈을 PowerPoint 규칙대로 처리합니다. 단어 단위와 글자 단위 설정을 따르고, 영문 단어에 붙은 조사는 떼지 않습니다.
@@ -155,6 +160,11 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### このバージョンの新機能
 
+バージョン 0.2.4
+- スライド ショーを開始・終了するたびにメモリが少しずつ増えていた問題を修正しました。講義中にショーを何度開いて閉じても、メモリがたまらなくなりました。
+- 長時間編集してもメモリが増え続けないよう、元に戻すは直近 100 回の編集 (手書きはスライドごとに直近 200 回) まで記憶します。
+- 内部構造を整理し、安定性を高めました。
+
 バージョン 0.2.3
 - スライドが PowerPoint での表示により近くなりました。行間、最初の段落の間隔、箇条書きのぶら下げインデント、文字間隔が PowerPoint と同じになり、テキストがボックスからはみ出したり改行位置が変わったりする問題が減りました。
 - 韓国語の改行を PowerPoint の規則どおりに処理します。単語単位と文字単位の設定に従い、英単語に続く助詞は切り離しません。
@@ -251,6 +261,11 @@ Note: the app does not collect personal data or send anything over the internet.
 A lightweight app to open .pptx presentations, edit text, shapes and tables, and present with screen ink and Presenter View. Ink is remembered per slide and can be exported as Ink Notes PDF.
 
 ### What's new in this version
+
+Version 0.2.4
+- Fixed memory growing a little every time a slide show started and ended. Opening and closing the show many times during a lecture no longer adds up.
+- So that memory doesn't keep growing during long editing sessions, undo now remembers the last 100 edits (and the last 200 ink changes on each slide).
+- Reorganized the internals for better stability.
 
 Version 0.2.3
 - Slides now look much closer to PowerPoint. Line spacing, the spacing of the first paragraph, hanging indents for bullets and character spacing now match PowerPoint, so text no longer overflows its box or wraps differently as often.
