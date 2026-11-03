@@ -7,15 +7,13 @@ using System.Windows.Threading;
 
 namespace PptSlider;
 
-/// <summary>What covers the slide in the show: B / W like PowerPoint.</summary>
-public enum Blank { None, Black, White }
-
-/// <summary>Full-screen slide show on the chosen monitor. All state lives in the main window; this is a view.</summary>
+/// <summary>Full-screen slide show on the chosen monitor. Its state is the main window's <see cref="ShowSession"/>; this is a view.</summary>
 public partial class ShowWindow : Window
 {
     readonly MainWindow main;
     readonly DispatcherTimer clock = new() { Interval = TimeSpan.FromSeconds(1) };
     readonly DispatcherTimer idle = new() { Interval = TimeSpan.FromSeconds(3) };
+    readonly PenToolbar tools;
     bool cursorHidden;
     Point? lastMouse;
     public MonitorInfo Monitor { get; }
@@ -38,32 +36,18 @@ public partial class ShowWindow : Window
             Left = -20000; Top = 0; Width = 1280; Height = 720;
         }
         else Monitors.PlaceFullScreen(this, monitor);
-        foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
-        {
-            var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = L.T("penColor") };
-            Shortcuts.SetFor(b, $"color{i + 1}");
-            b.Click += (_, _) => main.Pen.SetColor(c);
-            Swatches.Children.Add(b);
-        }
+        tools = new PenToolbar(main.Pen, TSelect, TLaser, TPen, THi, TEraser).Swatches(Swatches, 20, new Thickness(3, 0, 3, 0), Brushes.White);
         Stage.Width = main.Deck!.Renderer.Width;
         Stage.Height = main.Deck.Renderer.Height;
         LaserDot.Width = LaserDot.Height = laserSize = Stage.Width / 80;
-        main.SlideChanged += Refresh;
-        main.Pen.Changed += OnPen;
-        main.ShowStateChanged += OnShowState;
-        main.LaserMoved += DrawLaser;
+        var hooks = new WindowHooks(this);
+        hooks.Add(() => main.SlideChanged += Refresh, () => main.SlideChanged -= Refresh);
+        hooks.Add(() => main.Pen.Changed += OnPen, () => main.Pen.Changed -= OnPen);
+        hooks.Add(() => main.Session.Changed += OnShowState, () => main.Session.Changed -= OnShowState);
+        hooks.Add(() => main.Session.LaserMoved += DrawLaser, () => main.Session.LaserMoved -= DrawLaser);
+        hooks.OnClose(() => { clock.Stop(); idle.Stop(); FollowCursor(false); });
         clock.Tick += (_, _) => UpdateClock();
         idle.Tick += (_, _) => { idle.Stop(); cursorHidden = true; UpdateCursor(); };
-        Closed += (_, _) =>
-        {
-            clock.Stop();
-            idle.Stop();
-            main.SlideChanged -= Refresh;
-            main.Pen.Changed -= OnPen;
-            main.ShowStateChanged -= OnShowState;
-            main.LaserMoved -= DrawLaser;
-            FollowCursor(false);
-        };
         Refresh();
         OnPen();
         clock.Start();
@@ -81,14 +65,15 @@ public partial class ShowWindow : Window
 
     void OnShowState()
     {
-        var b = main.Blanked;
+        var s = main.Session;
+        var b = s.Blanked;
         Cover.Visibility = b == Blank.None ? Visibility.Collapsed : Visibility.Visible;
         Cover.Fill = Root.Background = b == Blank.White ? Brushes.White : Brushes.Black;
-        JumpBox.Visibility = main.Jump == "" ? Visibility.Collapsed : Visibility.Visible;
-        JumpText.Text = L.F("slideN", main.Jump);
-        TSpot.IsChecked = main.Spotlight;
-        if (!main.Spotlight) SpotAt(null);
-        FollowCursor(main.Spotlight && !test); // the self-test places the circle itself
+        JumpBox.Visibility = s.Jump == "" ? Visibility.Collapsed : Visibility.Visible;
+        JumpText.Text = L.F("slideN", s.Jump);
+        TSpot.IsChecked = s.Spotlight;
+        if (!s.Spotlight) SpotAt(null);
+        FollowCursor(s.Spotlight && !test); // the self-test places the circle itself
     }
 
     // ---------- spot highlight: a circle that follows the mouse pointer ----------
@@ -118,24 +103,20 @@ public partial class ShowWindow : Window
     /// <summary>Centers the circle on <paramref name="p"/> (on <see cref="Root"/>); null hides it (pointer off this screen).</summary>
     internal void SpotAt(Point? p)
     {
-        Spot.Visibility = p != null && main.Spotlight ? Visibility.Visible : Visibility.Collapsed;
+        Spot.Visibility = p != null && main.Session.Spotlight ? Visibility.Visible : Visibility.Collapsed;
         if (p is not { } at) return;
         Canvas.SetLeft(Spot, at.X - Spot.Width / 2);
         Canvas.SetTop(Spot, at.Y - Spot.Height / 2);
     }
 
-    void OnSpot(object sender, RoutedEventArgs e) => main.SetSpotlight(!main.Spotlight);
+    void OnSpot(object sender, RoutedEventArgs e) => main.Session.SetSpotlight(!main.Session.Spotlight);
 
     [StructLayout(LayoutKind.Sequential)] struct POINT { public int X, Y; }
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
 
     void OnPen()
     {
-        TSelect.IsChecked = main.Pen.Tool == Tool.Select;
-        TLaser.IsChecked = main.Pen.Tool == Tool.Laser;
-        TPen.IsChecked = main.Pen.Tool == Tool.Pen;
-        THi.IsChecked = main.Pen.Tool == Tool.Highlighter;
-        TEraser.IsChecked = main.Pen.Tool == Tool.Eraser;
+        tools.Sync();
         SizeText.Text = main.Pen.Size.ToString("0");
         UpdateCursor();
         DrawLaser();
@@ -245,7 +226,7 @@ public partial class ShowWindow : Window
     internal static string Elapsed(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes:00}:{t.Seconds:00}";
 
-    void UpdateClock() => Clock.Text = L.F("clock", DateTime.Now, Elapsed(DateTime.Now - main.ShowStart));
+    void UpdateClock() => Clock.Text = L.F("clock", DateTime.Now, Elapsed(DateTime.Now - main.Session.Start));
 
     // ---------- pointer: laser dot, cursor hidden after 3 seconds still ----------
 
@@ -258,7 +239,7 @@ public partial class ShowWindow : Window
 
     void OnMouseMove(object sender, MouseEventArgs e) => PointerMoved(e.GetPosition(Root));
 
-    void OnMouseLeave(object sender, MouseEventArgs e) { lastMouse = null; main.SetLaser(null); }
+    void OnMouseLeave(object sender, MouseEventArgs e) { lastMouse = null; main.Session.SetLaser(null); }
 
     /// <param name="p">Mouse position on <see cref="Root"/>.</param>
     internal void PointerMoved(Point p)
@@ -271,16 +252,16 @@ public partial class ShowWindow : Window
         UpdateCursor();
         if (main.Pen.Tool != Tool.Laser) return;
         var s = Root.TranslatePoint(p, Stage);
-        main.SetLaser(!Bar.IsMouseOver && new Rect(0, 0, Stage.Width, Stage.Height).Contains(s) ? s : null);
+        main.Session.SetLaser(!Bar.IsMouseOver && new Rect(0, 0, Stage.Width, Stage.Height).Contains(s) ? s : null);
     }
 
-    /// <summary>The dot follows <see cref="MainWindow.LaserAt"/>, which the presenter view's mouse can move too.</summary>
+    /// <summary>The dot follows <see cref="ShowSession.LaserAt"/>, which the presenter view's mouse can move too.</summary>
     void DrawLaser() => PlaceLaser(LaserDot, main);
 
     internal static void PlaceLaser(FrameworkElement dot, MainWindow main)
     {
-        dot.Visibility = main.Pen.Tool == Tool.Laser && main.LaserAt != null ? Visibility.Visible : Visibility.Collapsed;
-        if (main.LaserAt is not { } p) return;
+        dot.Visibility = main.Pen.Tool == Tool.Laser && main.Session.LaserAt != null ? Visibility.Visible : Visibility.Collapsed;
+        if (main.Session.LaserAt is not { } p) return;
         Canvas.SetLeft(dot, p.X - dot.Width / 2);
         Canvas.SetTop(dot, p.Y - dot.Height / 2);
     }
@@ -310,6 +291,5 @@ public partial class ShowWindow : Window
     void OnBreak(object sender, RoutedEventArgs e) => main.OpenBreak();
     void OnEnd(object sender, RoutedEventArgs e) => Close();
 
-    void OnTool(object sender, RoutedEventArgs e) =>
-        main.Pen.SetTool(sender == TPen ? Tool.Pen : sender == THi ? Tool.Highlighter : sender == TEraser ? Tool.Eraser : sender == TLaser ? Tool.Laser : Tool.Select);
+    void OnTool(object sender, RoutedEventArgs e) => tools.Pick(sender);
 }

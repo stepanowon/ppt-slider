@@ -65,46 +65,46 @@ static partial class SelfTest
             Press(Key.P);
             Press(Key.S);
             show.SpotAt(new Point(300, 200));
-            check(main.Spotlight && show.Spot.IsVisible && main.InkView!.TSpot.IsChecked == true && show.TSpot.IsChecked == true
+            check(main.Session.Spotlight && show.Spot.IsVisible && main.InkView!.TSpot.IsChecked == true && show.TSpot.IsChecked == true
                   && Math.Abs(System.Windows.Controls.Canvas.GetLeft(show.Spot) + show.Spot.Width / 2 - 300) < 0.5 && Math.Abs(System.Windows.Controls.Canvas.GetTop(show.Spot) + show.Spot.Height / 2 - 200) < 0.5,
                 "spotlight: S = a circle centered on the pointer, also while drawing");
             Snap(show.Root, Path.Combine(outDir, "show-spotlight.png"));
             show.SpotAt(null);
-            check(!show.Spot.IsVisible && main.Spotlight, "spotlight: hidden while the pointer is off the show screen");
+            check(!show.Spot.IsVisible && main.Session.Spotlight, "spotlight: hidden while the pointer is off the show screen");
             Press(Key.Right);
             show.SpotAt(new Point(640, 360));
             check(show.Spot.IsVisible, "spotlight: stays on on the next slide");
             Press(Key.S);
             show.SpotAt(new Point(640, 360));
-            check(!main.Spotlight && !show.Spot.IsVisible && show.TSpot.IsChecked != true, "spotlight: S again = off");
+            check(!main.Session.Spotlight && !show.Spot.IsVisible && show.TSpot.IsChecked != true, "spotlight: S again = off");
             show.TSpot.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            check(main.Spotlight, "spotlight: the show toolbar's button turns it on");
+            check(main.Session.Spotlight, "spotlight: the show toolbar's button turns it on");
             main.InkView!.TSpot.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            check(!main.Spotlight, "spotlight: the overlay toolbar's button turns it off");
+            check(!main.Session.Spotlight, "spotlight: the overlay toolbar's button turns it off");
             Press(Key.Escape);
             Press(Key.Home);
 
             // blank screen
             Press(Key.B);
-            check(main.Blanked == Blank.Black && show.Cover.IsVisible, "show: B = black screen");
+            check(main.Session.Blanked == Blank.Black && show.Cover.IsVisible, "show: B = black screen");
             Snap(show.Root, Path.Combine(outDir, "show-black.png"));
             Press(Key.B);
-            check(main.Blanked == Blank.None && !show.Cover.IsVisible, "show: B again = slide back");
+            check(main.Session.Blanked == Blank.None && !show.Cover.IsVisible, "show: B again = slide back");
             Press(Key.W);
-            var slideInk = main.StrokesOf(main.CurrentSlide!);
+            var slideInk = main.Ink.Of(main.CurrentSlide!);
             int before = slideInk.Count;
             main.OverlayInk.Add(Line(100, 100, 500, 300));
-            check(main.Blanked == Blank.White && main.InkView is { IsVisible: true } ov && ov.Strokes == main.BlankInk && ov.Over == show && main.BlankInk.Count == 1 && slideInk.Count == before,
+            check(main.Session.Blanked == Blank.White && main.InkView is { IsVisible: true } ov && ov.Strokes == main.Ink.Blank && ov.Over == show && main.Ink.Blank.Count == 1 && slideInk.Count == before,
                 "show: W = white screen, ink goes on the white screen (on the overlay over the show), not the slide");
             Snap(show.Root, Path.Combine(outDir, "show-white-ink.png"));
             Press(Key.Right);
-            check(main.Blanked == Blank.None && main.Current == 0 && main.InkView?.Strokes == slideInk, "show: → on a blank screen only brings the slide back");
+            check(main.Session.Blanked == Blank.None && main.Current == 0 && main.InkView?.Strokes == slideInk, "show: → on a blank screen only brings the slide back");
             Press(Key.OemPeriod);
-            check(main.Blanked == Blank.Black, "show: . = black screen");
+            check(main.Session.Blanked == Blank.Black, "show: . = black screen");
             Press(Key.OemComma);
-            check(main.Blanked == Blank.White, "show: , = white screen (switches from black)");
+            check(main.Session.Blanked == Blank.White, "show: , = white screen (switches from black)");
             Press(Key.OemComma);
-            check(main.Blanked == Blank.None, "show: , again = slide back");
+            check(main.Session.Blanked == Blank.None, "show: , again = slide back");
 
             // laser pointer
             Press(Key.L, Ctrl);
@@ -131,7 +131,7 @@ static partial class SelfTest
             Press(Key.NumPad2);
             Snap(show.Root, Path.Combine(outDir, "show-jump.png"));
             Wait(1300);
-            check(main.Jump == "12", "show: two digits wait for Enter past a second");
+            check(main.Session.Jump == "12", "show: two digits wait for Enter past a second");
             Press(Key.Back);
             Press(Key.D4);
             Press(Key.Enter);
@@ -140,11 +140,11 @@ static partial class SelfTest
             check(main.Current == n - 1, "show: a number past the end = last slide");
             Press(Key.D5);
             Press(Key.Escape);
-            check(main.Jump == "" && main.Current == n - 1 && show.IsVisible, "show: Esc drops the number, the show stays");
+            check(main.Session.Jump == "" && main.Current == n - 1 && show.IsVisible, "show: Esc drops the number, the show stays");
             Press(Key.Home);
             Press(Key.D3);
             Wait(1300);
-            check(main.Jump == "" && main.Pen.Tool == Tool.Pen && main.Pen.PenColor == PenState.Palette[2] && main.Current == 0,
+            check(main.Session.Jump == "" && main.Pen.Tool == Tool.Pen && main.Pen.PenColor == PenState.Palette[2] && main.Current == 0,
                 "show: a lone 3 = pen color 3 after a second");
 
             // ink undo
@@ -182,7 +182,7 @@ static partial class SelfTest
             Snap(show.Root, Path.Combine(outDir, "show-clock.png"));
 
             show.Close();
-            check(main.ShowView == null && main.Blanked == Blank.None && main.Jump == "", "show: closing resets the show state");
+            check(main.ShowView == null && main.Session.Blanked == Blank.None && main.Session.Jump == "", "show: closing resets the show state");
 
             // editor: Ctrl+Z takes back the slide's strokes first (newest first), then the edit
             var slide = main.CurrentSlide!;
@@ -190,7 +190,7 @@ static partial class SelfTest
             var original = TextContent.GetText(Text());
             main.Deck!.History.Snapshot(slide);
             TextContent.SetText(Text(), "편집됨");
-            var ed = main.StrokesOf(slide);
+            var ed = main.Ink.Of(slide);
             int strokes = ed.Count;
             ed.Add(Line(20, 400, 400, 420));
             main.Run("undo");
@@ -286,11 +286,11 @@ static partial class SelfTest
             Press(Key.L, ModifierKeys.Control);
             pv.PointerMoved(new Point(100, 50));
             show.UpdateLayout();
-            check(main.LaserAt == new Point(100, 50) && show.LaserDot.IsVisible && pv.LaserDot.IsVisible
+            check(main.Session.LaserAt == new Point(100, 50) && show.LaserDot.IsVisible && pv.LaserDot.IsVisible
                   && Math.Abs(System.Windows.Controls.Canvas.GetLeft(show.LaserDot) + show.LaserDot.Width / 2 - 100) < 0.01,
                 "presenter: the laser on the presenter's slide shows on the show at the same place");
             pv.PointerMoved(new Point(-5, 10));
-            check(main.LaserAt == null && !show.LaserDot.IsVisible, "presenter: off the slide = no laser dot");
+            check(main.Session.LaserAt == null && !show.LaserDot.IsVisible, "presenter: off the slide = no laser dot");
             Press(Key.L, ModifierKeys.Control);
 
             Press(Key.D2); Press(Key.Enter);

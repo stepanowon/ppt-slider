@@ -22,7 +22,7 @@ public partial class MainWindow
     // ---------- screen ink (InkOverlay) ----------
 
     /// <summary>The strokes on the screen now: the blank screen's in the show while blanked, else the current slide's (or, with no file, the desktop's).</summary>
-    public StrokeCollection OverlayInk => show != null && Blanked != Blank.None ? BlankInk : CurrentSlide is { } s ? StrokesOf(s) : desktopInk;
+    public StrokeCollection OverlayInk => show != null && Session.Blanked != Blank.None ? Ink.Blank : CurrentSlide is { } s ? Ink.Of(s) : Ink.Desktop;
 
     /// <summary>A drawing tool is picked: the overlay takes the mouse.</summary>
     public bool Drawing => Pen.Tool is Tool.Pen or Tool.Highlighter or Tool.Eraser;
@@ -86,58 +86,29 @@ public partial class MainWindow
         return Shortcuts.Find(g, inShow: false) is { } id && Run(id);
     }
 
-    static readonly Guid FrameId = new("6E3B1C2A-4F4D-4E8B-9C1A-2D7B5E0F9A31");
-
     /// <summary>
     /// Remembers where the slide was on the overlay when <paramref name="s"/> was drawn (the show's slide, or the editor's),
-    /// so <see cref="SlideInk"/> can put the stroke on the slide for a PDF.
+    /// so <see cref="SlideInk"/> can put the stroke on the slide for a PDF (see <see cref="InkManager.TagFrame"/>).
     /// </summary>
     internal void TagStroke(Stroke s, InkOverlay on)
     {
-        FrameworkElement? stage = show != null ? (Blanked == Blank.None ? show.Stage : null) : IsVisible && StageFrame.IsVisible && WindowState != WindowState.Minimized ? Stage : null;
+        FrameworkElement? stage = show != null ? (Session.Blanked == Blank.None ? show.Stage : null) : IsVisible && StageFrame.IsVisible && WindowState != WindowState.Minimized ? Stage : null;
         if (stage is not { IsVisible: true } || PresentationSource.FromVisual(on) == null) return;
         var a = on.PointFromScreen(stage.PointToScreen(new Point(0, 0)));
         var b = on.PointFromScreen(stage.PointToScreen(new Point(stage.Width, stage.Height)));
         if (b.X - a.X < 1 || b.Y - a.Y < 1) return;
-        s.AddPropertyData(FrameId, new[] { a.X, a.Y, b.X - a.X, b.Y - a.Y });
+        InkManager.TagFrame(s, new Rect(a, b));
     }
 
     /// <summary>Each slide's strokes that were drawn over the slide, moved onto it (slide coordinates); slides without any are left out.</summary>
-    internal Dictionary<SlidePart, StrokeCollection> SlideInk()
-    {
-        var result = new Dictionary<SlidePart, StrokeCollection>();
-        if (Deck == null) return result;
-        double w = Deck.Renderer.Width, h = Deck.Renderer.Height;
-        foreach (var sp in Deck.Slides)
-        {
-            if (!ink.TryGetValue(sp, out var strokes)) continue;
-            var on = new StrokeCollection();
-            foreach (var st in strokes)
-            {
-                if (!st.ContainsPropertyData(FrameId) || st.GetPropertyData(FrameId) is not double[] { Length: 4 } f) continue;
-                double sx = w / f[2], sy = h / f[3];
-                var c = st.Clone();
-                var m = Matrix.Identity;
-                m.Translate(-f[0], -f[1]);
-                m.Scale(sx, sy);
-                c.Transform(m, false);
-                c.DrawingAttributes.Width *= sx;
-                c.DrawingAttributes.Height *= sy;
-                on.Add(c);
-            }
-            if (on.Count > 0) result[sp] = on;
-        }
-        return result;
-    }
+    internal Dictionary<SlidePart, StrokeCollection> SlideInk() =>
+        Deck == null ? [] : Ink.OnSlides(Deck.Slides, Deck.Renderer.Width, Deck.Renderer.Height);
 
     void OnPenChanged()
     {
         if (Pen.Tool != Tool.Select) { CommitEdit(); Selection.Primary = null; EndTools(); DrawSelection(); }
         UpdateOverlay();
-        ToolSelect.IsChecked = Pen.Tool == Tool.Select;
-        ToolPen.IsChecked = Pen.Tool == Tool.Pen;
-        ToolHi.IsChecked = Pen.Tool == Tool.Highlighter;
-        ToolEraser.IsChecked = Pen.Tool == Tool.Eraser;
+        penTools.Sync();
         syncing = true;
         SizeSlider.Minimum = Pen.IsHighlighter ? 6 : 1;
         SizeSlider.Maximum = Pen.IsHighlighter ? 80 : 40;
@@ -157,8 +128,7 @@ public partial class MainWindow
         };
     }
 
-    void OnTool(object sender, RoutedEventArgs e) =>
-        Pen.SetTool(sender == ToolPen ? Tool.Pen : sender == ToolHi ? Tool.Highlighter : sender == ToolEraser ? Tool.Eraser : Tool.Select);
+    void OnTool(object sender, RoutedEventArgs e) => penTools.Pick(sender);
 
     void OnPenSize(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -173,22 +143,16 @@ public partial class MainWindow
     public void UndoInk()
     {
         CommitEdit();
-        StatusText.Text = inkLog.Undo(OverlayInk) ? L.T("inkUndone") : L.T("noInkToUndo");
+        StatusText.Text = Ink.Undo(OverlayInk) ? L.T("inkUndone") : L.T("noInkToUndo");
     }
 
     void OnUndoInk(object sender, RoutedEventArgs e) => UndoInk();
 
     /// <summary>The show's and presenter's undo button: the last stroke on the slide being shown.</summary>
-    internal void UndoShowInk() => inkLog.Undo(OverlayInk);
+    internal void UndoShowInk() => Ink.Undo(OverlayInk);
 
     void OnClearAllInk(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, L.T("clearAllAsk"), L.T("clearInkTitle"), MessageBoxButton.OKCancel) == MessageBoxResult.OK) ClearAllInk();
-    }
-
-    internal void ClearAllInk()
-    {
-        foreach (var s in ink.Values) s.Clear();
-        desktopInk.Clear();
+        if (MessageBox.Show(this, L.T("clearAllAsk"), L.T("clearInkTitle"), MessageBoxButton.OKCancel) == MessageBoxResult.OK) Ink.ClearAll();
     }
 }

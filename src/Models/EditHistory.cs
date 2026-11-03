@@ -3,11 +3,15 @@ using P = DocumentFormat.OpenXml.Presentation;
 
 namespace PptSlider;
 
-/// <summary>Undo / redo of slide edits: a copy of a slide's XML taken before each change.</summary>
+/// <summary>
+/// Undo / redo of slide edits: a copy of a slide's XML taken before each change. Only the last <see cref="Limit"/> edits are
+/// kept (each is a whole slide, tens of KB for a busy one), so a long editing session doesn't keep growing.
+/// </summary>
 public sealed class EditHistory
 {
-    readonly Stack<(SlidePart Part, string Xml)> undo = new();
-    readonly Stack<(SlidePart Part, string Xml)> redo = new();
+    public const int Limit = 100;
+    readonly BoundedStack<(SlidePart Part, string Xml)> undo = new(Limit);
+    readonly BoundedStack<(SlidePart Part, string Xml)> redo = new(Limit);
     readonly Func<SlidePart, bool> exists;
 
     /// <summary>A snapshot was taken or a slide put back: the document changed.</summary>
@@ -30,7 +34,10 @@ public sealed class EditHistory
     /// <summary>Puts back the last edit <see cref="Undo"/> took back (Ctrl+Y).</summary>
     public SlidePart? Redo() => Restore(redo, undo);
 
-    SlidePart? Restore(Stack<(SlidePart Part, string Xml)> from, Stack<(SlidePart Part, string Xml)> to)
+    /// <summary>How many edits can be undone now.</summary>
+    public int UndoCount => undo.Count;
+
+    SlidePart? Restore(BoundedStack<(SlidePart Part, string Xml)> from, BoundedStack<(SlidePart Part, string Xml)> to)
     {
         while (from.TryPop(out var u))
         {

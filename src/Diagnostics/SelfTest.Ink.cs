@@ -39,7 +39,7 @@ static partial class SelfTest
             check(main.Count == n + 2 && main.Current == 2 && show.Page.Text == $"3 / {n + 2}", "blank page: Ctrl+Enter in the show too, and the show moves there");
             show.Press(new Gesture(Key.D5, ModifierKeys.None));
             show.Press(new Gesture(Key.Enter, ModifierKeys.Control));
-            check(main.Count == n + 3 && main.Jump == "", "blank page: Ctrl+Enter is not the Enter of a typed number");
+            check(main.Count == n + 3 && main.Session.Jump == "", "blank page: Ctrl+Enter is not the Enter of a typed number");
             show.Close();
 
             var path = Path.Combine(outDir, "blank-pages.pptx");
@@ -80,12 +80,12 @@ static partial class SelfTest
             check(main.InkView is not { IsVisible: true }, "overlay: none while pointing with no ink");
             main.Run("pen");
             var ov = main.InkView;
-            check(ov is { IsVisible: true } && ov.Ink.IsHitTestVisible && ov.Over == null && ov.Strokes == main.StrokesOf(deck.Slides[0]),
+            check(ov is { IsVisible: true } && ov.Ink.IsHitTestVisible && ov.Over == null && ov.Strokes == main.Ink.Of(deck.Slides[0]),
                 "overlay: the pen shows it over the editor, drawing on slide 1's strokes");
             if (ov == null) return;
             ov.Strokes.Add(Line(100, 100, 400, 200));
             main.Go(1);
-            check(ov.IsVisible && ov.Strokes == main.StrokesOf(deck.Slides[1]) && ov.Strokes.Count == 0, "overlay: next slide = its own (empty) ink");
+            check(ov.IsVisible && ov.Strokes == main.Ink.Of(deck.Slides[1]) && ov.Strokes.Count == 0, "overlay: next slide = its own (empty) ink");
             main.Go(0);
             check(ov.Strokes.Count == 1, "overlay: back on slide 1 its ink comes back");
             ov.Press(new Gesture(Key.Escape, ModifierKeys.None));
@@ -133,7 +133,7 @@ static partial class SelfTest
             var text = Encoding.Latin1.GetString(File.ReadAllBytes(notes));
             check(Regex.Matches(text, @"/Type /Page\b(?!s)").Count == 1, "ink notes: only the slide with ink is a page");
 
-            main.ClearAllInk();
+            main.Ink.ClearAll();
             check(main.SlideInk().Count == 0, "overlay: clearing all ink clears every slide");
         }
         finally { main.CloseForTest(); }

@@ -246,7 +246,7 @@ public partial class MainWindow : IEditorHost
         if (Deck == null) return;
         if (Count <= 1) { StatusText.Text = L.T("lastSlideStays"); return; }
         if (!ConfirmDeleteSlide(Current + 1)) return;
-        if (ink.Remove(CurrentSlide!, out var strokes)) inkLog.Untrack(strokes); // its undo history goes with it
+        Ink.Forget(CurrentSlide!); // its strokes and their undo go with it
         int gone = Current;
         Deck.DeleteSlide(gone);
         RemoveThumb(gone);
@@ -261,7 +261,7 @@ public partial class MainWindow : IEditorHost
     {
         CommitEdit();
         // ink first: Ctrl+Z right after drawing takes back the stroke, not an earlier edit
-        if (inkLog.Undo(OverlayInk)) { StatusText.Text = L.T("inkUndone"); return; }
+        if (Ink.Undo(OverlayInk)) { StatusText.Text = L.T("inkUndone"); return; }
         if (Deck?.History.Undo() is not { } part) { StatusText.Text = L.T("nothingToUndo"); return; }
         Restored(part);
     }

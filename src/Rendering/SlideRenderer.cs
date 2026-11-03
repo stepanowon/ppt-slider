@@ -408,6 +408,58 @@ public class SlideRenderer
         return best;
     }
 
+    /// <summary>What a text body says for all its paragraphs: its autofit scale and line reduction, wrapping, a style's font color.</summary>
+    sealed record TextBody(Ctx C, double FontScale, long LnReduce, bool Wrap, Color? FontRef);
+
+    /// <summary>
+    /// A paragraph's properties as it inherits them: its own pPr, then its level in each list style (the shape's, the
+    /// layout's, the master's...), each level's defRPr giving the run defaults.
+    /// </summary>
+    sealed class ParaStyle
+    {
+        readonly List<OpenXmlElement> levels = [];
+        readonly List<OpenXmlElement> defs;
+
+        public ParaStyle(OpenXmlElement p, List<OpenXmlElement?> lists)
+        {
+            var pPr = X.Child(p, "pPr");
+            int lvl = (int)(X.Long(pPr, "lvl") ?? 0);
+            if (pPr != null) levels.Add(pPr);
+            levels.AddRange(lists.Select(l => X.Child(l, $"lvl{lvl + 1}pPr")).OfType<OpenXmlElement>());
+            defs = levels.Select(l => X.Child(l, "defRPr")).OfType<OpenXmlElement>().ToList();
+        }
+
+        /// <summary>A paragraph attribute (algn, marL, indent...).</summary>
+        public string? Attr(string n) => levels.Select(l => X.Attr(l, n)).FirstOrDefault(v => v != null);
+        /// <summary>A paragraph child (lnSpc, spcBef, buClr...).</summary>
+        public OpenXmlElement? Child(string n) => levels.Select(l => X.Child(l, n)).FirstOrDefault(v => v != null);
+        /// <summary>A run attribute: the run's own (<paramref name="rPr"/>), else the paragraph's default.</summary>
+        public string? Run(OpenXmlElement? rPr, string n) => X.Attr(rPr, n) ?? defs.Select(d => X.Attr(d, n)).FirstOrDefault(v => v != null);
+        /// <summary>A run's typeface for <paramref name="script"/> ("latin" / "ea"), the theme's minor font by default.</summary>
+        public string Face(OpenXmlElement? rPr, string script) =>
+            X.Attr(X.Child(rPr, script), "typeface") ?? defs.Select(d => X.Attr(X.Child(d, script), "typeface")).FirstOrDefault(v => v != null) ?? (script == "latin" ? "+mn-lt" : "+mn-ea");
+        public IEnumerable<OpenXmlElement> Defaults => defs;
+        /// <summary>buNone / buChar / buAutoNum, the nearest one that says.</summary>
+        public OpenXmlElement? BulletDef => levels.Select(l => l.ChildElements.FirstOrDefault(ch => ch.LocalName is "buNone" or "buChar" or "buAutoNum")).FirstOrDefault(v => v != null);
+    }
+
+    static double Size(ParaStyle st, OpenXmlElement? rPr, TextBody body) => (long.TryParse(st.Run(rPr, "sz"), out var s) ? s : 1800) / 100.0 * body.FontScale * 96 / 72;
+
+    Brush Fore(ParaStyle st, OpenXmlElement? rPr, TextBody body)
+    {
+        var c = body.C;
+        var col = ColorOf(X.Child(rPr, "solidFill"), c) ?? body.FontRef
+                  ?? st.Defaults.Select(d => ColorOf(X.Child(d, "solidFill"), c)).FirstOrDefault(v => v != null)
+                  ?? ColorOf(null, c, schemeFallback: "tx1");
+        return new SolidColorBrush(col ?? Colors.Black);
+    }
+
+    static FontFamily Font(ParaStyle st, OpenXmlElement? rPr, Ctx c)
+    {
+        string Res(string f) => f.StartsWith('+') ? c.T.Fonts.GetValueOrDefault(f, "") : f;
+        return FontNames.Family([Res(st.Face(rPr, "latin")), Res(st.Face(rPr, "ea"))]);
+    }
+
     /// <summary>The text of a shape or cell; the panel's Tag is the font scale it was drawn at (see <see cref="Fit"/>).</summary>
     FrameworkElement? Text(OpenXmlElement? tx, List<OpenXmlElement?> lists, List<OpenXmlElement?> bodies, Ctx c, Color? fontRef, double shrink = 1)
     {
@@ -416,140 +468,133 @@ public class SlideRenderer
         // bodyPr uses lIns/tIns/..., table cells (tcPr) use marL/marT/...
         double Ins(string n, long d) => (long.TryParse(B(n) ?? B("mar" + char.ToUpper(n[0])), out var v) ? v : d) / Emu;
         var autofit = X.Child(X.Child(tx, "bodyPr"), "normAutofit");
-        double fontScale = (X.Long(autofit, "fontScale") ?? 100000) / 100000.0 * shrink;
-        long lnReduce = X.Long(autofit, "lnSpcReduction") ?? 0; // "shrink on overflow" also tightens the lines
-        bool wrap = B("wrap") != "none";
+        var body = new TextBody(c,
+            FontScale: (X.Long(autofit, "fontScale") ?? 100000) / 100000.0 * shrink,
+            LnReduce: X.Long(autofit, "lnSpcReduction") ?? 0, // "shrink on overflow" also tightens the lines
+            Wrap: B("wrap") != "none",
+            FontRef: fontRef);
 
         var panel = new TextPanel
         {
-            Tag = fontScale,
+            Tag = body.FontScale,
             Margin = new Thickness(Ins("lIns", 91440), Ins("tIns", 45720), Ins("rIns", 91440), Ins("bIns", 45720)),
             VerticalAlignment = B("anchor") switch { "ctr" => VerticalAlignment.Center, "b" => VerticalAlignment.Bottom, _ => VerticalAlignment.Top },
         };
         int autoNum = 0;
-        bool firstPara = true;
+        bool first = true;
         foreach (var p in tx.ChildElements.Where(e => e.LocalName == "p"))
         {
-            var pPr = X.Child(p, "pPr");
-            int lvl = (int)(X.Long(pPr, "lvl") ?? 0);
-            var levels = new List<OpenXmlElement> { };
-            if (pPr != null) levels.Add(pPr);
-            levels.AddRange(lists.Select(l => X.Child(l, $"lvl{lvl + 1}pPr")).OfType<OpenXmlElement>());
-            string? P(string n) => levels.Select(l => X.Attr(l, n)).FirstOrDefault(v => v != null);
-            OpenXmlElement? PC(string n) => levels.Select(l => X.Child(l, n)).FirstOrDefault(v => v != null);
-            var defs = levels.Select(l => X.Child(l, "defRPr")).OfType<OpenXmlElement>().ToList();
-
-            string? R(OpenXmlElement? rPr, string n) => X.Attr(rPr, n) ?? defs.Select(d => X.Attr(d, n)).FirstOrDefault(v => v != null);
-            double Size(OpenXmlElement? rPr) => (long.TryParse(R(rPr, "sz"), out var s) ? s : 1800) / 100.0 * fontScale * 96 / 72;
-            Brush Fore(OpenXmlElement? rPr)
-            {
-                var col = ColorOf(X.Child(rPr, "solidFill"), c) ?? fontRef
-                          ?? defs.Select(d => ColorOf(X.Child(d, "solidFill"), c)).FirstOrDefault(v => v != null)
-                          ?? ColorOf(null, c, schemeFallback: "tx1");
-                return new SolidColorBrush(col ?? Colors.Black);
-            }
-            FontFamily Font(OpenXmlElement? rPr)
-            {
-                string Face(string n) => X.Attr(X.Child(rPr, n), "typeface") ?? defs.Select(d => X.Attr(X.Child(d, n), "typeface")).FirstOrDefault(v => v != null) ?? (n == "latin" ? "+mn-lt" : "+mn-ea");
-                string Res(string f) => f.StartsWith('+') ? c.T.Fonts.GetValueOrDefault(f, "") : f;
-                return FontNames.Family([Res(Face("latin")), Res(Face("ea"))]);
-            }
-
-            var runs = p.ChildElements.Where(e => e.LocalName is "r" or "br" or "fld").ToList();
-            // PowerPoint wraps Korean between any two syllables when eaLnBrk and latinLnBrk are both on, otherwise only at spaces
-            bool anyBreak = P("latinLnBrk") is "1" or "true" && P("eaLnBrk") is null or "1" or "true";
-            char prev = ' ';
-            double natural = 0, spacing = 0; // the runs' width without and with their character spacing (spc)
-            var endPr = X.Child(p, "endParaRPr");
-            var firstRPr = runs.Select(r => X.Child(r, "rPr")).FirstOrDefault(r => r != null) ?? endPr;
-            double size = Size(firstRPr);
-            // a line is as tall as its largest text
-            double lineSize = runs.Where(r => r.LocalName != "br").Select(r => Size(X.Child(r, "rPr"))).DefaultIfEmpty(size).Max();
-            var tb = new TextBlock
-            {
-                TextWrapping = wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
-                TextAlignment = P("algn") switch { "ctr" => TextAlignment.Center, "r" => TextAlignment.Right, "just" or "dist" => TextAlignment.Justify, _ => TextAlignment.Left },
-                FontSize = size, FontFamily = Font(firstRPr), Foreground = Fore(firstRPr),
-            };
-            double Spc(string n)
-            {
-                var s = PC(n);
-                if (X.Child(s, "spcPts") is { } pts) return (X.Long(pts, "val") ?? 0) / 100.0 * 96 / 72;
-                if (X.Child(s, "spcPct") is { } pct) return lineSize * 1.2 * (X.Long(pct, "val") ?? 0) / 100000.0;
-                return 0;
-            }
-            double marL = (long.TryParse(P("marL"), out var ml) ? ml : 0) / Emu, indent = (long.TryParse(P("indent"), out var ind) ? ind : 0) / Emu;
-            // PowerPoint leaves out the space before a box's first paragraph
-            // PowerPoint keeps a word on the line when its last glyph just touches the box edge; WPF also counts the glyph's
-            // trailing side bearing, so left-aligned text gets that much room past the edge
-            double slack = tb.TextAlignment is TextAlignment.Left or TextAlignment.Justify && wrap ? -lineSize * 0.4 : 0;
-            tb.Margin = new Thickness(Math.Max(0, marL + indent), firstPara ? 0 : Spc("spcBef"), slack, Spc("spcAft"));
-            firstPara = false;
-            // PowerPoint's single line is 1.2 × the font size, whatever the font's own line gap (WPF's default would use that)
-            tb.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
-            tb.LineHeight = Math.Max(1, X.Child(PC("lnSpc"), "spcPts") is { } lnPts
-                ? (X.Long(lnPts, "val") ?? 0) / 100.0 * 96 / 72 * fontScale
-                : lineSize * 1.2 * ((X.Long(X.Child(PC("lnSpc"), "spcPct"), "val") ?? 100000) - lnReduce) / 100000.0);
-
-            bool hasText = runs.Any(r => r.LocalName != "br" && !string.IsNullOrEmpty(X.Child(r, "t")?.InnerText));
-            var bulletDef = levels.Select(l => l.ChildElements.FirstOrDefault(ch => ch.LocalName is "buNone" or "buChar" or "buAutoNum")).FirstOrDefault(v => v != null);
-            if (bulletDef?.LocalName != "buAutoNum") autoNum = 0;
-            if (hasText && bulletDef is { LocalName: "buChar" or "buAutoNum" })
-            {
-                var bu = new Run(bulletDef.LocalName == "buChar" ? X.Attr(bulletDef, "char") ?? "•" : $"{++autoNum}.")
-                {
-                    Foreground = Solid(ColorOf(PC("buClr"), c)) ?? Fore(firstRPr),
-                    FontSize = size * (X.Long(PC("buSzPct"), "val") ?? 100000) / 100000.0,
-                };
-                if (X.Attr(PC("buFont"), "typeface") is { } bf && !bf.StartsWith('+') && FontNames.Safe(bf) is { } face) bu.FontFamily = new FontFamily(face);
-                bu.Tag = Bullet;
-                double hang = -indent;
-                if (hang >= 1 && marL >= hang)
-                {
-                    // hanging indent: the bullet sits in the first line's indent, every line of text starts at marL
-                    tb.Margin = tb.Margin with { Left = marL };
-                    tb.Inlines.Add(HangingBullet(bu, hang));
-                }
-                else
-                {
-                    tb.Inlines.Add(bu);
-                    tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6, Tag = Bullet });
-                }
-            }
-            foreach (var r in runs)
-            {
-                if (r.LocalName == "br") { tb.Inlines.Add(new LineBreak()); prev = ' '; continue; }
-                var rPr = X.Child(r, "rPr");
-                var s = r.LocalName == "fld" && X.Attr(r, "type") == "slidenum" && c.Num > 0 ? c.Num.ToString() : X.Child(r, "t")?.InnerText ?? "";
-                s = Wrapping(s, anyBreak, ref prev);
-                var run = new Run(s)
-                {
-                    FontSize = Size(rPr), FontFamily = Font(rPr), Foreground = Fore(rPr),
-                };
-                // only set when on, so a table header can still make the whole cell bold
-                if (R(rPr, "b") is "1" or "true") run.FontWeight = FontWeights.Bold;
-                if (R(rPr, "i") is "1" or "true") run.FontStyle = FontStyles.Italic;
-                var deco = new TextDecorationCollection();
-                if (R(rPr, "u") is { } u && u != "none") foreach (var d in TextDecorations.Underline) deco.Add(d);
-                if (R(rPr, "strike") is "sngStrike" or "dblStrike") foreach (var d in TextDecorations.Strikethrough) deco.Add(d);
-                if (deco.Count > 0) run.TextDecorations = deco;
-                if (X.Child(rPr, "highlight") is { } hl && ColorOf(hl, c) is { } hc) run.Background = new SolidColorBrush(hc);
-                tb.Inlines.Add(run);
-                var plain = Plain(s);
-                if (plain.Length > 0)
-                {
-                    double w = new FormattedText(plain, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                        new Typeface(run.FontFamily, run.FontStyle, run.FontWeight, FontStretches.Normal), run.FontSize, Brushes.Black, 1).WidthIncludingTrailingWhitespace;
-                    natural += w;
-                    spacing += long.TryParse(R(rPr, "spc"), out var spc) ? plain.Length * spc / 100.0 * 96 / 72 * fontScale : 0;
-                }
-            }
-            // WPF has no character spacing: squeeze or stretch the paragraph so its lines are as long as PowerPoint's
-            if (spacing != 0 && natural > 0)
-                tb.LayoutTransform = new ScaleTransform(Math.Clamp((natural + spacing) / natural, 0.7, 1.3), 1);
-            panel.Children.Add(tb);
+            panel.Children.Add(Paragraph(p, new ParaStyle(p, lists), body, first, ref autoNum));
+            first = false;
         }
         return panel;
+    }
+
+    /// <summary>One paragraph: its spacing and line height, its bullet, its runs. <paramref name="autoNum"/>: the numbered list's count so far.</summary>
+    TextBlock Paragraph(OpenXmlElement p, ParaStyle st, TextBody body, bool first, ref int autoNum)
+    {
+        var runs = p.ChildElements.Where(e => e.LocalName is "r" or "br" or "fld").ToList();
+        var firstRPr = runs.Select(r => X.Child(r, "rPr")).FirstOrDefault(r => r != null) ?? X.Child(p, "endParaRPr");
+        double size = Size(st, firstRPr, body);
+        // a line is as tall as its largest text
+        double lineSize = runs.Where(r => r.LocalName != "br").Select(r => Size(st, X.Child(r, "rPr"), body)).DefaultIfEmpty(size).Max();
+        var tb = new TextBlock
+        {
+            TextWrapping = body.Wrap ? TextWrapping.Wrap : TextWrapping.NoWrap,
+            TextAlignment = st.Attr("algn") switch { "ctr" => TextAlignment.Center, "r" => TextAlignment.Right, "just" or "dist" => TextAlignment.Justify, _ => TextAlignment.Left },
+            FontSize = size, FontFamily = Font(st, firstRPr, body.C), Foreground = Fore(st, firstRPr, body),
+        };
+        double Spc(string n)
+        {
+            var s = st.Child(n);
+            if (X.Child(s, "spcPts") is { } pts) return (X.Long(pts, "val") ?? 0) / 100.0 * 96 / 72;
+            if (X.Child(s, "spcPct") is { } pct) return lineSize * 1.2 * (X.Long(pct, "val") ?? 0) / 100000.0;
+            return 0;
+        }
+        double marL = (long.TryParse(st.Attr("marL"), out var ml) ? ml : 0) / Emu, indent = (long.TryParse(st.Attr("indent"), out var ind) ? ind : 0) / Emu;
+        // PowerPoint leaves out the space before a box's first paragraph
+        // PowerPoint keeps a word on the line when its last glyph just touches the box edge; WPF also counts the glyph's
+        // trailing side bearing, so left-aligned text gets that much room past the edge
+        double slack = tb.TextAlignment is TextAlignment.Left or TextAlignment.Justify && body.Wrap ? -lineSize * 0.4 : 0;
+        tb.Margin = new Thickness(Math.Max(0, marL + indent), first ? 0 : Spc("spcBef"), slack, Spc("spcAft"));
+        // PowerPoint's single line is 1.2 × the font size, whatever the font's own line gap (WPF's default would use that)
+        tb.LineStackingStrategy = LineStackingStrategy.BlockLineHeight;
+        tb.LineHeight = Math.Max(1, X.Child(st.Child("lnSpc"), "spcPts") is { } lnPts
+            ? (X.Long(lnPts, "val") ?? 0) / 100.0 * 96 / 72 * body.FontScale
+            : lineSize * 1.2 * ((X.Long(X.Child(st.Child("lnSpc"), "spcPct"), "val") ?? 100000) - body.LnReduce) / 100000.0);
+
+        bool hasText = runs.Any(r => r.LocalName != "br" && !string.IsNullOrEmpty(X.Child(r, "t")?.InnerText));
+        AddBullet(tb, st, body, size, firstRPr, hasText, marL, indent, ref autoNum);
+        AddRuns(tb, runs, st, body);
+        return tb;
+    }
+
+    /// <summary>The paragraph's bullet or number, hanging in its first line's indent when it has one.</summary>
+    void AddBullet(TextBlock tb, ParaStyle st, TextBody body, double size, OpenXmlElement? firstRPr, bool hasText, double marL, double indent, ref int autoNum)
+    {
+        var bulletDef = st.BulletDef;
+        if (bulletDef?.LocalName != "buAutoNum") autoNum = 0;
+        if (!hasText || bulletDef is not { LocalName: "buChar" or "buAutoNum" }) return;
+        var bu = new Run(bulletDef.LocalName == "buChar" ? X.Attr(bulletDef, "char") ?? "•" : $"{++autoNum}.")
+        {
+            Foreground = Solid(ColorOf(st.Child("buClr"), body.C)) ?? Fore(st, firstRPr, body),
+            FontSize = size * (X.Long(st.Child("buSzPct"), "val") ?? 100000) / 100000.0,
+        };
+        if (X.Attr(st.Child("buFont"), "typeface") is { } bf && !bf.StartsWith('+') && FontNames.Safe(bf) is { } face) bu.FontFamily = new FontFamily(face);
+        bu.Tag = Bullet;
+        double hang = -indent;
+        if (hang >= 1 && marL >= hang)
+        {
+            // hanging indent: the bullet sits in the first line's indent, every line of text starts at marL
+            tb.Margin = tb.Margin with { Left = marL };
+            tb.Inlines.Add(HangingBullet(bu, hang));
+        }
+        else
+        {
+            tb.Inlines.Add(bu);
+            tb.Inlines.Add(new Run("  ") { FontSize = size * 0.6, Tag = Bullet });
+        }
+    }
+
+    /// <summary>The paragraph's runs, line breaks and fields, with PowerPoint's wrapping and character spacing.</summary>
+    void AddRuns(TextBlock tb, List<OpenXmlElement> runs, ParaStyle st, TextBody body)
+    {
+        var c = body.C;
+        // PowerPoint wraps Korean between any two syllables when eaLnBrk and latinLnBrk are both on, otherwise only at spaces
+        bool anyBreak = st.Attr("latinLnBrk") is "1" or "true" && st.Attr("eaLnBrk") is null or "1" or "true";
+        char prev = ' ';
+        double natural = 0, spacing = 0; // the runs' width without and with their character spacing (spc)
+        foreach (var r in runs)
+        {
+            if (r.LocalName == "br") { tb.Inlines.Add(new LineBreak()); prev = ' '; continue; }
+            var rPr = X.Child(r, "rPr");
+            var s = r.LocalName == "fld" && X.Attr(r, "type") == "slidenum" && c.Num > 0 ? c.Num.ToString() : X.Child(r, "t")?.InnerText ?? "";
+            s = Wrapping(s, anyBreak, ref prev);
+            var run = new Run(s)
+            {
+                FontSize = Size(st, rPr, body), FontFamily = Font(st, rPr, c), Foreground = Fore(st, rPr, body),
+            };
+            // only set when on, so a table header can still make the whole cell bold
+            if (st.Run(rPr, "b") is "1" or "true") run.FontWeight = FontWeights.Bold;
+            if (st.Run(rPr, "i") is "1" or "true") run.FontStyle = FontStyles.Italic;
+            var deco = new TextDecorationCollection();
+            if (st.Run(rPr, "u") is { } u && u != "none") foreach (var d in TextDecorations.Underline) deco.Add(d);
+            if (st.Run(rPr, "strike") is "sngStrike" or "dblStrike") foreach (var d in TextDecorations.Strikethrough) deco.Add(d);
+            if (deco.Count > 0) run.TextDecorations = deco;
+            if (X.Child(rPr, "highlight") is { } hl && ColorOf(hl, c) is { } hc) run.Background = new SolidColorBrush(hc);
+            tb.Inlines.Add(run);
+            var plain = Plain(s);
+            if (plain.Length > 0)
+            {
+                double w = new FormattedText(plain, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                    new Typeface(run.FontFamily, run.FontStyle, run.FontWeight, FontStretches.Normal), run.FontSize, Brushes.Black, 1).WidthIncludingTrailingWhitespace;
+                natural += w;
+                spacing += long.TryParse(st.Run(rPr, "spc"), out var spc) ? plain.Length * spc / 100.0 * 96 / 72 * body.FontScale : 0;
+            }
+        }
+        // WPF has no character spacing: squeeze or stretch the paragraph so its lines are as long as PowerPoint's
+        if (spacing != 0 && natural > 0)
+            tb.LayoutTransform = new ScaleTransform(Math.Clamp((natural + spacing) / natural, 0.7, 1.3), 1);
     }
 
     static readonly object Bullet = new();

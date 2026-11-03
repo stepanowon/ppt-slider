@@ -20,6 +20,7 @@ public partial class InkOverlay : Window
     static readonly Brush Catch = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
 
     readonly MainWindow main;
+    readonly PenToolbar tools;
     public MonitorInfo Monitor { get; }
     /// <summary>The show this overlay sits on (its owner), or null over the desktop.</summary>
     public Window? Over { get; }
@@ -42,6 +43,7 @@ public partial class InkOverlay : Window
             Monitors.PlaceFullScreen(this, monitor);
             Owner = over; // owned windows stay above their owner, even when the show is clicked
         }
+        var hooks = new WindowHooks(this);
         if (over != null)
         {
             // the one toolbar of the show: where the show's own was, with its buttons
@@ -49,22 +51,16 @@ public partial class InkOverlay : Window
             Bar.VerticalAlignment = VerticalAlignment.Bottom;
             Bar.Margin = new Thickness(16);
             ShowNav.Visibility = TLaser.Visibility = TSpot.Visibility = ShowEnd.Visibility = Visibility.Visible;
-            main.ShowStateChanged += OnShowState;
-            Closed += (_, _) => main.ShowStateChanged -= OnShowState;
+            hooks.Add(() => main.Session.Changed += OnShowState, () => main.Session.Changed -= OnShowState);
             OnShowState();
             THide.Tag = ""; // "hide ink" must not look like the show's ✕ (end the show)
         }
-        foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
-        {
-            var b = new Button { Width = 20, Height = 20, Margin = new Thickness(3, 0, 3, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = L.T("penColor") };
-            Shortcuts.SetFor(b, $"color{i + 1}");
-            b.Click += (_, _) => main.Pen.SetColor(c);
-            Swatches.Children.Add(b);
-        }
+        tools = new PenToolbar(main.Pen, TSelect, TLaser, TPen, THi, TEraser).Swatches(Swatches, 20, new Thickness(3, 0, 3, 0), Brushes.White);
         PenState.StraightenOnShift(Ink);
         Ink.StrokeCollected += (_, e) => main.TagStroke(e.Stroke, this);
-        main.Pen.Changed += OnPen;
-        Closed += (_, _) => main.Pen.Changed -= OnPen;
+        hooks.Add(() => main.Pen.Changed += OnPen, () => main.Pen.Changed -= OnPen);
+        // the strokes are the main window's and outlive this window: InkCanvas listens to them, so let go of them
+        hooks.OnClose(() => Ink.Strokes = new StrokeCollection());
         OnPen();
     }
 
@@ -79,11 +75,7 @@ public partial class InkOverlay : Window
         var pen = main.Pen;
         pen.Apply(Ink);
         Ink.Background = main.Drawing ? Catch : null; // pointer mode: clicks go through to the window underneath
-        TSelect.IsChecked = pen.Tool == Tool.Select || (pen.Tool == Tool.Laser && Over == null);
-        TLaser.IsChecked = pen.Tool == Tool.Laser;
-        TPen.IsChecked = pen.Tool == Tool.Pen;
-        THi.IsChecked = pen.Tool == Tool.Highlighter;
-        TEraser.IsChecked = pen.Tool == Tool.Eraser;
+        tools.Sync(pen.Tool == Tool.Laser && Over == null ? Tool.Select : pen.Tool); // no laser over the editor: shown as the pointer
         SizeText.Text = pen.Size.ToString("0");
         if (!Bar.IsMouseOver) Bar.Opacity = main.Drawing ? 0.9 : 0.35;
     }
@@ -94,8 +86,7 @@ public partial class InkOverlay : Window
 
     internal bool Press(Gesture g) => main.InkPress(g);
 
-    void OnTool(object sender, RoutedEventArgs e) =>
-        main.Pen.SetTool(sender == TPen ? Tool.Pen : sender == THi ? Tool.Highlighter : sender == TEraser ? Tool.Eraser : sender == TLaser ? Tool.Laser : Tool.Select);
+    void OnTool(object sender, RoutedEventArgs e) => tools.Pick(sender);
 
     void OnThinner(object sender, RoutedEventArgs e) => main.Pen.Grow(-1);
     void OnThicker(object sender, RoutedEventArgs e) => main.Pen.Grow(1);
@@ -107,8 +98,8 @@ public partial class InkOverlay : Window
     void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
     void OnBreak(object sender, RoutedEventArgs e) => main.OpenBreak();
     void OnEnd(object sender, RoutedEventArgs e) => Over?.Close();
-    void OnSpot(object sender, RoutedEventArgs e) => main.SetSpotlight(!main.Spotlight);
-    void OnShowState() => TSpot.IsChecked = main.Spotlight;
+    void OnSpot(object sender, RoutedEventArgs e) => main.Session.SetSpotlight(!main.Session.Spotlight);
+    void OnShowState() => TSpot.IsChecked = main.Session.Spotlight;
     void OnBarEnter(object sender, MouseEventArgs e) => Bar.Opacity = 1;
     void OnBarLeave(object sender, MouseEventArgs e) => Bar.Opacity = main.Drawing ? 0.9 : 0.35;
 

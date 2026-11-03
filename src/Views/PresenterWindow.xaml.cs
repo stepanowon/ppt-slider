@@ -15,6 +15,7 @@ public partial class PresenterWindow : Window
 {
     readonly MainWindow main;
     readonly DispatcherTimer clock = new() { Interval = TimeSpan.FromSeconds(1) };
+    readonly PenToolbar tools;
 
     /// <param name="test">Self-test: a 1280×800 window off screen that never takes focus.</param>
     public PresenterWindow(MainWindow main, MonitorInfo monitor, bool test = false)
@@ -31,29 +32,17 @@ public partial class PresenterWindow : Window
             Left = -20000; Top = 1000; Width = 1280; Height = 800;
         }
         else Monitors.PlaceFullScreen(this, monitor);
-        foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
-        {
-            var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2, 0, 2, 0), Background = new SolidColorBrush(c), BorderBrush = Brushes.White, Focusable = false, ToolTip = L.T("penColor") };
-            Shortcuts.SetFor(b, $"color{i + 1}");
-            b.Click += (_, _) => main.Pen.SetColor(c);
-            Swatches.Children.Add(b);
-        }
+        tools = new PenToolbar(main.Pen, TSelect, TLaser, TPen, THi, TEraser).Swatches(Swatches, 18, new Thickness(2, 0, 2, 0), Brushes.White);
         Stage.Width = main.Deck!.Renderer.Width;
         Stage.Height = main.Deck.Renderer.Height;
         LaserDot.Width = LaserDot.Height = Stage.Width / 80;
-        main.SlideChanged += Refresh;
-        main.Pen.Changed += OnPen;
-        main.ShowStateChanged += OnShowState;
-        main.LaserMoved += DrawLaser;
+        var hooks = new WindowHooks(this);
+        hooks.Add(() => main.SlideChanged += Refresh, () => main.SlideChanged -= Refresh);
+        hooks.Add(() => main.Pen.Changed += OnPen, () => main.Pen.Changed -= OnPen);
+        hooks.Add(() => main.Session.Changed += OnShowState, () => main.Session.Changed -= OnShowState);
+        hooks.Add(() => main.Session.LaserMoved += DrawLaser, () => main.Session.LaserMoved -= DrawLaser);
+        hooks.OnClose(clock.Stop);
         clock.Tick += (_, _) => UpdateClock();
-        Closed += (_, _) =>
-        {
-            clock.Stop();
-            main.SlideChanged -= Refresh;
-            main.Pen.Changed -= OnPen;
-            main.ShowStateChanged -= OnShowState;
-            main.LaserMoved -= DrawLaser;
-        };
         Refresh();
         OnPen();
         clock.Start();
@@ -78,12 +67,12 @@ public partial class PresenterWindow : Window
 
     void OnShowState()
     {
-        var b = main.Blanked;
+        var b = main.Session.Blanked;
         Cover.Visibility = b == Blank.None ? Visibility.Collapsed : Visibility.Visible;
         Cover.Fill = b == Blank.White ? Brushes.White : Brushes.Black;
         TBlack.IsChecked = b == Blank.Black;
         TWhite.IsChecked = b == Blank.White;
-        State.Text = main.Jump != "" ? L.F("goToSlide", main.Jump)
+        State.Text = main.Session.Jump != "" ? L.F("goToSlide", main.Session.Jump)
             : b == Blank.Black ? L.T("audienceBlack")
             : b == Blank.White ? L.T("audienceWhite")
             : "";
@@ -91,18 +80,14 @@ public partial class PresenterWindow : Window
 
     void OnPen()
     {
-        TSelect.IsChecked = main.Pen.Tool == Tool.Select;
-        TLaser.IsChecked = main.Pen.Tool == Tool.Laser;
-        TPen.IsChecked = main.Pen.Tool == Tool.Pen;
-        THi.IsChecked = main.Pen.Tool == Tool.Highlighter;
-        TEraser.IsChecked = main.Pen.Tool == Tool.Eraser;
+        tools.Sync();
         Stage.Cursor = main.Pen.Tool == Tool.Laser ? Cursors.None : null;
         DrawLaser();
     }
 
     void UpdateClock()
     {
-        Elapsed.Text = ShowWindow.Elapsed(DateTime.Now - main.ShowStart);
+        Elapsed.Text = ShowWindow.Elapsed(DateTime.Now - main.Session.Start);
         Clock.Text = DateTime.Now.ToString("t");
     }
 
@@ -117,11 +102,11 @@ public partial class PresenterWindow : Window
     /// <param name="p">Mouse position on the current slide, in slide coordinates.</param>
     internal void PointerMoved(Point p)
     {
-        if (main.Pen.Tool == Tool.Laser) main.SetLaser(new Rect(0, 0, Stage.Width, Stage.Height).Contains(p) ? p : null);
+        if (main.Pen.Tool == Tool.Laser) main.Session.SetLaser(new Rect(0, 0, Stage.Width, Stage.Height).Contains(p) ? p : null);
     }
 
     void OnStageMove(object sender, MouseEventArgs e) => PointerMoved(e.GetPosition(Stage));
-    void OnStageLeave(object sender, MouseEventArgs e) { if (main.Pen.Tool == Tool.Laser) main.SetLaser(null); }
+    void OnStageLeave(object sender, MouseEventArgs e) { if (main.Pen.Tool == Tool.Laser) main.Session.SetLaser(null); }
 
     void OnStageClick(object sender, MouseButtonEventArgs e)
     {
@@ -134,8 +119,8 @@ public partial class PresenterWindow : Window
     void OnNext(object sender, RoutedEventArgs e) => main.Go(main.Current + 1);
     void OnClear(object sender, RoutedEventArgs e) => main.OverlayInk.Clear();
     void OnUndoInk(object sender, RoutedEventArgs e) => main.UndoShowInk();
-    void OnBlack(object sender, RoutedEventArgs e) => main.SetBlank(main.Blanked == Blank.Black ? Blank.None : Blank.Black);
-    void OnWhite(object sender, RoutedEventArgs e) => main.SetBlank(main.Blanked == Blank.White ? Blank.None : Blank.White);
+    void OnBlack(object sender, RoutedEventArgs e) => main.Session.ToggleBlank(Blank.Black);
+    void OnWhite(object sender, RoutedEventArgs e) => main.Session.ToggleBlank(Blank.White);
     void OnBreak(object sender, RoutedEventArgs e) => main.OpenBreak();
     void OnEnd(object sender, RoutedEventArgs e) => main.ShowView?.Close();
     void OnNotesBigger(object sender, RoutedEventArgs e) => SetNotesSize(Notes.FontSize + 2);
@@ -147,6 +132,5 @@ public partial class PresenterWindow : Window
         Notes.LineHeight = Notes.FontSize * 1.45;
     }
 
-    void OnTool(object sender, RoutedEventArgs e) =>
-        main.Pen.SetTool(sender == TPen ? Tool.Pen : sender == THi ? Tool.Highlighter : sender == TEraser ? Tool.Eraser : sender == TLaser ? Tool.Laser : Tool.Select);
+    void OnTool(object sender, RoutedEventArgs e) => tools.Pick(sender);
 }

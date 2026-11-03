@@ -27,6 +27,13 @@ public partial class App : Application
             Shutdown(SelfTest.RenderAll(src, to, e.Args.Length > 3 ? int.Parse(e.Args[3]) : 1280));
             return;
         }
+        if (e.Args is ["--leak", var lf, var lo])
+        {
+            L.Init("ko");
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            Shutdown(SelfTest.LeakProbe(lf, lo));
+            return;
+        }
         L.Init();
         Shortcuts.Load();
         var w = new MainWindow();

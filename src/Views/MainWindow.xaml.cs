@@ -33,11 +33,11 @@ public partial class MainWindow : Window
     /// <summary>Raised when the current slide changes or its content is edited.</summary>
     public event Action? SlideChanged;
 
-    /// <summary>Screen ink per slide (screen coordinates of the overlay, see <see cref="InkOverlay"/>).</summary>
-    readonly Dictionary<SlidePart, StrokeCollection> ink = new();
-    /// <summary>Screen ink while no file is open.</summary>
-    readonly StrokeCollection desktopInk = new();
-    readonly InkHistory inkLog = new();
+    /// <summary>Screen ink: per slide, on the desktop, on the show's blank screen.</summary>
+    public InkManager Ink { get; } = new();
+    /// <summary>The slide show's state (blank screen, typed slide number, laser, spotlight), shown by the show's windows.</summary>
+    public ShowSession Session { get; } = new();
+    readonly PenToolbar penTools;
     InkOverlay? overlay;
     bool inkHidden;
     List<ShapeHit> hits = [];
@@ -53,22 +53,17 @@ public partial class MainWindow : Window
         FontBox.ItemsSource = Fonts.SystemFontFamilies
             .Select(f => f.FamilyNames.TryGetValue(lang, out var n) ? n : f.Source).Distinct().OrderBy(n => n).ToList();
         SizeBox.ItemsSource = TextCommands.FontSizes;
-        foreach (var (c, i) in PenState.Palette.Select((c, i) => (c, i)))
-        {
-            var b = new Button { Width = 18, Height = 18, Margin = new Thickness(2), Background = new SolidColorBrush(c), Focusable = false, BorderBrush = Brushes.Gray, ToolTip = L.T("penColor") };
-            Shortcuts.SetFor(b, $"color{i + 1}");
-            b.Click += (_, _) => Pen.SetColor(c);
-            Swatches.Children.Add(b);
-        }
+        penTools = new PenToolbar(Pen, ToolSelect, null, ToolPen, ToolHi, ToolEraser).Swatches(Swatches, 18, new Thickness(2), Brushes.Gray);
         OnRefreshMonitors(null, null);
         Pen.Changed += OnPenChanged;
         OnPenChanged();
         UpdateStatus();
         UpdateHint();
         Shortcuts.Changed += UpdateHint;
-        jumpTimer.Tick += OnJumpTimeout;
-        inkLog.Track(desktopInk);
-        desktopInk.StrokesChanged += (_, _) => UpdateOverlay();
+        Closed += (_, _) => Shortcuts.Changed -= UpdateHint; // a static event: it would keep the closed window alive
+        Ink.Changed += UpdateOverlay;
+        Session.BlankChanged += () => { Ink.NewBlank(); UpdateOverlay(); };
+        Session.LoneKey += k => { if (Shortcuts.Find(k, inShow: true) is { } id) Run(id); };
         LocationChanged += (_, _) => { if (show == null && overlay?.IsVisible == true) UpdateOverlay(); };
         AskRecover = path => MessageBox.Show(this,
             L.F("recover", System.IO.Path.GetFileName(path)), L.T("recoverTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
@@ -108,9 +103,7 @@ public partial class MainWindow : Window
         Deck = d;
         RecentFiles.Add(path);
         UpdateRecent();
-        ink.Clear();
-        inkLog.Clear();
-        inkLog.Track(desktopInk);
+        Ink.Reset();
         Selection.Reset();
         ClipboardCommands.Forget(); // its shapes belong to the file that was open
         StageFrame.Visibility = Visibility.Visible;
@@ -275,19 +268,6 @@ public partial class MainWindow : Window
         UpdateOverlay(); // the new slide's own ink
     }
 
-    public StrokeCollection StrokesOf(SlidePart sp)
-    {
-        return ink.TryGetValue(sp, out var s) ? s : NewInk(sp, new StrokeCollection());
-    }
-
-    StrokeCollection NewInk(SlidePart sp, StrokeCollection s)
-    {
-        ink[sp] = s;
-        inkLog.Track(s);
-        s.StrokesChanged += (_, _) => UpdateOverlay();
-        return s;
-    }
-
     void RenderCurrent()
     {
         hits = [];
@@ -321,8 +301,8 @@ public partial class MainWindow : Window
     internal void CloseForTest()
     {
         show?.Close();
-        ink.Clear();
-        desktopInk.Clear();
+        Ink.Reset();
+        Ink.Desktop.Clear();
         Deck?.Dispose();
         Deck = null;
         Close();

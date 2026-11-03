@@ -2,16 +2,20 @@ using System.Windows.Ink;
 
 namespace PptSlider;
 
-/// <summary>Undo for ink: remembers every change to a tracked stroke collection (a stroke drawn, erased, or all cleared).</summary>
+/// <summary>
+/// Undo for ink: remembers the changes to each tracked stroke collection (a stroke drawn, erased, or all cleared), the last
+/// <see cref="Limit"/> of each (a cleared slide keeps its strokes here, so undo can bring them back).
+/// </summary>
 public sealed class InkHistory
 {
-    readonly Dictionary<StrokeCollection, (Stack<(StrokeCollection Added, StrokeCollection Removed)> Changes, StrokeCollectionChangedEventHandler Handler)> log = [];
+    public const int Limit = 200;
+    readonly Dictionary<StrokeCollection, (BoundedStack<(StrokeCollection Added, StrokeCollection Removed)> Changes, StrokeCollectionChangedEventHandler Handler)> log = [];
     bool undoing;
 
     public void Track(StrokeCollection strokes)
     {
         if (log.ContainsKey(strokes)) return;
-        var changes = new Stack<(StrokeCollection, StrokeCollection)>();
+        var changes = new BoundedStack<(StrokeCollection, StrokeCollection)>(Limit);
         StrokeCollectionChangedEventHandler handler = (_, e) => { if (!undoing) changes.Push((new(e.Added), new(e.Removed))); };
         strokes.StrokesChanged += handler;
         log[strokes] = (changes, handler);
