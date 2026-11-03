@@ -35,13 +35,13 @@ public partial class InkOverlay : Window
         if (OffScreen)
         {
             WindowStartupLocation = WindowStartupLocation.Manual;
-            Topmost = false;
             Left = -20000; Top = 2000; Width = 1280; Height = 720;
         }
         else
         {
             Monitors.PlaceFullScreen(this, monitor);
             Owner = over; // owned windows stay above their owner, even when the show is clicked
+            Topmost = StaysOnTop(over);
         }
         var hooks = new WindowHooks(this);
         if (over != null)
@@ -63,6 +63,12 @@ public partial class InkOverlay : Window
         hooks.OnClose(() => Ink.Strokes = new StrokeCollection());
         OnPen();
     }
+
+    /// <summary>
+    /// Over the desktop the ink goes over every app, so the overlay stays on top. Over a show it only stays above the show
+    /// (its owner): another window, a browser say, can be brought in front of the show and its ink.
+    /// </summary>
+    internal static bool StaysOnTop(Window? over) => over == null;
 
     public StrokeCollection Strokes
     {

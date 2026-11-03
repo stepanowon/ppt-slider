@@ -30,7 +30,6 @@ public partial class ShowWindow : Window
             WindowStyle = WindowStyle.None;
             ResizeMode = ResizeMode.NoResize;
             WindowStartupLocation = WindowStartupLocation.Manual;
-            Topmost = false;
             ShowActivated = false;
             ShowInTaskbar = false;
             Left = -20000; Top = 0; Width = 1280; Height = 720;

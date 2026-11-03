@@ -26,6 +26,9 @@ static partial class SelfTest
             main.StartShow(0, test: true);
             var show = main.ShowView!;
             Wait(300);
+            // other windows (a browser...) can come in front of the show; ink over the desktop stays above every app
+            check(!show.Topmost && !InkOverlay.StaysOnTop(show) && InkOverlay.StaysOnTop(null),
+                "show: not always on top (nor its ink overlay); the desktop ink overlay is");
             void Press(Key k, ModifierKeys m = ModifierKeys.None) => show.Press(new Gesture(k, m));
             const ModifierKeys Ctrl = ModifierKeys.Control;
 

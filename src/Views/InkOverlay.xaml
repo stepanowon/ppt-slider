@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PptSlider"
         Title="{local:Loc g.ink}" WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="NoResize"
-        Topmost="True" ShowInTaskbar="False" ShowActivated="False"
+        ShowInTaskbar="False" ShowActivated="False"
         FontFamily="{x:Static local:L.UiFont}" InputMethod.IsInputMethodEnabled="False" PreviewKeyDown="OnKey">
     <!-- Fully transparent pixels let the mouse through to whatever is underneath (pointer mode);
          while drawing the canvas gets a nearly invisible background so it catches the mouse everywhere. -->
