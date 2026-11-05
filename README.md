@@ -57,7 +57,7 @@ Store를 쓰지 않으려면 아래 [빌드](#빌드)대로 직접 빌드해 `Pp
 ### 편집
 
 - 개체 선택(Shift/Ctrl+클릭, 끌어서 범위 선택, Ctrl+A로 여러 개), 드래그 이동, 8방향 핸들로 크기 조절(Shift: 비율 유지), 회전 핸들, 화살표 키로 미세 이동, 삭제
-- 잘라내기 / 복사 / 붙여넣기(슬라이드 사이, 그림 포함), Ctrl+D로 개체 복제, 실행 취소 / 다시 실행
+- 잘라내기 / 복사 / 붙여넣기(슬라이드 사이, 그림 포함), Ctrl+D로 개체 복제, 실행 취소 / 다시 실행(최근 100번의 편집까지)
 - 개체 순서(맨 앞 / 맨 뒤 / 앞으로 / 뒤로), 맞춤(왼쪽 · 가운데 · 오른쪽 · 위 · 중간 · 아래), 90° 회전 · 상하 / 좌우 대칭
 - 서식 복사(붓 버튼, Ctrl+Shift+C / Ctrl+Shift+V)
 - 더블클릭(또는 F2)으로 텍스트 제자리 편집 (글꼴, 크기, 색, 정렬 등 원래 서식 유지)
@@ -90,6 +90,7 @@ Store를 쓰지 않으려면 아래 [빌드](#빌드)대로 직접 빌드해 `Pp
 
 - 검은 화면 / 흰 화면, 레이저 포인터, 번호로 이동(숫자 + Enter), 화면 확대(Z 후 영역 드래그), 스팟 하이라이트(S: 마우스 포인터 주위에 노란 원, 판서 중에도 표시)
 - 오른쪽 아래에 현재 시각과 경과 시간 표시, 마우스를 3초 움직이지 않으면 커서 숨김
+- 쇼 화면은 항상 맨 위에 있지 않으므로, 쇼 중에도 브라우저 같은 다른 창을 쇼 위에 띄울 수 있습니다. 작업 표시줄이나 Alt+Tab으로 쇼로 돌아옵니다.
 
 ### 발표자 보기
 
@@ -139,6 +140,17 @@ Store를 쓰지 않으려면 아래 [빌드](#빌드)대로 직접 빌드해 `Pp
 
 Esc는 고정 키입니다: 텍스트 편집 취소, 확대 해제, 선택 도구로 돌아가기, 슬라이드 쇼 종료 (앞에서부터 하나씩).
 
+### PowerPoint와 같게 그리기
+
+슬라이드는 PowerPoint와 같은 규칙으로 배치합니다.
+
+- 한 줄의 높이는 글자 크기의 1.2배이고, 텍스트 상자의 첫 문단에는 단락 앞 간격을 넣지 않습니다.
+- 글머리 기호는 내어쓰기로 두어, 둘째 줄부터 본문 위치에서 시작합니다.
+- 한글 줄바꿈은 문서의 설정(단어 단위 / 글자 단위)을 따르고, "diff를"처럼 영문에 붙은 조사는 떼지 않습니다.
+- 글자 간격, 슬라이드 번호 필드, 표의 테마 글꼴 · 첫 열 강조 · 밝게 / 어둡게 한 색을 반영합니다.
+
+글꼴이 같아도 글자 모양은 몇 픽셀 다를 수 있습니다. 글자 간격은 문단의 가로 배율로 맞추므로 글자가 조금 좁거나 넓어 보일 수 있습니다.
+
 ### 아직 그리지 않는 요소
 
 차트, 효과(그림자 등), 기본값 외의 표 스타일, 애니메이션은 화면에 표시되지 않습니다. 파일에는 그대로 남아 있습니다.
@@ -163,6 +175,7 @@ PptSlider.exe --selftest deck.pptx outDir
 ```
 
 모든 슬라이드를 PNG로 렌더링하고, 편집 → 저장 → 다시 열기 과정과 슬라이드 쇼 · 발표자 보기 · 화면 판서 · 그림 삽입 · 순서 바꾸기 · 텍스트 자동 맞춤 · 도형 · 표 · 클립보드 · 서식 복사 · 마우스 / 키보드 편집 · 단축키 중복 · PDF · SmartArt · 최근 파일 · 자동 저장 · 3개 언어 UI 문자열을 검사합니다.
+PowerPoint와 같게 그리는 규칙(줄 높이, 글머리 기호, 한글 줄바꿈, 글자 간격 등), 메모리 누수(닫은 쇼 창이 메모리에서 지워지는지), 실행 취소 상한, 쇼 화면이 항상 맨 위에 있지 않은지도 확인합니다.
 쇼와 발표자 창은 화면 밖에 띄우고 키 입력도 그 창에만 보내므로, 실행 중에 다른 작업을 해도 됩니다.
 결과는 `outDir\selftest.txt`에 기록되며 종료 코드 0이면 통과입니다. 앱 데이터는 `outDir\local`을 쓰므로 실제 최근 파일 · 자동 저장에는 영향이 없습니다. 셀프 테스트는 항상 한국어로 실행됩니다.
 
@@ -174,6 +187,23 @@ PptSlider.exe --screenshots deck.pptx outDir [ko|ja|en] [슬라이드 번호(0�
 
 위의 `screen/` 이미지를 만드는 모드입니다. 주 모니터에 편집기를 띄워 편집 화면, 편집 화면 위 판서, 슬라이드 쇼 판서, 발표자 보기(쇼는 다른 모니터)를 차례로 실제 화면에서 캡처합니다.
 화면을 그대로 찍으므로 실행하는 동안에는 마우스와 키보드를 건드리지 마세요. 발표자 보기는 모니터가 두 개 이상일 때만 찍습니다.
+
+### 렌더링 비교
+
+```powershell
+PptSlider.exe --render deck.pptx outDir [너비(기본 1280)]
+```
+
+모든 슬라이드를 `outDir\01.png`, `02.png` …로 저장합니다. PowerPoint에서 내보낸 슬라이드 이미지와 나란히 놓고 렌더링 차이를 볼 때 씁니다.
+
+### 메모리 측정
+
+```powershell
+PptSlider.exe --leak deck.pptx outDir
+```
+
+슬라이드 이동, 쇼 열고 닫기, 파일 다시 열기, 텍스트 편집, 개체 이동, 판서, 창 열고 닫기 등을 수십 번씩 반복하면서 매번 GC 뒤의 메모리와 닫은 창 · 이전 문서가 메모리에서 지워졌는지를 `outDir\leak.txt`에 기록합니다.
+환경 변수 `LEAK_OPENS`(파일 다시 열기 횟수, 기본 40)와 `LEAK_COMPACT`(1: 대형 개체 힙 압축, 2: 남은 메모리를 Windows에 돌려주는 GC)로 측정 방식을 바꿀 수 있습니다.
 
 ## MSIX 패키지
 
@@ -226,19 +256,22 @@ Package/                AppxManifest.xml, Assets(로고), StoreArt(Store 이미�
 screen/                 README와 Store용 스크린샷 (ko, ja, en)
 docs/                   store-listing.md(Store 목록 문구), 테스트계획 · 테스트결과(버전별)
 src/
-├─ App.xaml(.cs)        진입점 (--selftest 처리, 시작 시 파일 열기)
+├─ App.xaml(.cs)        진입점 (--selftest · --screenshots · --render · --leak 처리, 시작 시 파일 열기)
 ├─ Views/               MainWindow(편집기), ShowWindow(슬라이드 쇼), PresenterWindow(발표자 보기),
-│                       InkOverlay(화면 판서), BreakWindow(휴식 타이머), ShortcutsWindow(단축키 설정)
+│                       InkOverlay(화면 판서), BreakWindow(휴식 타이머), ShortcutsWindow(단축키 설정),
+│                       PenToolbar(판서 도구 막대), WindowHooks(창이 닫힐 때 이벤트 구독 해제)
 ├─ Editing/             편집 부품(IEditorHost에만 의존): ShapeSelection(선택), SelectionAdorner(핸들), StageInteraction(마우스),
 │                       TextEditor(제자리 텍스트 편집), Shape · Text · Table · Insert · ClipboardCommands(명령), FormatPainterTool(서식 복사),
 │                       EditingParts(부품 조립)
 ├─ Models/              Deck(.pptx 문서 · 저장 · 슬라이드 목록), EditHistory(실행 취소), ShapeFactory · ShapeLayout · ShapeStyle(도형),
 │                       Tables(표), TextContent · TextFormat(텍스트와 서식), ShapeClipboard · FormatPainter(복사), SlideTree · Ooxml · X(XML 도우미),
-│                       PenState(판서 도구 상태), InkHistory(판서 되돌리기)
+│                       PenState(판서 도구 상태), InkManager(슬라이드별 · 바탕 화면 · 검은 화면 판서), InkHistory(판서 되돌리기),
+│                       ShowSession(쇼 상태: 검은 화면, 번호 입력, 레이저, 스팟 하이라이트), BoundedStack(개수 제한 실행 취소)
 ├─ Rendering/           SlideRenderer(PPTX → WPF 렌더링, SmartArt 포함), ShapeGeometry(도형 윤곽), ColorMath(색), FontNames(글꼴 이름 검사), TextPanel, ShapeHit
 ├─ Services/            Shortcuts(단축키), Monitors(모니터 목록), PdfExport(PDF),
 │                       RecentFiles(최근 파일), AutoSave(자동 저장), AppPaths(앱 데이터 폴더), Loc(한 · 일 · 영 UI 문자열)
-└─ Diagnostics/         SelfTest (편집 · 쇼 · 판서 · 뷰어 검사), Screenshots (스크린샷)
+└─ Diagnostics/         SelfTest (편집 · 쇼 · 판서 · 뷰어 · 렌더링 규칙 · 메모리 누수 검사), Screenshots (스크린샷),
+                        RenderDump (--render), LeakProbe (--leak)
 ```
 
 의존 패키지: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)

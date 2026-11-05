@@ -57,7 +57,7 @@ To run without the Store, build it as described under [Build](#build) and run `P
 ### Editing
 
 - Select objects (Shift/Ctrl+click, drag a marquee, Ctrl+A for several), drag to move, resize with eight handles (Shift keeps the aspect ratio), rotate handle, nudge with the arrow keys, delete
-- Cut / copy / paste (across slides, pictures included), duplicate objects with Ctrl+D, undo / redo
+- Cut / copy / paste (across slides, pictures included), duplicate objects with Ctrl+D, undo / redo (up to the last 100 edits)
 - Object order (to front / to back / forward / backward), align (left · center · right · top · middle · bottom), rotate 90° · flip vertical / horizontal
 - Format painter (brush button, Ctrl+Shift+C / Ctrl+Shift+V)
 - Double-click (or F2) to edit text in place (the original font, size, color, alignment and other formatting are kept)
@@ -90,6 +90,7 @@ From the beginning (F5) / from the current slide (Shift+F5). You can choose the 
 
 - Black / white screen, laser pointer, go to a slide by number (number + Enter), zoom (Z, then drag an area), spot highlight (S: a yellow circle around the mouse pointer, also while drawing)
 - Current time and elapsed time in the bottom-right corner; the cursor hides after 3 seconds without mouse movement
+- The show is not always on top, so other windows such as a browser can be brought in front of it during a show. Go back to the show with the taskbar or Alt+Tab.
 
 ### Presenter View
 
@@ -139,6 +140,17 @@ In the show, the number keys are shared by go-to-slide and pen colors. A single 
 
 Esc is a fixed key: it cancels text editing, ends the zoom, returns to the Select tool, and ends the slide show (one at a time, in that order).
 
+### Drawn like PowerPoint
+
+Slides are laid out by the same rules as PowerPoint.
+
+- A line is 1.2 times the font size, and a text box's first paragraph gets no space before it.
+- Bullets hang in the indent, so the second and later lines start where the text starts.
+- Korean text wraps by the document's setting (by word or by character), and a particle attached to an English word ("diff를") stays with it.
+- Character spacing, slide number fields, and tables' theme fonts, first-column emphasis and lightened / darkened colors are shown.
+
+Even with the same font, glyphs can differ by a few pixels. Character spacing is matched by scaling the paragraph horizontally, so letters can look slightly narrower or wider.
+
 ### Not drawn yet
 
 Charts, effects (shadows etc.), table styles other than the default and animations are not shown on screen. They stay in the file unchanged.
@@ -163,6 +175,7 @@ PptSlider.exe --selftest deck.pptx outDir
 ```
 
 Renders every slide to PNG and checks the edit → save → reopen round trip, plus the slide show, Presenter View, screen ink, picture insert, reordering, text autofit, shapes, tables, clipboard, format painter, mouse / keyboard editing, duplicate shortcuts, PDF, SmartArt, recent files, autosave and the UI text in all three languages.
+It also checks the rules for drawing like PowerPoint (line height, bullets, Korean wrapping, character spacing and more), memory leaks (closed show windows are freed), the undo limits, and that the show is not always on top.
 The show and presenter windows open off screen and key presses go only to them, so you can keep working while it runs.
 Results are written to `outDir\selftest.txt`; exit code 0 means pass. App data goes to `outDir\local`, so your real recent files and autosaves are not touched. The self-test always runs in Korean.
 
@@ -174,6 +187,23 @@ PptSlider.exe --screenshots deck.pptx outDir [ko|ja|en] [slide index (from 0)]
 
 The mode that makes the `screen/` images above. It opens the editor on the primary monitor and captures, from the real screen, the editor, ink over the editor, ink in the slide show, and Presenter View (with the show on another monitor).
 It captures the screen as it is, so leave the mouse and keyboard alone while it runs. Presenter View is captured only with two or more monitors.
+
+### Rendering comparison
+
+```powershell
+PptSlider.exe --render deck.pptx outDir [width (default 1280)]
+```
+
+Saves every slide as `outDir\01.png`, `02.png` and so on, to put side by side with the slide images PowerPoint exports and see where rendering differs.
+
+### Memory measurement
+
+```powershell
+PptSlider.exe --leak deck.pptx outDir
+```
+
+Repeats slide navigation, opening and closing the show, reopening the file, text editing, moving shapes, ink and opening and closing windows dozens of times, and writes to `outDir\leak.txt` the memory after each GC and whether closed windows and old documents were freed.
+The environment variables `LEAK_OPENS` (how many times to reopen the file, 40 by default) and `LEAK_COMPACT` (1: compact the large object heap, 2: a GC that gives free memory back to Windows) change how it measures.
 
 ## MSIX package
 
@@ -226,19 +256,22 @@ Package/                AppxManifest.xml, Assets (logos), StoreArt (Store images
 screen/                 screenshots for the README and the Store (ko, ja, en)
 docs/                   store-listing.md (Store listing text), test plans and reports per version (Korean)
 src/
-├─ App.xaml(.cs)        Entry point (--selftest, opening a file at startup)
+├─ App.xaml(.cs)        Entry point (--selftest, --screenshots, --render, --leak, opening a file at startup)
 ├─ Views/               MainWindow (editor), ShowWindow (slide show), PresenterWindow (Presenter View),
-│                       InkOverlay (screen ink), BreakWindow (break timer), ShortcutsWindow (shortcut settings)
+│                       InkOverlay (screen ink), BreakWindow (break timer), ShortcutsWindow (shortcut settings),
+│                       PenToolbar (ink tool bar), WindowHooks (unhooks event handlers when a window closes)
 ├─ Editing/             Editing parts (depend only on IEditorHost): ShapeSelection, SelectionAdorner (handles), StageInteraction (mouse),
 │                       TextEditor (in-place text editing), Shape · Text · Table · Insert · ClipboardCommands, FormatPainterTool,
 │                       EditingParts (wires the parts together)
 ├─ Models/              Deck (.pptx document · saving · slide list), EditHistory (undo), ShapeFactory · ShapeLayout · ShapeStyle (shapes),
 │                       Tables, TextContent · TextFormat (text and its format), ShapeClipboard · FormatPainter (copying), SlideTree · Ooxml · X (XML helpers),
-│                       PenState (ink tool state), InkHistory (ink undo)
+│                       PenState (ink tool state), InkManager (per-slide, desktop and blank-screen ink), InkHistory (ink undo),
+│                       ShowSession (show state: blank screen, typed slide number, laser, spotlight), BoundedStack (size-limited undo)
 ├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt), ShapeGeometry (shape outlines), ColorMath (colors), FontNames (font name check), TextPanel, ShapeHit
 ├─ Services/            Shortcuts, Monitors (monitor list), PdfExport (PDF),
 │                       RecentFiles, AutoSave, AppPaths (app data folder), Loc (Korean · Japanese · English UI text)
-└─ Diagnostics/         SelfTest (editing · show · ink · viewer checks), Screenshots (screenshots)
+└─ Diagnostics/         SelfTest (editing · show · ink · viewer · rendering rule · memory leak checks), Screenshots (screenshots),
+                        RenderDump (--render), LeakProbe (--leak)
 ```
 
 Dependency: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)

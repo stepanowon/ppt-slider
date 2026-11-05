@@ -57,7 +57,7 @@ Store を使わない場合は、下の[ビルド](#ビルド)のとおりにビ
 ### 編集
 
 - オブジェクトの選択 (Shift/Ctrl+クリック、ドラッグで範囲選択、Ctrl+A で複数)、ドラッグで移動、8 方向のハンドルでサイズ変更 (Shift: 縦横比を維持)、回転ハンドル、矢印キーで微調整、削除
-- 切り取り / コピー / 貼り付け (スライド間、画像を含む)、Ctrl+D でオブジェクトを複製、元に戻す / やり直し
+- 切り取り / コピー / 貼り付け (スライド間、画像を含む)、Ctrl+D でオブジェクトを複製、元に戻す / やり直し (直近 100 回の編集まで)
 - オブジェクトの順序 (最前面 / 最背面 / 前面 / 背面)、配置 (左・左右中央・右・上・上下中央・下)、90 度回転・上下 / 左右反転
 - 書式のコピー (ブラシ ボタン、Ctrl+Shift+C / Ctrl+Shift+V)
 - ダブルクリック (または F2) でテキストをその場で編集 (フォント、サイズ、色、配置など元の書式を維持)
@@ -90,6 +90,7 @@ Store を使わない場合は、下の[ビルド](#ビルド)のとおりにビ
 
 - 黒い画面 / 白い画面、レーザー ポインター、番号で移動 (数字 + Enter)、画面の拡大 (Z を押して範囲をドラッグ)、スポット ハイライト (S: マウス ポインターの周りに黄色い円、手書き中も表示)
 - 右下に現在時刻と経過時間を表示、マウスを 3 秒動かさないとカーソルを非表示
+- スライド ショーは常に最前面ではないため、ショー中でもブラウザーなどほかのウィンドウをショーの上に表示できます。タスク バーまたは Alt+Tab でショーに戻ります。
 
 ### 発表者ツール
 
@@ -139,6 +140,17 @@ Store を使わない場合は、下の[ビルド](#ビルド)のとおりにビ
 
 Esc は固定キーです: テキスト編集のキャンセル、拡大の解除、選択ツールに戻る、スライド ショーの終了 (前から順に 1 つずつ)。
 
+### PowerPoint と同じように描画
+
+スライドは PowerPoint と同じ規則で配置します。
+
+- 1 行の高さはフォント サイズの 1.2 倍で、テキスト ボックスの最初の段落には段落前の間隔を入れません。
+- 箇条書きはぶら下げインデントにし、2 行目以降は本文の位置から始まります。
+- 韓国語の改行は文書の設定 (単語単位 / 文字単位) に従い、英単語に続く助詞 ("diff를") は切り離しません。
+- 文字間隔、スライド番号のフィールド、表のテーマ フォント・最初の列の強調・明るく / 暗くした色を反映します。
+
+同じフォントでも、文字の形は数ピクセル異なることがあります。文字間隔は段落を横方向に拡大縮小して合わせるため、文字が少し細く、または太く見えることがあります。
+
 ### まだ描画しない要素
 
 グラフ、効果 (影など)、既定以外の表のスタイル、アニメーションは画面に表示されません。ファイルにはそのまま残ります。
@@ -163,6 +175,7 @@ PptSlider.exe --selftest deck.pptx outDir
 ```
 
 すべてのスライドを PNG にレンダリングし、編集 → 保存 → 再度開く流れと、スライド ショー・発表者ツール・画面上の手書き・画像の挿入・順序の変更・テキストの自動調整・図形・表・クリップボード・書式のコピー・マウス / キーボードでの編集・ショートカットの重複・PDF・SmartArt・最近使ったファイル・自動保存・3 言語の UI 文字列を検査します。
+PowerPoint と同じように描画する規則 (行の高さ、箇条書き、韓国語の改行、文字間隔など)、メモリ リーク (閉じたショーのウィンドウが解放されるか)、元に戻すの上限、ショーが常に最前面でないことも確認します。
 スライド ショーと発表者ツールのウィンドウは画面外に表示し、キー入力もそのウィンドウにだけ送るため、実行中に他の作業をしてもかまいません。
 結果は `outDir\selftest.txt` に記録され、終了コード 0 なら合格です。アプリ データは `outDir\local` を使うため、実際の最近使ったファイルや自動保存には影響しません。セルフテストは常に韓国語で実行されます。
 
@@ -174,6 +187,23 @@ PptSlider.exe --screenshots deck.pptx outDir [ko|ja|en] [スライド番号 (0 �
 
 上の `screen/` の画像を作るモードです。メイン モニターにエディターを表示し、編集画面、編集画面上の手書き、スライド ショーの手書き、発表者ツール (スライド ショーは別のモニター) を実際の画面から順にキャプチャします。
 画面をそのまま撮影するため、実行中はマウスとキーボードに触れないでください。発表者ツールはモニターが 2 台以上のときだけ撮影します。
+
+### レンダリングの比較
+
+```powershell
+PptSlider.exe --render deck.pptx outDir [幅 (既定 1280)]
+```
+
+すべてのスライドを `outDir\01.png`、`02.png` … として保存します。PowerPoint でエクスポートしたスライドの画像と並べて、描画の違いを確かめるときに使います。
+
+### メモリの測定
+
+```powershell
+PptSlider.exe --leak deck.pptx outDir
+```
+
+スライドの移動、ショーの開始と終了、ファイルを開き直す、テキストの編集、オブジェクトの移動、手書き、ウィンドウの開閉などを数十回ずつ繰り返し、GC 後のメモリと、閉じたウィンドウや前の文書が解放されたかを `outDir\leak.txt` に記録します。
+環境変数 `LEAK_OPENS` (ファイルを開き直す回数、既定 40) と `LEAK_COMPACT` (1: ラージ オブジェクト ヒープの圧縮、2: 空きメモリを Windows に返す GC) で測定方法を変えられます。
 
 ## MSIX パッケージ
 
@@ -226,19 +256,22 @@ Package/                AppxManifest.xml、Assets (ロゴ)、StoreArt (Store 用
 screen/                 README と Store 用のスクリーンショット (ko、ja、en)
 docs/                   store-listing.md (Store の一覧の文言)、テスト計画・テスト結果 (バージョンごと、韓国語)
 src/
-├─ App.xaml(.cs)        エントリ ポイント (--selftest の処理、起動時にファイルを開く)
+├─ App.xaml(.cs)        エントリ ポイント (--selftest・--screenshots・--render・--leak の処理、起動時にファイルを開く)
 ├─ Views/               MainWindow (エディター)、ShowWindow (スライド ショー)、PresenterWindow (発表者ツール)、
-│                       InkOverlay (画面上の手書き)、BreakWindow (休憩タイマー)、ShortcutsWindow (ショートカットの設定)
+│                       InkOverlay (画面上の手書き)、BreakWindow (休憩タイマー)、ShortcutsWindow (ショートカットの設定)、
+│                       PenToolbar (手書きツール バー)、WindowHooks (ウィンドウを閉じるときにイベントの登録を解除)
 ├─ Editing/             編集の部品 (IEditorHost だけに依存): ShapeSelection (選択)、SelectionAdorner (ハンドル)、StageInteraction (マウス)、
 │                       TextEditor (その場でのテキスト編集)、Shape・Text・Table・Insert・ClipboardCommands (コマンド)、FormatPainterTool (書式のコピー)、
 │                       EditingParts (部品の組み立て)
 ├─ Models/              Deck (.pptx ドキュメント・保存・スライド一覧)、EditHistory (元に戻す)、ShapeFactory・ShapeLayout・ShapeStyle (図形)、
 │                       Tables (表)、TextContent・TextFormat (テキストと書式)、ShapeClipboard・FormatPainter (コピー)、SlideTree・Ooxml・X (XML ヘルパー)、
-│                       PenState (手書きツールの状態)、InkHistory (手書きの元に戻す)
+│                       PenState (手書きツールの状態)、InkManager (スライドごと・デスクトップ・黒い画面の手書き)、InkHistory (手書きの元に戻す)、
+│                       ShowSession (ショーの状態: 黒い画面、番号入力、レーザー、スポット ハイライト)、BoundedStack (件数制限付きの元に戻す)
 ├─ Rendering/           SlideRenderer (PPTX → WPF のレンダリング、SmartArt を含む)、ShapeGeometry (図形の輪郭)、ColorMath (色)、FontNames (フォント名の検査)、TextPanel、ShapeHit
 ├─ Services/            Shortcuts (ショートカット)、Monitors (モニター一覧)、PdfExport (PDF)、
 │                       RecentFiles (最近使ったファイル)、AutoSave (自動保存)、AppPaths (アプリ データ フォルダー)、Loc (韓国語・日本語・英語の UI 文字列)
-└─ Diagnostics/         SelfTest (編集・スライド ショー・手書き・ビューアーの検査)、Screenshots (スクリーンショット)
+└─ Diagnostics/         SelfTest (編集・スライド ショー・手書き・ビューアー・描画規則・メモリ リークの検査)、Screenshots (スクリーンショット)、
+                        RenderDump (--render)、LeakProbe (--leak)
 ```
 
 依存パッケージ: [DocumentFormat.OpenXml](https://www.nuget.org/packages/DocumentFormat.OpenXml)
