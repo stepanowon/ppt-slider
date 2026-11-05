@@ -33,6 +33,10 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 ■ 슬라이드 쇼와 발표자 보기
 쇼를 띄울 모니터를 고를 수 있고, 다른 모니터에는 현재·다음 슬라이드, 발표자 노트, 경과 시간을 보여 주는 발표자 보기를 띄울 수 있습니다.
 검은 화면/흰 화면, 레이저 포인터, 포인터 주변을 원으로 비추는 스팟 하이라이트, 화면 확대, 번호로 이동, 휴식 타이머(Break Time)를 지원합니다.
+쇼 화면이 다른 창을 가리지 않으므로, 쇼 중에도 브라우저 같은 다른 창을 쇼 위에 띄워 보여 줄 수 있습니다.
+
+■ 원본에 가까운 표시
+줄 간격, 첫 문단 간격, 글머리 기호의 내어쓰기, 글자 간격, 한글 줄바꿈(단어 단위/글자 단위), 슬라이드 번호, 표의 글꼴과 색을 .pptx 파일의 설정대로 그려, 텍스트가 상자 밖으로 넘치거나 줄이 다르게 바뀌지 않고 만든 그대로에 가깝게 보입니다.
 
 ■ 편집
 텍스트를 제자리에서 고칩니다. 글꼴·크기·색·굵게·기울임꼴·밑줄·취소선·텍스트 강조 색, 글머리 기호·번호·목록 수준, 정렬·줄 간격을 바꿀 수 있고, 편집 중에는 선택한 글자에만 적용됩니다.
@@ -88,6 +92,8 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 13. 썸네일을 끌어다 놓아 슬라이드 순서 바꾸기
 14. 판서한 슬라이드만 모은 판서 노트 PDF와 전체 PDF 내보내기
 15. 자동 저장·복구, 최근 파일, 단축키 사용자 지정, 휴식 타이머
+16. 원본에 가까운 표시: 줄 간격, 글머리 기호 내어쓰기, 글자 간격, 한글 줄바꿈, 슬라이드 번호, 표 서식
+17. 쇼 중에도 브라우저 등 다른 창을 쇼 위에 띄우기
 
 ### 스크린샷 캡션
 
@@ -135,6 +141,10 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 ■ スライド ショーと発表者ツール
 スライド ショーを表示するモニターを選べ、別のモニターには現在と次のスライド、発表者ノート、経過時間を表示する発表者ツールを表示できます。
 黒い画面/白い画面、レーザー ポインター、ポインターの周りを円で照らすスポットハイライト、画面の拡大、番号でジャンプ、休憩タイマー (Break Time) に対応しています。
+ショー画面がほかのウィンドウを隠さないため、ショー中でもブラウザーなどほかのウィンドウをショーの上に表示して見せられます。
+
+■ 元のファイルに近い表示
+行間、最初の段落の間隔、箇条書きのぶら下げインデント、文字間隔、韓国語の改行 (単語単位/文字単位)、スライド番号、表のフォントと色を .pptx ファイルの設定どおりに描くため、テキストがボックスからはみ出したり改行位置が変わったりせず、作成したとおりに近い表示になります。
 
 ■ 編集
 テキストをその場で編集できます。フォント・サイズ・色・太字・斜体・下線・取り消し線・蛍光ペンの色、箇条書き・段落番号・リストのレベル、配置・行間を変更でき、編集中は選択した文字だけに適用されます。
@@ -190,6 +200,8 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 13. サムネイルのドラッグでスライドの順序を変更
 14. 手書きしたスライドだけの手書きノート PDF と、全スライドの PDF 出力
 15. 自動保存と復元、最近使ったファイル、ショートカットの変更、休憩タイマー
+16. 元のファイルに近い表示: 行間、箇条書きのぶら下げインデント、文字間隔、韓国語の改行、スライド番号、表の書式
+17. ショー中でもブラウザーなどほかのウィンドウをショーの上に表示
 
 ### スクリーンショットのキャプション
 
@@ -237,6 +249,10 @@ Hold Shift for a straight line, press Ctrl+Z to undo a stroke, and Ctrl+Enter to
 ■ Slide show and Presenter View
 Choose which monitor shows the slide show, and open Presenter View on another one with the current and next slides, speaker notes and elapsed time.
 Black and white screens, laser pointer, a spotlight that circles the mouse pointer, zoom, jump to a slide by number, and a full-screen break timer (Break Time).
+The slide show does not stay on top of everything, so during a show you can bring a browser or any other window in front of it.
+
+■ True to the original
+Line spacing, first-paragraph spacing, hanging indents for bullets, character spacing, Korean line wrapping (by word or by character), slide numbers, and table fonts and colors follow the settings in the .pptx file, so text stays in its box and wraps where it was written.
 
 ■ Editing
 Edit text in place: font, size, color, bold, italic, underline, strikethrough and highlight color, bullets, numbering and list levels, alignment and line spacing. While editing, formatting applies only to the selected characters.
@@ -292,6 +308,8 @@ Version 0.2.3
 13. Drag thumbnails to reorder slides
 14. Ink Notes PDF of only the slides you drew on, or a PDF of all slides
 15. Autosave and recovery, recent files, custom shortcuts, break timer
+16. True to the original: line spacing, hanging bullet indents, character spacing, Korean line wrapping, slide numbers, table formatting
+17. Show a browser or any other window on top of the slide show
 
 ### Screenshot captions
 

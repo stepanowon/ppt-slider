@@ -12,6 +12,8 @@ A Windows desktop app for opening `.pptx` files without PowerPoint, making simpl
 
 ### Microsoft Store (recommended)
 
+<a href="https://apps.microsoft.com/detail/9PL1M72JXSCN?mode=direct"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"/></a>
+
 1. [Open PPTSlider in the Microsoft Store](https://apps.microsoft.com/detail/9PL1M72JXSCN), or search for "PPTSlider" in the Microsoft Store app.
 2. Click **Get** (or **Install**).
 3. Start **PPTSlider** from the Start menu.

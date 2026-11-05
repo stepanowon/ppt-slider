@@ -12,6 +12,8 @@ PowerPoint がなくても `.pptx` ファイルを開いて簡単に編集し、
 
 ### Microsoft Store (推奨)
 
+<a href="https://apps.microsoft.com/detail/9PL1M72JXSCN?mode=direct"><img src="https://get.microsoft.com/images/ja%20dark.svg" width="200" alt="Microsoft Store から入手"/></a>
+
 1. [Microsoft Store で PPTSlider を開く](https://apps.microsoft.com/detail/9PL1M72JXSCN)か、Microsoft Store アプリで「PPTSlider」を検索します。
 2. **入手** (または **インストール**) をクリックします。
 3. スタート メニューから **PPTSlider** を起動します。

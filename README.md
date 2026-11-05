@@ -12,6 +12,8 @@ PowerPoint 없이 `.pptx` 파일을 열어 간단히 편집하고, 판서하면�
 
 ### Microsoft Store (권장)
 
+<a href="https://apps.microsoft.com/detail/9PL1M72JXSCN?mode=direct"><img src="https://get.microsoft.com/images/ko%20dark.svg" width="200" alt="Microsoft Store에서 다운로드"/></a>
+
 1. [Microsoft Store에서 PPTSlider 열기](https://apps.microsoft.com/detail/9PL1M72JXSCN) 또는 Microsoft Store 앱에서 "PPTSlider"를 검색합니다.
 2. **받기**(또는 **설치**)를 누릅니다.
 3. 시작 메뉴에서 **PPTSlider**를 실행합니다.
