@@ -77,7 +77,7 @@ Ink is drawn **only in the slide show**, on a transparent layer over the show; t
 - **Remembered per slide**: move to another slide and back, and the ink you drew there comes back. A black or white screen opens a fresh ink layer that doesn't mix with the slides' ink (it starts empty each time).
 - **On-screen toolbar**: pointer (keep the ink and click the screen underneath), pen, highlighter, eraser, colors, width, undo, clear, hide. Drag its grip to move it anywhere.
 - **Straight lines**: hold Shift while drawing.
-- **Undo**: Ctrl+Z takes back ink strokes first when there are any. Ink undo remembers the last 200 changes on each slide.
+- **Undo**: during a show, Ctrl+Z takes back ink strokes first. In the editor Ctrl+Z undoes slide edits only; use **Draw → Undo** for the ink. Ink undo remembers the last 200 changes on each slide.
 - **Clear**: C clears the current slide's ink; **Draw → All Ink** clears the ink on every slide.
 - **Blank ink page** (Ctrl+Enter): inserts a blank slide after the current one (and switches to the pen during a show), for when you need more room to write.
 - When the show ends the ink leaves the screen but stays with its slides, for the next show and for PDF / Ink Notes. It is not saved in the .pptx and is gone when the app closes. To keep it, export to PDF or Ink Notes.
