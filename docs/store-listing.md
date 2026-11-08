@@ -29,7 +29,7 @@ PPTSlider는 .pptx 프레젠테이션을 열어 간단히 고치고, 슬라이�
 펜, 형광펜, 지우개와 7가지 색, 두께 조절을 지원합니다. 판서는 슬라이드 쇼 위의 투명한 층에 그려지며, 편집 화면에서는 판서하지 않아 슬라이드를 고치다 실수로 그릴 일이 없습니다.
 판서는 슬라이드별로 기억되어, 슬라이드를 넘겼다가 돌아오면 그 슬라이드에서 그렸던 판서가 다시 나타납니다.
 Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter로 빈 판서 페이지를 바로 추가할 수 있습니다.
-쇼에서 그린 판서는 쇼를 마쳐도 슬라이드별로 남아 다음 쇼와 판서 노트·PDF에 들어갑니다. 색과 두께는 그리기 탭에서 미리 정해 둘 수 있습니다.
+쇼에서 그린 판서는 쇼를 마쳐도 슬라이드별로 남아 다음 쇼와 판서 노트·PDF에 들어갑니다. 그리기 탭은 쇼 중에만 나타납니다.
 
 ■ 슬라이드 쇼와 발표자 보기
 쇼를 띄울 모니터를 고를 수 있고, 다른 모니터에는 현재·다음 슬라이드, 발표자 노트, 경과 시간을 보여 주는 발표자 보기를 띄울 수 있습니다.
@@ -64,7 +64,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 ### 이 버전의 새로운 기능
 
 버전 0.2.6
-- 판서는 슬라이드 쇼에서만 할 수 있습니다. 편집 화면에서는 펜·형광펜·지우개를 고를 수 없어 슬라이드를 고치다 실수로 그릴 일이 없습니다. 미리 정한 색과 두께는 쇼에서 그대로 씁니다.
+- 판서는 슬라이드 쇼에서만 할 수 있습니다. 편집 화면에서는 펜·형광펜·지우개를 고를 수 없어 슬라이드를 고치다 실수로 그릴 일이 없습니다. 그리기 탭도 쇼 중에만 나타납니다.
 - 쇼에서 그린 판서는 쇼를 마쳐도 슬라이드별로 남아 다음 쇼와 PDF·판서 노트에 들어갑니다.
 - 편집 화면의 Ctrl+Z는 슬라이드 편집만 되돌립니다.
 - 펜 → 포인터 → 펜으로 바꿀 때 앱이 꺼지던 문제를 고쳤습니다.
@@ -145,7 +145,7 @@ PPTSlider は、.pptx プレゼンテーションを開いて手軽に編集し�
 ペン、蛍光ペン、消しゴム、7 色、太さの調整に対応しています。手書きはスライド ショーの上の透明なレイヤーに描かれます。編集画面では手書きしないため、スライドの編集中に誤って描くことはありません。
 手書きはスライドごとに記憶され、スライドを切り替えて戻ると、そのスライドで描いた手書きが再び表示されます。
 Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、Ctrl+Enter で空白の手書きページをすぐに追加できます。
-ショーで描いた手書きはショーを終えてもスライドごとに残り、次のショーや手書きノート・PDF に含まれます。色と太さは描画タブで事前に設定できます。
+ショーで描いた手書きはショーを終えてもスライドごとに残り、次のショーや手書きノート・PDF に含まれます。描画タブはショー中にだけ表示されます。
 
 ■ スライド ショーと発表者ツール
 スライド ショーを表示するモニターを選べ、別のモニターには現在と次のスライド、発表者ノート、経過時間を表示する発表者ツールを表示できます。
@@ -180,7 +180,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 ### このバージョンの新機能
 
 バージョン 0.2.6
-- 手書きはスライド ショーでのみ使えます。編集画面ではペン・蛍光ペン・消しゴムを選べないため、スライドの編集中に誤って描くことはありません。事前に決めた色と太さはショーでそのまま使えます。
+- 手書きはスライド ショーでのみ使えます。編集画面ではペン・蛍光ペン・消しゴムを選べないため、スライドの編集中に誤って描くことはありません。描画タブもショー中にだけ表示されます。
 - ショーで描いた手書きはショーを終えてもスライドごとに残り、次のショーや PDF・手書きノートに含まれます。
 - 編集画面の Ctrl+Z はスライドの編集だけを元に戻します。
 - ペン → ポインター → ペンと切り替えるとアプリが終了する問題を修正しました。
@@ -261,7 +261,7 @@ It is built for lectures, classes and seminars, where you explain by writing dir
 Pen, highlighter and eraser, 7 colors and adjustable width. Ink is drawn on a transparent layer over the slide show. There is no ink in the editor, so you never draw by mistake while editing slides.
 Ink is remembered per slide: move to another slide and back, and the ink you drew there comes back.
 Hold Shift for a straight line, press Ctrl+Z to undo a stroke, and Ctrl+Enter to add a blank ink page instantly.
-Ink drawn in the show stays with its slides after the show ends, for the next show and for Ink Notes / PDF. Colors and widths can be set beforehand on the Draw tab.
+Ink drawn in the show stays with its slides after the show ends, for the next show and for Ink Notes / PDF. The Draw tab appears only during the show.
 
 ■ Slide show and Presenter View
 Choose which monitor shows the slide show, and open Presenter View on another one with the current and next slides, speaker notes and elapsed time.
@@ -296,7 +296,7 @@ A lightweight app to open .pptx presentations, edit text, shapes and tables, and
 ### What's new in this version
 
 Version 0.2.6
-- Ink is now drawn only in the slide show. The pen, highlighter and eraser can't be picked in the editor, so you never draw by mistake while editing slides. Colors and widths set beforehand are used in the show.
+- Ink is now drawn only in the slide show. The pen, highlighter and eraser can't be picked in the editor, so you never draw by mistake while editing slides. The Draw tab, too, appears only during the show.
 - Ink drawn in the show stays with its slides after the show ends, for the next show and for PDF / Ink Notes.
 - Ctrl+Z in the editor now undoes slide edits only.
 - Fixed the app closing when switching pen → pointer → pen.

@@ -126,8 +126,8 @@ static partial class SelfTest
                 $"overlay: ink on the show's slide maps onto the slide ({p0?.X:0.#},{p0?.Y:0.#} – {p1?.X:0.#},{p1?.Y:0.#})");
             show.Close();
             Wait(100);
-            check(main.InkView is not { IsVisible: true } && main.Pen.Tool == Tool.Select && !main.ToolPen.IsEnabled && main.SlideInk().Count == 1,
-                "overlay: after the show no ink over the editor, the pointer again, the slide keeps its ink");
+            check(main.InkView is not { IsVisible: true } && main.Pen.Tool == Tool.Select && main.DrawTab.Visibility != Visibility.Visible && main.SlideInk().Count == 1,
+                "overlay: after the show no ink over the editor, no Draw tab, the pointer again, the slide keeps its ink");
 
             var notes = Path.Combine(outDir, "ink-notes.pdf");
             PdfExport.Export(deck, notes, slideInk, onlyInked: true);

@@ -71,14 +71,14 @@ Press **F1** to see every shortcut.
 
 ![Ink during the slide show](screen/en/3-show-ink.png)
 
-Ink is drawn **only in the slide show**, on a transparent layer over the show; the slide itself is not changed. In the editor the pen, highlighter and eraser can't be picked (their buttons on the **Draw** tab are off outside a show), and no ink appears over the editor. Colors and widths set on the **Draw** tab beforehand are used in the show.
+Ink is drawn **only in the slide show**, on a transparent layer over the show; the slide itself is not changed. In the editor the pen, highlighter and eraser can't be picked and no ink appears; the ribbon's **Draw** tab shows only while a show is running.
 
 - **Tools**: pen, highlighter, eraser, laser pointer (in the show), 7 colors (black, red, blue, green, yellow, white, orange), adjustable width.
 - **Remembered per slide**: move to another slide and back, and the ink you drew there comes back. A black or white screen opens a fresh ink layer that doesn't mix with the slides' ink (it starts empty each time).
 - **On-screen toolbar**: pointer (keep the ink and click the screen underneath), pen, highlighter, eraser, colors, width, undo, clear, hide. Drag its grip to move it anywhere.
 - **Straight lines**: hold Shift while drawing.
-- **Undo**: during a show, Ctrl+Z takes back ink strokes first. In the editor Ctrl+Z undoes slide edits only; use **Draw → Undo** for the ink. Ink undo remembers the last 200 changes on each slide.
-- **Clear**: C clears the current slide's ink; **Draw → All Ink** clears the ink on every slide.
+- **Undo**: in the show, Ctrl+Z or the toolbar's undo button takes back ink strokes. In the editor Ctrl+Z undoes slide edits only. Ink undo remembers the last 200 changes on each slide.
+- **Clear**: C clears the current slide's ink; **Draw → All Ink** during a show clears the ink on every slide.
 - **Blank ink page** (Ctrl+Enter): inserts a blank slide after the current one (and switches to the pen during a show), for when you need more room to write.
 - When the show ends the ink leaves the screen but stays with its slides, for the next show and for PDF / Ink Notes. It is not saved in the .pptx and is gone when the app closes. To keep it, export to PDF or Ink Notes.
 
@@ -116,7 +116,7 @@ Pick 5 minutes to 2 hours in 5-minute steps (arrow keys) and press Enter to star
 
 ## Editing
 
-The ribbon has **Home, Insert, Shape Format, Draw, Slide Show and Settings** tabs. Edits change the OpenXML document directly, so elements the app cannot draw are kept as they are when you save.
+The ribbon has **Home, Insert, Shape Format, Slide Show and Settings** tabs; the **Draw** tab appears only during a slide show. Edits change the OpenXML document directly, so elements the app cannot draw are kept as they are when you save.
 
 ![Several objects selected, with the Shape Format tab](screen/en/5-format.png)
 

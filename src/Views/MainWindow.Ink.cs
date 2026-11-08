@@ -128,15 +128,12 @@ public partial class MainWindow
         };
     }
 
-    /// <summary>The ribbon's pen, highlighter and eraser work only while a show is running; in the editor they say so.</summary>
+    /// <summary>The ribbon's Draw tab shows only while a show runs (ink is for the show); hidden, the Home tab takes its place.</summary>
     void SyncDrawTools()
     {
-        bool can = show != null;
-        foreach (var (b, name) in new[] { (ToolPen, "pen"), (ToolHi, "highlighter"), (ToolEraser, "eraser") })
-        {
-            b.IsEnabled = can;
-            b.ToolTip = can ? L.T(name) : $"{L.T(name)} — {L.T("inkShowOnly")}";
-        }
+        bool show = this.show != null;
+        if (!show && DrawTab.IsSelected) Ribbon.SelectedIndex = 0;
+        DrawTab.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
     }
 
     void OnTool(object sender, RoutedEventArgs e) => penTools.Pick(sender);

@@ -27,13 +27,14 @@ static partial class SelfTest
             // ink belongs to the show: in the editor the drawing tools are refused and there is no overlay
             main.Run("pen");
             main.Run("color2");
-            check(main.Pen.Tool == Tool.Select && main.InkView is not { IsVisible: true } && !main.ToolPen.IsEnabled && !main.ToolHi.IsEnabled && !main.ToolEraser.IsEnabled,
-                "ink: no pen, highlighter or eraser in the editor, only in the show");
+            check(main.Pen.Tool == Tool.Select && main.InkView is not { IsVisible: true } && main.DrawTab.Visibility != Visibility.Visible,
+                "ink: no pen, highlighter or eraser in the editor and no Draw tab, only in the show");
 
             main.StartShow(0, test: true);
             var show = main.ShowView!;
             Wait(300);
-            check(main.ToolPen.IsEnabled && main.ToolHi.IsEnabled && main.ToolEraser.IsEnabled, "ink: the ribbon's drawing tools work during the show");
+            check(main.DrawTab.Visibility == Visibility.Visible, "ink: the Draw tab shows during the show");
+            main.DrawTab.IsSelected = true;
             // pen → pointer hides the ink overlay (no ink yet); the pen again shows it. On screen the overlay is maximized,
             // and WPF throws when a maximized window that must not take focus is shown again (crashed 0.2.4)
             main.Run("pen");
@@ -206,6 +207,7 @@ static partial class SelfTest
 
             show.Close();
             check(main.ShowView == null && main.Session.Blanked == Blank.None && main.Session.Jump == "", "show: closing resets the show state");
+            check(main.DrawTab.Visibility != Visibility.Visible && main.Ribbon.SelectedIndex == 0, "show: closing hides the Draw tab (it was open) and shows the Home tab");
 
             // editor: no ink on screen, so Ctrl+Z is the slide's (the ink the show left stays with the slide)
             var slide = main.CurrentSlide!;
