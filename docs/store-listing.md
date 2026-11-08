@@ -3,7 +3,7 @@
 Partner Center → 제출 → **Store 목록** 에서 언어(한국어 · 日本語 · English)마다 아래 항목을 붙여 넣습니다.
 글자 수 제한: 설명 10,000자 · 새로운 기능 1,500자 · 제품 기능 항목당 200자(최대 20개) · 스크린샷 캡션 200자 · 키워드 7개(각 30자 이하) · 짧은 설명 1,000자.
 
-스크린샷은 `screen/ko`, `screen/ja`, `screen/en` 의 6장을 순서대로 올립니다.
+스크린샷은 `screen/ko`, `screen/ja`, `screen/en` 의 5장을 순서대로 올립니다.
 
 Store 로고(Store 목록 → Store 로고): `Package/StoreArt`의 9:16 포스터 아트(720×1080, 1440×2160)와 1:1 박스 아트(1080×1080, 2160×2160). 다시 그리려면 `Package/make-store-art.ps1`.
 1:1 앱 타일 아이콘(300×300, 150×150, 71×71)은 `Package/StoreArt/StoreIcon-*.png`이며 앱 로고와 같은 그림입니다. 다시 그리려면 `Package/make-assets.ps1`.
@@ -22,13 +22,14 @@ Store 로고(Store 목록 → Store 로고): `Package/StoreArt`의 9:16 포스�
 
 ### 설명
 
-PPTSlider는 .pptx 프레젠테이션을 열어 간단히 고치고, 화면에 판서하면서 발표할 수 있는 가벼운 Windows 앱입니다.
+PPTSlider는 .pptx 프레젠테이션을 열어 간단히 고치고, 슬라이드 쇼 위에 판서하면서 발표할 수 있는 가벼운 Windows 앱입니다.
 강의, 수업, 세미나처럼 슬라이드 위에 직접 쓰고 그리며 설명하는 발표에 맞춰 만들었습니다.
 
 ■ 슬라이드 쇼 판서
 펜, 형광펜, 지우개와 7가지 색, 두께 조절을 지원합니다. 판서는 슬라이드 쇼 위의 투명한 층에 그려지며, 편집 화면에서는 판서하지 않아 슬라이드를 고치다 실수로 그릴 일이 없습니다.
 판서는 슬라이드별로 기억되어, 슬라이드를 넘겼다가 돌아오면 그 슬라이드에서 그렸던 판서가 다시 나타납니다.
 Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter로 빈 판서 페이지를 바로 추가할 수 있습니다.
+쇼에서 그린 판서는 쇼를 마쳐도 슬라이드별로 남아 다음 쇼와 판서 노트·PDF에 들어갑니다. 색과 두께는 그리기 탭에서 미리 정해 둘 수 있습니다.
 
 ■ 슬라이드 쇼와 발표자 보기
 쇼를 띄울 모니터를 고를 수 있고, 다른 모니터에는 현재·다음 슬라이드, 발표자 노트, 경과 시간을 보여 주는 발표자 보기를 띄울 수 있습니다.
@@ -53,7 +54,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 자동 저장과 복구, 최근 파일, 모든 단축키 바꾸기, 한국어·일본어·영어 화면을 지원합니다.
 
 ※ 차트, 애니메이션, 일부 효과(그림자 등)는 화면에 표시되지 않지만 파일에는 그대로 유지됩니다.
-※ 판서는 .pptx 파일에 저장되지 않습니다. 남기려면 PDF 또는 판서 노트로 내보내세요.
+※ 판서는 .pptx 파일에 저장되지 않으며 앱을 닫으면 사라집니다. 남기려면 PDF 또는 판서 노트로 내보내세요.
 ※ 개인 정보를 수집하거나 인터넷으로 보내지 않습니다.
 
 ### 짧은 설명
@@ -137,13 +138,14 @@ StephenWon
 
 ### 説明
 
-PPTSlider は、.pptx プレゼンテーションを開いて手軽に編集し、画面に手書きしながら発表できる軽量な Windows アプリです。
+PPTSlider は、.pptx プレゼンテーションを開いて手軽に編集し、スライド ショーに手書きしながら発表できる軽量な Windows アプリです。
 講義、授業、セミナーなど、スライドに直接書き込みながら説明する発表のために作りました。
 
 ■ スライド ショーでの手書き
 ペン、蛍光ペン、消しゴム、7 色、太さの調整に対応しています。手書きはスライド ショーの上の透明なレイヤーに描かれます。編集画面では手書きしないため、スライドの編集中に誤って描くことはありません。
 手書きはスライドごとに記憶され、スライドを切り替えて戻ると、そのスライドで描いた手書きが再び表示されます。
 Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、Ctrl+Enter で空白の手書きページをすぐに追加できます。
+ショーで描いた手書きはショーを終えてもスライドごとに残り、次のショーや手書きノート・PDF に含まれます。色と太さは描画タブで事前に設定できます。
 
 ■ スライド ショーと発表者ツール
 スライド ショーを表示するモニターを選べ、別のモニターには現在と次のスライド、発表者ノート、経過時間を表示する発表者ツールを表示できます。
@@ -168,7 +170,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 自動保存と復元、最近使ったファイル、すべてのショートカットの変更、日本語・韓国語・英語の画面に対応しています。
 
 ※ グラフ、アニメーション、一部の効果 (影など) は画面に表示されませんが、ファイルにはそのまま保持されます。
-※ 手書きは .pptx ファイルには保存されません。残すには PDF または手書きノートに出力してください。
+※ 手書きは .pptx ファイルには保存されず、アプリを閉じると消えます。残すには PDF または手書きノートに出力してください。
 ※ 個人情報を収集したり、インターネットに送信したりすることはありません。
 
 ### 短い説明
@@ -252,13 +254,14 @@ Open and quickly edit .pptx files, then present with slide show ink that is reme
 
 ### Description
 
-PPTSlider is a lightweight Windows app for opening .pptx presentations, making quick edits, and presenting while you draw on the screen.
+PPTSlider is a lightweight Windows app for opening .pptx presentations, making quick edits, and presenting while you draw on the slide show.
 It is built for lectures, classes and seminars, where you explain by writing directly over your slides.
 
 ■ Slide show ink
 Pen, highlighter and eraser, 7 colors and adjustable width. Ink is drawn on a transparent layer over the slide show. There is no ink in the editor, so you never draw by mistake while editing slides.
 Ink is remembered per slide: move to another slide and back, and the ink you drew there comes back.
 Hold Shift for a straight line, press Ctrl+Z to undo a stroke, and Ctrl+Enter to add a blank ink page instantly.
+Ink drawn in the show stays with its slides after the show ends, for the next show and for Ink Notes / PDF. Colors and widths can be set beforehand on the Draw tab.
 
 ■ Slide show and Presenter View
 Choose which monitor shows the slide show, and open Presenter View on another one with the current and next slides, speaker notes and elapsed time.
@@ -283,7 +286,7 @@ Export only the slides you drew on, with their ink, as a PDF to hand out as lect
 Autosave and recovery, recent files, fully customizable shortcuts, and an English, Korean and Japanese interface.
 
 Note: charts, animations and some effects (such as shadows) are not displayed, but they are kept in the file.
-Note: ink is not saved into the .pptx file. To keep it, export to PDF or Ink Notes.
+Note: ink is not saved into the .pptx file and is gone when the app closes. To keep it, export to PDF or Ink Notes.
 Note: the app does not collect personal data or send anything over the internet.
 
 ### Short description

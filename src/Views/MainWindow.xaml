@@ -288,6 +288,9 @@
                     <HeaderedContentControl Header="{local:Loc shortcuts}" Style="{StaticResource Grp}">
                         <Button Style="{StaticResource Rb}" Tag="&#xE713;" Content="{local:Loc shortcutSettings}" Click="OnShortcutSettings" ToolTip="{local:Loc shortcutSettingsTip}" local:Shortcuts.For="settings"/>
                     </HeaderedContentControl>
+                    <HeaderedContentControl Header="{local:Loc grp.help}" Style="{StaticResource Grp}">
+                        <Button Style="{StaticResource Rb}" Tag="&#xE946;" Content="{local:Loc about}" Click="OnAbout" ToolTip="{local:Loc aboutTitle}"/>
+                    </HeaderedContentControl>
                 </StackPanel>
             </TabItem>
         </TabControl>

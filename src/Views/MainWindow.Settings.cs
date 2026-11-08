@@ -28,6 +28,8 @@ public partial class MainWindow
 
     void OnShortcutSettings(object? sender, RoutedEventArgs? e) => new ShortcutsWindow { Owner = this }.ShowDialog();
 
+    void OnAbout(object? sender, RoutedEventArgs? e) => new AboutWindow { Owner = this }.ShowDialog();
+
     /// <summary>The 설정 tab's language list: same as Windows (the default), then 한국어 / 日本語 / English.</summary>
     void FillLanguages()
     {

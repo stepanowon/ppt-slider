@@ -27,6 +27,8 @@ static partial class SelfTest
         failed = false;
         LocTests(Check);
         StartupArgTests(Check);
+        try { AboutTests(outDir, Check); }
+        catch (Exception ex) { Check(false, ex.ToString()); }
         try { TextEdits(Check); }
         catch (Exception ex) { Check(false, ex.ToString()); }
         try
