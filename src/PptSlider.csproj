@@ -9,7 +9,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- exe, title bar and taskbar icon; drawn by Package\make-assets.ps1 like the MSIX logos -->
     <ApplicationIcon>Assets\PptSlider.ico</ApplicationIcon>
-    <Version>0.2.5</Version>
+    <Version>0.2.6</Version>
     <Product>PPT Slider</Product>
     <Copyright>Copyright (c) 2026 StephenWon</Copyright>
   </PropertyGroup>

@@ -62,6 +62,12 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 이 버전의 새로운 기능
 
+버전 0.2.6
+- 판서는 슬라이드 쇼에서만 할 수 있습니다. 편집 화면에서는 펜·형광펜·지우개를 고를 수 없어 슬라이드를 고치다 실수로 그릴 일이 없습니다. 미리 정한 색과 두께는 쇼에서 그대로 씁니다.
+- 쇼에서 그린 판서는 쇼를 마쳐도 슬라이드별로 남아 다음 쇼와 PDF·판서 노트에 들어갑니다.
+- 편집 화면의 Ctrl+Z는 슬라이드 편집만 되돌립니다.
+- 펜 → 포인터 → 펜으로 바꿀 때 앱이 꺼지던 문제를 고쳤습니다.
+
 버전 0.2.4
 - 슬라이드 쇼 중에도 브라우저 등 다른 창을 쇼 화면 위에 띄울 수 있습니다.
 - 쇼를 열고 닫을 때마다 메모리가 늘어나던 문제를 고쳤습니다.
@@ -171,6 +177,12 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### このバージョンの新機能
 
+バージョン 0.2.6
+- 手書きはスライド ショーでのみ使えます。編集画面ではペン・蛍光ペン・消しゴムを選べないため、スライドの編集中に誤って描くことはありません。事前に決めた色と太さはショーでそのまま使えます。
+- ショーで描いた手書きはショーを終えてもスライドごとに残り、次のショーや PDF・手書きノートに含まれます。
+- 編集画面の Ctrl+Z はスライドの編集だけを元に戻します。
+- ペン → ポインター → ペンと切り替えるとアプリが終了する問題を修正しました。
+
 バージョン 0.2.4
 - スライド ショー中でも、ブラウザーなどほかのウィンドウをショー画面の上に表示できるようになりました。
 - ショーを開いて閉じるたびにメモリが増えていた問題を修正しました。
@@ -279,6 +291,12 @@ Note: the app does not collect personal data or send anything over the internet.
 A lightweight app to open .pptx presentations, edit text, shapes and tables, and present with slide show ink and Presenter View. Ink is remembered per slide and can be exported as Ink Notes PDF.
 
 ### What's new in this version
+
+Version 0.2.6
+- Ink is now drawn only in the slide show. The pen, highlighter and eraser can't be picked in the editor, so you never draw by mistake while editing slides. Colors and widths set beforehand are used in the show.
+- Ink drawn in the show stays with its slides after the show ends, for the next show and for PDF / Ink Notes.
+- Ctrl+Z in the editor now undoes slide edits only.
+- Fixed the app closing when switching pen → pointer → pen.
 
 Version 0.2.4
 - Other windows, such as a browser, can now be shown on top of the slide show.
