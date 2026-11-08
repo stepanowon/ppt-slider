@@ -24,13 +24,26 @@ public class PenState
     public double Size => IsHighlighter ? HiSize : PenSize;
     public Color Color => IsHighlighter ? HiColor : PenColor;
 
-    public void SetTool(Tool t) { Tool = t; Changed?.Invoke(); }
+    /// <summary>Whether a drawing tool (pen, highlighter, eraser) may be picked now: ink is drawn only in the slide show.</summary>
+    public Func<bool> CanDraw { get; set; } = () => true;
 
-    /// <summary>Colors the highlighter when it is active, otherwise the pen (and switches to the pen).</summary>
+    /// <summary>A drawing tool was asked for while <see cref="CanDraw"/> is false; the tool stays as it was.</summary>
+    public event Action? Refused;
+
+    public static bool IsDrawing(Tool t) => t is Tool.Pen or Tool.Highlighter or Tool.Eraser;
+
+    public void SetTool(Tool t)
+    {
+        if (IsDrawing(t) && !CanDraw()) { Refused?.Invoke(); return; }
+        Tool = t;
+        Changed?.Invoke();
+    }
+
+    /// <summary>Colors the highlighter when it is active, otherwise the pen (and switches to the pen when drawing is allowed).</summary>
     public void SetColor(Color c)
     {
         if (IsHighlighter) HiColor = c;
-        else { PenColor = c; Tool = Tool.Pen; }
+        else { PenColor = c; if (CanDraw()) Tool = Tool.Pen; }
         Changed?.Invoke();
     }
 

@@ -217,9 +217,9 @@
                     <HeaderedContentControl Header="{local:Loc grp.tools}" Style="{StaticResource Grp}">
                         <StackPanel Orientation="Horizontal">
                             <RadioButton x:Name="ToolSelect" Style="{StaticResource Rb}" Tag="&#xE8B0;" Content="{local:Loc select}" Click="OnTool" ToolTip="{local:Loc selectTip}" local:Shortcuts.For="select"/>
-                            <RadioButton x:Name="ToolPen" Style="{StaticResource Rb}" Tag="&#xEE56;" Content="{local:Loc pen}" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
-                            <RadioButton x:Name="ToolHi" Style="{StaticResource Rb}" Tag="&#xE7E6;" Content="{local:Loc highlighter}" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
-                            <RadioButton x:Name="ToolEraser" Style="{StaticResource Rb}" Tag="&#xED60;" Content="{local:Loc eraser}" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
+                            <RadioButton x:Name="ToolPen" Style="{StaticResource Rb}" ToolTipService.ShowOnDisabled="True" Tag="&#xEE56;" Content="{local:Loc pen}" Click="OnTool" ToolTip="{local:Loc pen}" local:Shortcuts.For="pen"/>
+                            <RadioButton x:Name="ToolHi" Style="{StaticResource Rb}" ToolTipService.ShowOnDisabled="True" Tag="&#xE7E6;" Content="{local:Loc highlighter}" Click="OnTool" ToolTip="{local:Loc highlighter}" local:Shortcuts.For="highlighter"/>
+                            <RadioButton x:Name="ToolEraser" Style="{StaticResource Rb}" ToolTipService.ShowOnDisabled="True" Tag="&#xED60;" Content="{local:Loc eraser}" Click="OnTool" ToolTip="{local:Loc eraser}" local:Shortcuts.For="eraser"/>
                         </StackPanel>
                     </HeaderedContentControl>
                     <HeaderedContentControl Header="{local:Loc grp.color}" Style="{StaticResource Grp}">

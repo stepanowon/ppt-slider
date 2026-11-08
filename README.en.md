@@ -2,7 +2,7 @@
 
 [한국어](README.md) | [日本語](README.ja.md) | **English**
 
-A lightweight Windows app for opening `.pptx` files, making quick edits, and presenting while you draw on the screen.
+A lightweight Windows app for opening `.pptx` files, making quick edits, and presenting while you draw on the slide show.
 It is built for lectures, classes and seminars, where you explain by writing directly over your slides. PowerPoint is not needed.
 
 <a href="https://apps.microsoft.com/detail/9PL1M72JXSCN?mode=direct"><img src="https://get.microsoft.com/images/en-us%20dark.svg" width="200" alt="Get it from Microsoft"/></a>
@@ -11,7 +11,7 @@ It is built for lectures, classes and seminars, where you explain by writing dir
 
 ## At a glance
 
-- **Screen ink**: draw with a pen, highlighter, eraser or laser pointer over the editor, the slide show or any other app. Ink is remembered per slide.
+- **Show ink**: draw over the slide show with a pen, highlighter, eraser or laser pointer. Ink is remembered per slide. There is no ink in the editor.
 - **Slide show and Presenter View**: choose the show monitor; current and next slides and notes on another monitor; black screen, spotlight, zoom and a break timer.
 - **Editing**: in-place text editing, 19 shapes, tables, pictures, Format Painter, undo. Elements the app cannot display stay in the file as they are.
 - **True to the original**: line spacing, bullets, Korean line wrapping and character spacing follow the same rules as PowerPoint.
@@ -67,11 +67,11 @@ Your edited .pptx files and exported PDFs stay where they are. For the portable 
 
 Press **F1** to see every shortcut.
 
-## Screen ink
+## Ink (slide show only)
 
-![Ink over the editor](screen/en/2-editor-ink.png)
+![Ink during the slide show](screen/en/3-show-ink.png)
 
-Ink is drawn on a transparent layer over the screen, not on the slide. So you can draw over the editor, the slide show and other apps too (the show's monitor during a show, otherwise the editor's).
+Ink is drawn **only in the slide show**, on a transparent layer over the show; the slide itself is not changed. In the editor the pen, highlighter and eraser can't be picked (their buttons on the **Draw** tab are off outside a show), and no ink appears over the editor. Colors and widths set on the **Draw** tab beforehand are used in the show.
 
 - **Tools**: pen, highlighter, eraser, laser pointer (in the show), 7 colors (black, red, blue, green, yellow, white, orange), adjustable width.
 - **Remembered per slide**: move to another slide and back, and the ink you drew there comes back. A black or white screen opens a fresh ink layer that doesn't mix with the slides' ink (it starts empty each time).
@@ -79,12 +79,10 @@ Ink is drawn on a transparent layer over the screen, not on the slide. So you ca
 - **Straight lines**: hold Shift while drawing.
 - **Undo**: Ctrl+Z takes back ink strokes first when there are any. Ink undo remembers the last 200 changes on each slide.
 - **Clear**: C clears the current slide's ink; **Draw → All Ink** clears the ink on every slide.
-- **Blank ink page** (Ctrl+Enter): inserts a blank slide after the current one and switches to the pen, for when you need more room to write.
-- Ink is not saved in the .pptx and is gone when the app closes. To keep it, export to PDF or Ink Notes.
+- **Blank ink page** (Ctrl+Enter): inserts a blank slide after the current one (and switches to the pen during a show), for when you need more room to write.
+- When the show ends the ink leaves the screen but stays with its slides, for the next show and for PDF / Ink Notes. It is not saved in the .pptx and is gone when the app closes. To keep it, export to PDF or Ink Notes.
 
 ## Slide show
-
-![Ink during the slide show](screen/en/3-show-ink.png)
 
 Start from the beginning (F5) or from the current slide (Shift+F5), and choose the monitor for the show (default: the secondary monitor).
 
@@ -200,7 +198,7 @@ On the **Settings** tab:
 | Show | Spotlight | S |
 | Show | Break Time | T |
 | File | Open / Save / Save As | Ctrl+O / Ctrl+S / Ctrl+Shift+S |
-| Edit | Undo (ink first) / redo | Ctrl+Z / Ctrl+Y |
+| Edit | Undo (ink first during a show) / redo | Ctrl+Z / Ctrl+Y |
 | Edit | Edit text / delete object | F2 / Delete |
 | Edit | Cut / copy / paste / select all | Ctrl+X / Ctrl+C / Ctrl+V / Ctrl+A |
 | Edit | Copy / paste formatting | Ctrl+Shift+C / Ctrl+Shift+V |
@@ -255,14 +253,14 @@ Command-line options make `PptSlider.exe` run checks without a window or off scr
 | `--leak deck.pptx outDir` | Memory measurement (below) | `outDir\leak.txt` |
 | `--screenshots deck.pptx outDir [ko\|ja\|en] [slide index (from 0)]` | Captures the `screen/` images for the README and the Store from the real screen | `outDir\*.png` |
 
-The **self-test** renders every slide and checks the edit → save → reopen round trip, plus the slide show, Presenter View, screen ink, picture insert, reordering, text autofit, shapes, tables, clipboard, Format Painter, mouse / keyboard editing, duplicate shortcuts, PDF, SmartArt, recent files, autosave and the UI text in all three languages.
+The **self-test** renders every slide and checks the edit → save → reopen round trip, plus the slide show, Presenter View, show ink (refused in the editor), picture insert, reordering, text autofit, shapes, tables, clipboard, Format Painter, mouse / keyboard editing, duplicate shortcuts, PDF, SmartArt, recent files, autosave and the UI text in all three languages.
 It also checks the rules for drawing like PowerPoint (line height, bullets, Korean wrapping, character spacing and more), memory leaks (closed show windows are freed), the undo limits, and that the show is not always on top.
 The show and presenter windows open off screen and key presses go only to them, so you can keep working while it runs. App data goes to `outDir\local`, so your real recent files and autosaves are not touched. The self-test always runs in Korean.
 
 The **memory measurement** repeats slide navigation, opening and closing the show, reopening the file, text editing, moving shapes, ink and opening and closing windows dozens of times, and records the memory after each GC and whether closed windows and old documents were freed.
 The environment variables `LEAK_OPENS` (how many times to reopen the file, 40 by default) and `LEAK_COMPACT` (1: compact the large object heap, 2: a GC that gives free memory back to Windows) change how it measures.
 
-The **screenshots** mode opens the editor on the primary monitor and captures the editor, ink over the editor, Shape Format (several objects selected), ink in the slide show, Break Time, and Presenter View (with the show on another monitor) in turn. It captures the screen as it is, so leave the mouse and keyboard alone while it runs. Presenter View is captured only with two or more monitors.
+The **screenshots** mode opens the editor on the primary monitor and captures the editor, Shape Format (several objects selected), ink in the slide show, Break Time, and Presenter View (with the show on another monitor) in turn. It captures the screen as it is, so leave the mouse and keyboard alone while it runs. Presenter View is captured only with two or more monitors.
 
 ### MSIX package
 
@@ -313,14 +311,14 @@ docs/                   store-listing.md (Store listing text), test plans and re
 src/
 ├─ App.xaml(.cs)        Entry point (--selftest, --screenshots, --render, --leak, opening a file at startup)
 ├─ Views/               MainWindow (editor), ShowWindow (slide show), PresenterWindow (Presenter View),
-│                       InkOverlay (screen ink), BreakWindow (break timer), ShortcutsWindow (shortcut settings),
+│                       InkOverlay (the ink layer over the show), BreakWindow (break timer), ShortcutsWindow (shortcut settings),
 │                       PenToolbar (ink tool bar), WindowHooks (unhooks event handlers when a window closes)
 ├─ Editing/             Editing parts (depend only on IEditorHost): ShapeSelection, SelectionAdorner (handles), StageInteraction (mouse),
 │                       TextEditor (in-place text editing), Shape · Text · Table · Insert · ClipboardCommands, FormatPainterTool,
 │                       EditingParts (wires the parts together)
 ├─ Models/              Deck (.pptx document · saving · slide list), EditHistory (undo), ShapeFactory · ShapeLayout · ShapeStyle (shapes),
 │                       Tables, TextContent · TextFormat (text and its format), ShapeClipboard · FormatPainter (copying), SlideTree · Ooxml · X (XML helpers),
-│                       PenState (ink tool state), InkManager (per-slide, desktop and blank-screen ink), InkHistory (ink undo),
+│                       PenState (ink tool state), InkManager (per-slide and blank-screen ink), InkHistory (ink undo),
 │                       ShowSession (show state: blank screen, typed slide number, laser, spotlight), BoundedStack (size-limited undo)
 ├─ Rendering/           SlideRenderer (PPTX → WPF rendering, including SmartArt), ShapeGeometry (shape outlines), ColorMath (colors), FontNames (font name check), TextPanel, ShapeHit
 ├─ Services/            Shortcuts, Monitors (monitor list), PdfExport (PDF),

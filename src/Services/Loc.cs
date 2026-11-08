@@ -237,6 +237,7 @@ public static class L
         ["allInk"] = ["모든 판서", "すべての手書き", "All Ink"],
         ["inkShown"] = ["판서 보기", "手書きを表示", "Show Ink"],
         ["inkShownTip"] = ["화면 위 판서 보이기/숨기기", "画面上の手書きの表示/非表示", "Show or hide the ink on the screen"],
+        ["inkShowOnly"] = ["판서는 슬라이드 쇼에서만 할 수 있습니다", "手書きはスライドショーでのみ使えます", "Ink can be drawn only in the slide show"],
         ["hideInk"] = ["판서 숨기기 (펜을 고르면 다시 보입니다)", "手書きを隠す (ペンを選ぶと再表示)", "Hide the ink (pick a pen to show it again)"],
         ["inkPointer"] = ["포인터 — 판서는 그대로 두고 아래 화면을 클릭 (Esc)", "ポインター — 手書きを残したまま下の画面をクリック (Esc)", "Pointer — keep the ink and click the screen underneath (Esc)"],
         ["moveBar"] = ["끌어서 도구 모음 옮기기", "ドラッグでツールバーを移動", "Drag to move the toolbar"],

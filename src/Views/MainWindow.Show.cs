@@ -49,11 +49,13 @@ public partial class MainWindow
             show = null;
             presenter?.Close();
             Session.End();
-            if (Pen.Tool == Tool.Laser) Pen.SetTool(Tool.Select);
-            UpdateOverlay(); // back over the editor
+            if (Pen.Tool != Tool.Select) Pen.SetTool(Tool.Select); // no laser or ink over the editor
+            SyncDrawTools();
+            UpdateOverlay(); // the ink goes away with the show (it stays with its slides for the next show and the PDF)
             Activate();
         };
         show.Show();
+        SyncDrawTools();
         UpdateOverlay(); // over the show now
         // the presenter view goes on another monitor (the laptop screen, usually the primary one)
         var other = test ? shown : Monitors.All().Where(m => m.Bounds != shown.Bounds).OrderByDescending(m => m.Primary).FirstOrDefault();

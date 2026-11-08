@@ -31,8 +31,8 @@ public partial class MainWindow
     internal bool InkHidden => inkHidden;
 
     /// <summary>
-    /// Shows the overlay while drawing or while the current slide has ink (unless hidden), over the show's monitor during a show,
-    /// otherwise over the editor's.
+    /// Shows the overlay over the show's monitor while drawing or while the current slide has ink (unless hidden).
+    /// Ink belongs to the slide show only: there is no overlay over the editor.
     /// </summary>
     internal void UpdateOverlay()
     {
@@ -41,8 +41,8 @@ public partial class MainWindow
         var strokes = OverlayInk;
         InkShownBtn.IsChecked = !inkHidden;
         if (overlay != null) overlay.Strokes = strokes;
-        if (inkHidden || !(Drawing || strokes.Count > 0)) { overlay?.Hide(); SyncShowBar(); return; }
-        var target = show?.Monitor ?? Monitors.Of(this);
+        if (show == null || inkHidden || !(Drawing || strokes.Count > 0)) { overlay?.Hide(); SyncShowBar(); return; }
+        var target = show.Monitor;
         if (overlay != null && (overlay.Monitor != target || overlay.Over != show)) { overlay.Close(); overlay = null; }
         overlay ??= new InkOverlay(this, target, show);
         overlay.Strokes = strokes;
@@ -92,7 +92,7 @@ public partial class MainWindow
     /// </summary>
     internal void TagStroke(Stroke s, InkOverlay on)
     {
-        FrameworkElement? stage = show != null ? (Session.Blanked == Blank.None ? show.Stage : null) : IsVisible && StageFrame.IsVisible && WindowState != WindowState.Minimized ? Stage : null;
+        FrameworkElement? stage = show != null && Session.Blanked == Blank.None ? show.Stage : null;
         if (stage is not { IsVisible: true } || PresentationSource.FromVisual(on) == null) return;
         var a = on.PointFromScreen(stage.PointToScreen(new Point(0, 0)));
         var b = on.PointFromScreen(stage.PointToScreen(new Point(stage.Width, stage.Height)));
@@ -126,6 +126,17 @@ public partial class MainWindow
             Tool.Laser => L.T("laser"),
             _ => L.T("select"),
         };
+    }
+
+    /// <summary>The ribbon's pen, highlighter and eraser work only while a show is running; in the editor they say so.</summary>
+    void SyncDrawTools()
+    {
+        bool can = show != null;
+        foreach (var (b, name) in new[] { (ToolPen, "pen"), (ToolHi, "highlighter"), (ToolEraser, "eraser") })
+        {
+            b.IsEnabled = can;
+            b.ToolTip = can ? L.T(name) : $"{L.T(name)} — {L.T("inkShowOnly")}";
+        }
     }
 
     void OnTool(object sender, RoutedEventArgs e) => penTools.Pick(sender);

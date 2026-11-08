@@ -24,6 +24,16 @@ static partial class SelfTest
             main.Open(file);
             int n = main.Count;
 
+            // ink belongs to the show: in the editor the drawing tools are refused and there is no overlay
+            main.Run("pen");
+            main.Run("color2");
+            check(main.Pen.Tool == Tool.Select && main.InkView is not { IsVisible: true } && !main.ToolPen.IsEnabled && !main.ToolHi.IsEnabled && !main.ToolEraser.IsEnabled,
+                "ink: no pen, highlighter or eraser in the editor, only in the show");
+
+            main.StartShow(0, test: true);
+            var show = main.ShowView!;
+            Wait(300);
+            check(main.ToolPen.IsEnabled && main.ToolHi.IsEnabled && main.ToolEraser.IsEnabled, "ink: the ribbon's drawing tools work during the show");
             // pen → pointer hides the ink overlay (no ink yet); the pen again shows it. On screen the overlay is maximized,
             // and WPF throws when a maximized window that must not take focus is shown again (crashed 0.2.4)
             main.Run("pen");
@@ -36,10 +46,6 @@ static partial class SelfTest
             check(hidden && error == null && hiddenOverlay.IsVisible && hiddenOverlay.WindowState == WindowState.Normal,
                 $"ink: the overlay comes back after the pointer hid it ({error ?? "ok"})");
             main.Run("select");
-
-            main.StartShow(0, test: true);
-            var show = main.ShowView!;
-            Wait(300);
             // other windows (a browser...) can come in front of the show; ink over the desktop stays above every app
             check(!show.Topmost && !InkOverlay.StaysOnTop(show) && InkOverlay.StaysOnTop(null),
                 "show: not always on top (nor its ink overlay); the desktop ink overlay is");
@@ -201,7 +207,7 @@ static partial class SelfTest
             show.Close();
             check(main.ShowView == null && main.Session.Blanked == Blank.None && main.Session.Jump == "", "show: closing resets the show state");
 
-            // editor: Ctrl+Z takes back the slide's strokes first (newest first), then the edit
+            // editor: no ink on screen, so Ctrl+Z is the slide's (the ink the show left stays with the slide)
             var slide = main.CurrentSlide!;
             P.Shape Text() => slide.Slide!.Descendants<P.Shape>().First(sh => sh.TextBody != null);
             var original = TextContent.GetText(Text());
@@ -211,9 +217,8 @@ static partial class SelfTest
             int strokes = ed.Count;
             ed.Add(Line(20, 400, 400, 420));
             main.Run("undo");
-            check(ed.Count == strokes && TextContent.GetText(Text()) == "편집됨", "editor: Ctrl+Z takes back the new stroke, not the edit");
-            for (int i = 0; i < strokes + 1; i++) main.Run("undo");
-            check(ed.Count == 0 && TextContent.GetText(Text()) == original, $"editor: then the older strokes, then the edit ({ed.Count} strokes left)");
+            check(ed.Count == strokes + 1 && TextContent.GetText(Text()) == original, "editor: Ctrl+Z takes back the edit, not the show's ink");
+            while (main.Ink.Undo(ed)) { } // the strokes go (the undo-ink button's test below starts with none)
 
             // editor: the 그리기 tab's undo button takes back strokes only, never the edit
             main.Deck!.History.Snapshot(slide);

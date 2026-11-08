@@ -18,15 +18,15 @@ Store 로고(Store 목록 → Store 로고): `Package/StoreArt`의 9:16 포스�
 
 ### 한 줄 소개
 
-.pptx를 열어 간단히 고치고, 슬라이드별로 기억되는 화면 판서로 발표하는 가벼운 발표 도구
+.pptx를 열어 간단히 고치고, 슬라이드별로 기억되는 쇼 판서로 발표하는 가벼운 발표 도구
 
 ### 설명
 
 PPTSlider는 .pptx 프레젠테이션을 열어 간단히 고치고, 화면에 판서하면서 발표할 수 있는 가벼운 Windows 앱입니다.
 강의, 수업, 세미나처럼 슬라이드 위에 직접 쓰고 그리며 설명하는 발표에 맞춰 만들었습니다.
 
-■ 화면 판서
-펜, 형광펜, 지우개와 7가지 색, 두께 조절을 지원합니다. 판서는 화면 위의 투명한 층에 그려지므로 편집 화면, 슬라이드 쇼는 물론 다른 앱 위에도 그릴 수 있습니다.
+■ 슬라이드 쇼 판서
+펜, 형광펜, 지우개와 7가지 색, 두께 조절을 지원합니다. 판서는 슬라이드 쇼 위의 투명한 층에 그려지며, 편집 화면에서는 판서하지 않아 슬라이드를 고치다 실수로 그릴 일이 없습니다.
 판서는 슬라이드별로 기억되어, 슬라이드를 넘겼다가 돌아오면 그 슬라이드에서 그렸던 판서가 다시 나타납니다.
 Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter로 빈 판서 페이지를 바로 추가할 수 있습니다.
 
@@ -58,7 +58,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 짧은 설명
 
-.pptx 프레젠테이션을 열어 텍스트·도형·표를 편집하고, 화면 판서와 발표자 보기로 발표하는 가벼운 앱. 판서는 슬라이드별로 기억되고 판서 노트 PDF로 내보낼 수 있습니다.
+.pptx 프레젠테이션을 열어 텍스트·도형·표를 편집하고, 쇼 판서와 발표자 보기로 발표하는 가벼운 앱. 판서는 슬라이드별로 기억되고 판서 노트 PDF로 내보낼 수 있습니다.
 
 ### 이 버전의 새로운 기능
 
@@ -77,9 +77,9 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 제품 기능
 
-1. 화면 판서: 펜·형광펜·지우개, 7가지 색, 두께 조절
+1. 슬라이드 쇼 판서: 펜·형광펜·지우개, 7가지 색, 두께 조절
 2. 판서를 슬라이드별로 기억해 슬라이드를 넘기면 그 판서가 다시 나타남
-3. 편집 화면, 슬라이드 쇼, 다른 앱 위 어디에나 판서
+3. 판서는 슬라이드 쇼에서만: 편집 화면에서는 실수로 그려지지 않음
 4. 쇼 모니터 선택과 발표자 보기(현재·다음 슬라이드, 노트, 경과 시간)
 5. 검은 화면/흰 화면, 레이저 포인터, 스팟 하이라이트, 화면 확대, 번호로 이동
 6. 텍스트 제자리 편집(글꼴·크기·색·굵게·기울임꼴·밑줄·취소선·강조 색·정렬)
@@ -98,11 +98,10 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 ### 스크린샷 캡션
 
 1. `1-editor.png` — 슬라이드 목록과 리본으로 .pptx를 바로 편집합니다.
-2. `2-editor-ink.png` — 편집 화면 위에 바로 판서하고, 도구 모음은 원하는 곳으로 옮깁니다.
-3. `3-show-ink.png` — 슬라이드 쇼에서 펜과 형광펜으로 설명합니다. 판서는 슬라이드별로 기억됩니다.
-4. `4-presenter.png` — 발표자 보기에서 다음 슬라이드, 노트, 경과 시간을 확인합니다.
-5. `5-format.png` — 여러 개체를 한꺼번에 선택하고 도형 서식 탭에서 채우기, 윤곽선, 정렬, 표를 바꿉니다.
-6. `6-break.png` — 전체 화면 휴식 타이머(Break Time)로 쉬는 시간을 알립니다.
+2. `3-show-ink.png` — 슬라이드 쇼에서 펜과 형광펜으로 설명합니다. 판서는 슬라이드별로 기억됩니다.
+3. `4-presenter.png` — 발표자 보기에서 다음 슬라이드, 노트, 경과 시간을 확인합니다.
+4. `5-format.png` — 여러 개체를 한꺼번에 선택하고 도형 서식 탭에서 채우기, 윤곽선, 정렬, 표를 바꿉니다.
+5. `6-break.png` — 전체 화면 휴식 타이머(Break Time)로 쉬는 시간을 알립니다.
 
 ### 추가 정보
 
@@ -128,15 +127,15 @@ StephenWon
 
 ### ひとこと紹介
 
-.pptx を開いて手軽に編集し、スライドごとに記憶される画面上の手書きで発表できる軽量プレゼン ツール
+.pptx を開いて手軽に編集し、スライドごとに記憶されるショーでの手書きで発表できる軽量プレゼン ツール
 
 ### 説明
 
 PPTSlider は、.pptx プレゼンテーションを開いて手軽に編集し、画面に手書きしながら発表できる軽量な Windows アプリです。
 講義、授業、セミナーなど、スライドに直接書き込みながら説明する発表のために作りました。
 
-■ 画面上の手書き
-ペン、蛍光ペン、消しゴム、7 色、太さの調整に対応しています。手書きは画面上の透明なレイヤーに描かれるため、編集画面やスライド ショーだけでなく、ほかのアプリの上にも描けます。
+■ スライド ショーでの手書き
+ペン、蛍光ペン、消しゴム、7 色、太さの調整に対応しています。手書きはスライド ショーの上の透明なレイヤーに描かれます。編集画面では手書きしないため、スライドの編集中に誤って描くことはありません。
 手書きはスライドごとに記憶され、スライドを切り替えて戻ると、そのスライドで描いた手書きが再び表示されます。
 Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、Ctrl+Enter で空白の手書きページをすぐに追加できます。
 
@@ -168,7 +167,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### 短い説明
 
-.pptx プレゼンテーションを開いてテキスト・図形・表を編集し、画面上の手書きと発表者ツールで発表できる軽量アプリ。手書きはスライドごとに記憶され、手書きノート PDF に出力できます。
+.pptx プレゼンテーションを開いてテキスト・図形・表を編集し、ショーでの手書きと発表者ツールで発表できる軽量アプリ。手書きはスライドごとに記憶され、手書きノート PDF に出力できます。
 
 ### このバージョンの新機能
 
@@ -187,9 +186,9 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### 製品の機能
 
-1. 画面上の手書き: ペン・蛍光ペン・消しゴム、7 色、太さの調整
+1. スライド ショーでの手書き: ペン・蛍光ペン・消しゴム、7 色、太さの調整
 2. 手書きをスライドごとに記憶し、スライドを切り替えると再表示
-3. 編集画面、スライド ショー、ほかのアプリの上のどこにでも手書き
+3. 手書きはスライド ショー専用: 編集画面で誤って描かれない
 4. 表示モニターの選択と発表者ツール (現在と次のスライド、ノート、経過時間)
 5. 黒い画面/白い画面、レーザー ポインター、スポットハイライト、画面の拡大、番号でジャンプ
 6. テキストのその場編集 (フォント・サイズ・色・太字・斜体・下線・取り消し線・蛍光ペンの色・配置)
@@ -208,11 +207,10 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 ### スクリーンショットのキャプション
 
 1. `1-editor.png` — スライド一覧とリボンで .pptx をそのまま編集できます。
-2. `2-editor-ink.png` — 編集画面の上に直接手書きでき、ツールバーは好きな場所に移動できます。
-3. `3-show-ink.png` — スライド ショーでペンと蛍光ペンを使って説明。手書きはスライドごとに記憶されます。
-4. `4-presenter.png` — 発表者ツールで次のスライド、ノート、経過時間を確認できます。
-5. `5-format.png` — 複数のオブジェクトをまとめて選択し、[図形の書式] タブで塗りつぶし、枠線、配置、表を変更できます。
-6. `6-break.png` — 全画面の休憩タイマー (Break Time) で休憩時間を知らせます。
+2. `3-show-ink.png` — スライド ショーでペンと蛍光ペンを使って説明。手書きはスライドごとに記憶されます。
+3. `4-presenter.png` — 発表者ツールで次のスライド、ノート、経過時間を確認できます。
+4. `5-format.png` — 複数のオブジェクトをまとめて選択し、[図形の書式] タブで塗りつぶし、枠線、配置、表を変更できます。
+5. `6-break.png` — 全画面の休憩タイマー (Break Time) で休憩時間を知らせます。
 
 ### 追加情報
 
@@ -238,15 +236,15 @@ StephenWon
 
 ### One-line summary
 
-Open and quickly edit .pptx files, then present with screen ink that is remembered per slide.
+Open and quickly edit .pptx files, then present with slide show ink that is remembered per slide.
 
 ### Description
 
 PPTSlider is a lightweight Windows app for opening .pptx presentations, making quick edits, and presenting while you draw on the screen.
 It is built for lectures, classes and seminars, where you explain by writing directly over your slides.
 
-■ Screen ink
-Pen, highlighter and eraser, 7 colors and adjustable width. Ink is drawn on a transparent layer over the screen, so you can draw over the editor, the slide show, and even other apps.
+■ Slide show ink
+Pen, highlighter and eraser, 7 colors and adjustable width. Ink is drawn on a transparent layer over the slide show. There is no ink in the editor, so you never draw by mistake while editing slides.
 Ink is remembered per slide: move to another slide and back, and the ink you drew there comes back.
 Hold Shift for a straight line, press Ctrl+Z to undo a stroke, and Ctrl+Enter to add a blank ink page instantly.
 
@@ -278,7 +276,7 @@ Note: the app does not collect personal data or send anything over the internet.
 
 ### Short description
 
-A lightweight app to open .pptx presentations, edit text, shapes and tables, and present with screen ink and Presenter View. Ink is remembered per slide and can be exported as Ink Notes PDF.
+A lightweight app to open .pptx presentations, edit text, shapes and tables, and present with slide show ink and Presenter View. Ink is remembered per slide and can be exported as Ink Notes PDF.
 
 ### What's new in this version
 
@@ -297,9 +295,9 @@ Version 0.2.3
 
 ### Product features
 
-1. Screen ink: pen, highlighter, eraser, 7 colors, adjustable width
+1. Slide show ink: pen, highlighter, eraser, 7 colors, adjustable width
 2. Ink remembered per slide and shown again when you return to it
-3. Draw anywhere: over the editor, the slide show or other apps
+3. Ink in the slide show only: no stray strokes while editing
 4. Choose the show monitor; Presenter View with current and next slides, notes and elapsed time
 5. Black/white screen, laser pointer, spotlight, zoom, jump to slide by number
 6. In-place text editing (font, size, color, bold, italic, underline, strikethrough, highlight, alignment)
@@ -318,17 +316,16 @@ Version 0.2.3
 ### Screenshot captions
 
 1. `1-editor.png` — Edit a .pptx right away with the slide list and the ribbon.
-2. `2-editor-ink.png` — Draw directly over the editor and move the toolbar wherever you like.
-3. `3-show-ink.png` — Explain with pen and highlighter during the slide show. Ink is remembered per slide.
-4. `4-presenter.png` — Presenter View shows the next slide, your notes and the elapsed time.
-5. `5-format.png` — Select several objects at once and change fill, outline, arrangement and tables on the Shape Format tab.
-6. `6-break.png` — A full-screen break timer (Break Time) for class breaks.
+2. `3-show-ink.png` — Explain with pen and highlighter during the slide show. Ink is remembered per slide.
+3. `4-presenter.png` — Presenter View shows the next slide, your notes and the elapsed time.
+4. `5-format.png` — Select several objects at once and change fill, outline, arrangement and tables on the Shape Format tab.
+5. `6-break.png` — A full-screen break timer (Break Time) for class breaks.
 
 ### Additional information
 
 **Keywords** (type each one and press Enter)
 
-presentation · screen ink · slide show · presenter view · pptx viewer · lecture · annotate
+presentation · slide show ink · slide show · presenter view · pptx viewer · lecture · annotate
 
 **Copyright and trademark info**
 

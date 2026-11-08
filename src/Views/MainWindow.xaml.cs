@@ -55,8 +55,11 @@ public partial class MainWindow : Window
         SizeBox.ItemsSource = TextCommands.FontSizes;
         penTools = new PenToolbar(Pen, ToolSelect, null, ToolPen, ToolHi, ToolEraser).Swatches(Swatches, 18, new Thickness(2), Brushes.Gray);
         OnRefreshMonitors(null, null);
+        Pen.CanDraw = () => show != null; // ink only on the slide show, never over the editor
+        Pen.Refused += () => StatusText.Text = L.T("inkShowOnly");
         Pen.Changed += OnPenChanged;
         OnPenChanged();
+        SyncDrawTools();
         UpdateStatus();
         UpdateHint();
         Shortcuts.Changed += UpdateHint;

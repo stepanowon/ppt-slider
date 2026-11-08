@@ -26,7 +26,7 @@ static partial class SelfTest
             var blankLayout = main.Deck!.Pres.SlideMasterParts.SelectMany(m => m.SlideLayoutParts).Any(l => l.SlideLayout?.Type?.Value == P.SlideLayoutValues.Blank);
             main.Run("blankPage");
             var page = main.CurrentSlide!;
-            check(main.Count == n + 1 && main.Current == 1 && main.Pen.Tool == Tool.Pen, "blank page: Ctrl+Enter in the editor adds a slide after the current one, pen ready");
+            check(main.Count == n + 1 && main.Current == 1 && main.Pen.Tool == Tool.Select, "blank page: Ctrl+Enter in the editor adds a slide after the current one (no pen: ink is for the show)");
             check(!page.Slide!.CommonSlideData!.ShapeTree!.Elements<P.Shape>().Any() && !page.Slide.CommonSlideData.ShapeTree.Elements<P.Picture>().Any()
                   && (!blankLayout || page.SlideLayoutPart?.SlideLayout?.Type?.Value == P.SlideLayoutValues.Blank),
                 $"blank page: no shapes of its own{(blankLayout ? ", the master's Blank layout" : " (deck has no Blank layout)")}");
@@ -36,7 +36,7 @@ static partial class SelfTest
             var show = main.ShowView!;
             Wait(200);
             show.Press(new Gesture(Key.Enter, ModifierKeys.Control));
-            check(main.Count == n + 2 && main.Current == 2 && show.Page.Text == $"3 / {n + 2}", "blank page: Ctrl+Enter in the show too, and the show moves there");
+            check(main.Count == n + 2 && main.Current == 2 && show.Page.Text == $"3 / {n + 2}" && main.Pen.Tool == Tool.Pen, "blank page: Ctrl+Enter in the show too, the show moves there, pen ready");
             show.Press(new Gesture(Key.D5, ModifierKeys.None));
             show.Press(new Gesture(Key.Enter, ModifierKeys.Control));
             check(main.Count == n + 3 && main.Session.Jump == "", "blank page: Ctrl+Enter is not the Enter of a typed number");
@@ -67,8 +67,8 @@ static partial class SelfTest
     }
 
     /// <summary>
-    /// Screen ink: the overlay shows while a pen is picked or the slide has ink, each slide brings back its own strokes,
-    /// and strokes drawn over the slide land on it in the PDF.
+    /// Ink on the slide show: the overlay shows over the show while a pen is picked or the slide has ink, each slide brings
+    /// back its own strokes, strokes drawn over the slide land on it in the PDF, and there is no ink over the editor.
     /// </summary>
     static void OverlayTests(string file, string outDir, Action<bool, string> check)
     {
@@ -77,11 +77,17 @@ static partial class SelfTest
         {
             main.Open(file);
             var deck = main.Deck!;
+            main.Run("pen");
+            check(main.Pen.Tool == Tool.Select && main.InkView is not { IsVisible: true } && main.StatusText.Text == L.T("inkShowOnly"),
+                "overlay: none over the editor, the pen is refused there and says why");
+            main.StartShow(0, test: true);
+            var show = main.ShowView!;
+            Wait(200);
             check(main.InkView is not { IsVisible: true }, "overlay: none while pointing with no ink");
             main.Run("pen");
             var ov = main.InkView;
-            check(ov is { IsVisible: true } && ov.Ink.IsHitTestVisible && ov.Over == null && ov.Strokes == main.Ink.Of(deck.Slides[0]),
-                "overlay: the pen shows it over the editor, drawing on slide 1's strokes");
+            check(ov is { IsVisible: true } && ov.Ink.IsHitTestVisible && ov.Over == show && ov.Strokes == main.Ink.Of(deck.Slides[0]),
+                "overlay: the pen shows it over the show, drawing on slide 1's strokes");
             if (ov == null) return;
             ov.Strokes.Add(Line(100, 100, 400, 200));
             main.Go(1);
@@ -89,7 +95,7 @@ static partial class SelfTest
             main.Go(0);
             check(ov.Strokes.Count == 1, "overlay: back on slide 1 its ink comes back");
             ov.Press(new Gesture(Key.Escape, ModifierKeys.None));
-            check(main.Pen.Tool == Tool.Select && ov.IsVisible && !ov.Ink.IsHitTestVisible, "overlay: Esc = pointer, the ink stays and clicks go through");
+            check(main.Pen.Tool == Tool.Select && ov.IsVisible && !ov.Ink.IsHitTestVisible && show.IsVisible, "overlay: Esc = pointer, the ink stays and clicks go through");
             main.Go(1);
             check(!ov.IsVisible, "overlay: pointer on a slide without ink hides it");
             main.Go(0);
@@ -98,18 +104,12 @@ static partial class SelfTest
             check(!ov.IsVisible && main.InkHidden && main.InkShownBtn.IsChecked == false, "overlay: ✕ hides the ink");
             main.Run("pen");
             check(ov.IsVisible && !main.InkHidden, "overlay: picking the pen shows it again");
-            main.Run("undo");
-            check(ov.Strokes.Count == 0, "overlay: Ctrl+Z takes back the stroke");
-            main.Run("undo");
-            main.Run("select");
+            main.UndoShowInk();
+            check(ov.Strokes.Count == 0, "overlay: undo takes back the stroke");
+            main.Run("pen");
 
             // slide coordinates: a stroke drawn over the show's slide lands on the same spot of the slide
-            main.StartShow(0, test: true);
-            var show = main.ShowView!;
-            Wait(200);
-            main.Run("pen");
             ov = main.InkView!;
-            check(ov.IsVisible && ov.Over == show, "overlay: during the show it sits over the show");
             Point On(double x, double y) => ov.PointFromScreen(show.Stage.PointToScreen(new Point(x, y)));
             var st = new Stroke(new StylusPointCollection { new StylusPoint(On(100, 80).X, On(100, 80).Y), new StylusPoint(On(500, 300).X, On(500, 300).Y) })
             {
@@ -126,7 +126,8 @@ static partial class SelfTest
                 $"overlay: ink on the show's slide maps onto the slide ({p0?.X:0.#},{p0?.Y:0.#} – {p1?.X:0.#},{p1?.Y:0.#})");
             show.Close();
             Wait(100);
-            check(main.InkView is { Over: null }, "overlay: after the show it goes back over the editor");
+            check(main.InkView is not { IsVisible: true } && main.Pen.Tool == Tool.Select && !main.ToolPen.IsEnabled && main.SlideInk().Count == 1,
+                "overlay: after the show no ink over the editor, the pointer again, the slide keeps its ink");
 
             var notes = Path.Combine(outDir, "ink-notes.pdf");
             PdfExport.Export(deck, notes, slideInk, onlyInked: true);

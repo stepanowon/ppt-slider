@@ -222,7 +222,7 @@ public partial class MainWindow : IEditorHost
         Go(Current + 1);
     }
 
-    /// <summary>An empty slide after the current one to draw on, in the editor or the show; it is a real slide in the file.</summary>
+    /// <summary>An empty slide after the current one to draw on (in the show the pen is picked); it is a real slide in the file.</summary>
     void OnBlankPage(object? sender, RoutedEventArgs? e)
     {
         if (Deck == null) return;
@@ -230,7 +230,7 @@ public partial class MainWindow : IEditorHost
         Deck.NewSlide(Current, blank: true);
         InsertThumb(Current + 1);
         Go(Current + 1);
-        if (Pen.Tool is Tool.Select or Tool.Laser) Pen.SetTool(Tool.Pen);
+        if (show != null && Pen.Tool is Tool.Select or Tool.Laser) Pen.SetTool(Tool.Pen); // ink only in the show
     }
 
     void OnDuplicate(object? sender, RoutedEventArgs? e)
@@ -260,8 +260,9 @@ public partial class MainWindow : IEditorHost
     void OnUndo(object? sender, RoutedEventArgs? e)
     {
         CommitEdit();
-        // ink first: Ctrl+Z right after drawing takes back the stroke, not an earlier edit
-        if (Ink.Undo(OverlayInk)) { StatusText.Text = L.T("inkUndone"); return; }
+        // during a show, ink first: Ctrl+Z right after drawing takes back the stroke, not an earlier edit
+        // (without a show the ink is not on screen, so the editor's Ctrl+Z is the slide's)
+        if (show != null && Ink.Undo(OverlayInk)) { StatusText.Text = L.T("inkUndone"); return; }
         if (Deck?.History.Undo() is not { } part) { StatusText.Text = L.T("nothingToUndo"); return; }
         Restored(part);
     }

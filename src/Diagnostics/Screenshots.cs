@@ -33,19 +33,6 @@ static partial class SelfTest
             Wait(800);
             Capture(work, Path.Combine(outDir, "1-editor.png"));
 
-            // screen ink over the editor
-            main.Ribbon.SelectedIndex = 3; // Draw
-            main.Run("pen");
-            while (main.Pen.Size < 4) main.Pen.Grow(1);
-            Wait(300);
-            Draw(main, main.Stage);
-            main.InkView!.Activate();
-            Wait(500);
-            Capture(work, Path.Combine(outDir, "2-editor-ink.png"));
-            main.Run("select");
-            main.OverlayInk.Clear();
-            main.HideInk();
-
             // objects selected, with the Shape Format tab: the slide's groups and pictures, if it has some
             var hits = ((IEditorHost)main).Hits;
             var boxes = hits.Where(h => h.Element.LocalName is "grpSp" or "pic").Select(h => h.Element).ToArray(); // the diagram and the picture
