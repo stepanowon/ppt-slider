@@ -3,7 +3,7 @@
 Partner Center → 제출 → **Store 목록** 에서 언어(한국어 · 日本語 · English)마다 아래 항목을 붙여 넣습니다.
 글자 수 제한: 설명 10,000자 · 새로운 기능 1,500자 · 제품 기능 항목당 200자(최대 20개) · 스크린샷 캡션 200자 · 키워드 7개(각 30자 이하) · 짧은 설명 1,000자.
 
-스크린샷은 `screen/ko`, `screen/ja`, `screen/en` 의 4장을 순서대로 올립니다.
+스크린샷은 `screen/ko`, `screen/ja`, `screen/en` 의 6장을 순서대로 올립니다.
 
 Store 로고(Store 목록 → Store 로고): `Package/StoreArt`의 9:16 포스터 아트(720×1080, 1440×2160)와 1:1 박스 아트(1080×1080, 2160×2160). 다시 그리려면 `Package/make-store-art.ps1`.
 1:1 앱 타일 아이콘(300×300, 150×150, 71×71)은 `Package/StoreArt/StoreIcon-*.png`이며 앱 로고와 같은 그림입니다. 다시 그리려면 `Package/make-assets.ps1`.
@@ -101,6 +101,8 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 2. `2-editor-ink.png` — 편집 화면 위에 바로 판서하고, 도구 모음은 원하는 곳으로 옮깁니다.
 3. `3-show-ink.png` — 슬라이드 쇼에서 펜과 형광펜으로 설명합니다. 판서는 슬라이드별로 기억됩니다.
 4. `4-presenter.png` — 발표자 보기에서 다음 슬라이드, 노트, 경과 시간을 확인합니다.
+5. `5-format.png` — 여러 개체를 한꺼번에 선택하고 도형 서식 탭에서 채우기, 윤곽선, 정렬, 표를 바꿉니다.
+6. `6-break.png` — 전체 화면 휴식 타이머(Break Time)로 쉬는 시간을 알립니다.
 
 ### 추가 정보
 
@@ -209,6 +211,8 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 2. `2-editor-ink.png` — 編集画面の上に直接手書きでき、ツールバーは好きな場所に移動できます。
 3. `3-show-ink.png` — スライド ショーでペンと蛍光ペンを使って説明。手書きはスライドごとに記憶されます。
 4. `4-presenter.png` — 発表者ツールで次のスライド、ノート、経過時間を確認できます。
+5. `5-format.png` — 複数のオブジェクトをまとめて選択し、[図形の書式] タブで塗りつぶし、枠線、配置、表を変更できます。
+6. `6-break.png` — 全画面の休憩タイマー (Break Time) で休憩時間を知らせます。
 
 ### 追加情報
 
@@ -317,6 +321,8 @@ Version 0.2.3
 2. `2-editor-ink.png` — Draw directly over the editor and move the toolbar wherever you like.
 3. `3-show-ink.png` — Explain with pen and highlighter during the slide show. Ink is remembered per slide.
 4. `4-presenter.png` — Presenter View shows the next slide, your notes and the elapsed time.
+5. `5-format.png` — Select several objects at once and change fill, outline, arrangement and tables on the Shape Format tab.
+6. `6-break.png` — A full-screen break timer (Break Time) for class breaks.
 
 ### Additional information
 

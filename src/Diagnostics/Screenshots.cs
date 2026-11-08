@@ -11,7 +11,8 @@ namespace PptSlider;
 
 /// <summary>
 /// `PptSlider.exe --screenshots deck.pptx outDir [ko|ja|en]`: Store screenshots of the real windows on the primary monitor
-/// (editor, screen ink over the editor, slide show with ink, presenter view). Captures the screen, so it needs a free desktop.
+/// (editor, screen ink over the editor, slide show with ink, presenter view, shape format, break timer).
+/// Captures the screen, so it needs a free desktop.
 /// </summary>
 static partial class SelfTest
 {
@@ -33,7 +34,7 @@ static partial class SelfTest
             Capture(work, Path.Combine(outDir, "1-editor.png"));
 
             // screen ink over the editor
-            main.Ribbon.SelectedIndex = 1;
+            main.Ribbon.SelectedIndex = 3; // Draw
             main.Run("pen");
             while (main.Pen.Size < 4) main.Pen.Grow(1);
             Wait(300);
@@ -42,8 +43,22 @@ static partial class SelfTest
             Wait(500);
             Capture(work, Path.Combine(outDir, "2-editor-ink.png"));
             main.Run("select");
+            main.OverlayInk.Clear();
+            main.HideInk();
 
-            // the show on the primary monitor, with its ink
+            // objects selected, with the Shape Format tab: the slide's groups and pictures, if it has some
+            var hits = ((IEditorHost)main).Hits;
+            var boxes = hits.Where(h => h.Element.LocalName is "grpSp" or "pic").Select(h => h.Element).ToArray(); // the diagram and the picture
+            if (boxes.Length == 0) boxes = hits.Select(h => h.Element).Take(1).ToArray();
+            main.ShapeCommands.Select(boxes);
+            main.Ribbon.SelectedIndex = 2; // Shape Format
+            Wait(500);
+            Capture(work, Path.Combine(outDir, "5-format.png"));
+            main.ShapeCommands.Select();
+            main.Ribbon.SelectedIndex = 0;
+
+            // the show on the primary monitor, with its ink: the editor must not stay on top of it
+            main.Topmost = false;
             var monitors = (IEnumerable<MonitorInfo>)main.MonitorBox.ItemsSource;
             main.MonitorBox.SelectedItem = monitors.First(m => m.Primary);
             main.PresenterBox.IsChecked = false;
@@ -60,10 +75,16 @@ static partial class SelfTest
             main.ShowView?.Close();
             Wait(400);
 
+            // the break timer, full screen on the primary monitor
+            main.OpenBreak();
+            Wait(700);
+            Capture(primary.Bounds, Path.Combine(outDir, "6-break.png"));
+            foreach (var b in Application.Current.Windows.OfType<BreakWindow>().ToList()) b.Close();
+            Wait(300);
+
             // presenter view on the primary monitor, the show on another one
             if (monitors.FirstOrDefault(m => !m.Primary) is { } other)
             {
-                main.Topmost = false;
                 main.MonitorBox.SelectedItem = other;
                 main.PresenterBox.IsChecked = true;
                 main.StartShow(main.Current);
@@ -94,14 +115,14 @@ static partial class SelfTest
         var red = Color.FromRgb(0xE5, 0x1C, 0x23);
         var blue = Color.FromRgb(0x1E, 0x63, 0xD6);
         // a slightly wobbly ellipse around "git add ."
-        Add(Range(60, t => new Point(170 + 78 * Math.Cos(t * 2.15 * Math.PI) + 3 * Math.Sin(t * 9), 227 + 25 * Math.Sin(t * 2.15 * Math.PI))), red, 4);
+        Add(Range(60, t => new Point(168 + 64 * Math.Cos(t * 2.15 * Math.PI) + 3 * Math.Sin(t * 9), 210 + 19 * Math.Sin(t * 2.15 * Math.PI))), red, 4);
         // highlight "git commit -m [커밋메시지]"
-        Add(Range(10, t => new Point(88 + 350 * t, 304 + 1.5 * Math.Sin(t * 6))), Colors.Yellow, 34, hi: true);
+        Add(Range(10, t => new Point(88 + 350 * t, 283 + 1.5 * Math.Sin(t * 6))), Colors.Yellow, 34, hi: true);
         // an arrow from the working directory round to the repository
         Add(Range(50, t => new Point(725 + 435 * t, 352 + 48 * Math.Sin(t * Math.PI))), red, 4);
         Add([new(1135, 380), new(1162, 352), new(1166, 386)], red, 4);
         // a check next to "git log"
-        Add([new(235, 650), new(250, 668), new(282, 628)], blue, 5);
+        Add([new(236, 614), new(249, 630), new(276, 597)], blue, 5);
         // underline the diagram's middle box label
         Add(Range(12, t => new Point(905 + 82 * t, 266 + 2 * Math.Sin(t * 5))), blue, 4);
     }
