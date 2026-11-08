@@ -47,7 +47,7 @@ public partial class MainWindow
         overlay ??= new InkOverlay(this, target, show);
         overlay.Strokes = strokes;
         bool wasDrawing = overlay.IsVisible && overlay.Ink.IsHitTestVisible;
-        if (!overlay.IsVisible) overlay.Show();
+        if (!overlay.IsVisible) overlay.Reveal();
         if (Drawing && !wasDrawing && !InkOverlay.OffScreen) overlay.Activate(); // its keys: next slide, Esc...
         SyncShowBar();
     }

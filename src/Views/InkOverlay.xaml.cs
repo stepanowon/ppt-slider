@@ -70,6 +70,17 @@ public partial class InkOverlay : Window
     /// </summary>
     internal static bool StaysOnTop(Window? over) => over == null;
 
+    /// <summary>
+    /// Shows the overlay again after it was hidden. WPF refuses to show a maximized window that must not take focus
+    /// (ShowActivated false), so it comes back as a normal window and is set over its monitor again.
+    /// </summary>
+    internal void Reveal()
+    {
+        if (WindowState == WindowState.Maximized) WindowState = WindowState.Normal;
+        Show();
+        if (!OffScreen) Monitors.Cover(this, Monitor);
+    }
+
     public StrokeCollection Strokes
     {
         get => Ink.Strokes;

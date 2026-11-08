@@ -23,6 +23,20 @@ static partial class SelfTest
         {
             main.Open(file);
             int n = main.Count;
+
+            // pen → pointer hides the ink overlay (no ink yet); the pen again shows it. On screen the overlay is maximized,
+            // and WPF throws when a maximized window that must not take focus is shown again (crashed 0.2.4)
+            main.Run("pen");
+            main.Run("select");
+            var hiddenOverlay = main.InkView!;
+            bool hidden = !hiddenOverlay.IsVisible;
+            hiddenOverlay.WindowState = WindowState.Maximized; // hidden, so nothing moves on screen
+            string? error = null;
+            try { main.Run("pen"); } catch (InvalidOperationException e) { error = e.Message; }
+            check(hidden && error == null && hiddenOverlay.IsVisible && hiddenOverlay.WindowState == WindowState.Normal,
+                $"ink: the overlay comes back after the pointer hid it ({error ?? "ok"})");
+            main.Run("select");
+
             main.StartShow(0, test: true);
             var show = main.ShowView!;
             Wait(300);

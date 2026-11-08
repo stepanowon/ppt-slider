@@ -51,6 +51,10 @@ public static class Monitors
         w.Loaded += (_, _) => w.WindowState = WindowState.Maximized;
     }
 
+    /// <summary>Moves a shown window over all of monitor <paramref name="m"/> without activating it.</summary>
+    public static void Cover(Window w, MonitorInfo m) =>
+        SetWindowPos(new WindowInteropHelper(w).Handle, IntPtr.Zero, m.Bounds.X, m.Bounds.Y, m.Bounds.Width, m.Bounds.Height, 0x0004 | 0x0010);
+
     delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdc, ref RECT rc, IntPtr data);
 
     [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
