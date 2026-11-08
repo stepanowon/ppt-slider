@@ -86,7 +86,7 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 1. 슬라이드 쇼 판서: 펜·형광펜·지우개, 7가지 색, 두께 조절
 2. 판서를 슬라이드별로 기억해 슬라이드를 넘기면 그 판서가 다시 나타남
-3. 판서는 슬라이드 쇼에서만: 편집 화면에서는 실수로 그려지지 않음
+3. 판서는 슬라이드 쇼에서만: 그리기 탭은 쇼 중에만 나타나고, 편집 화면에서는 실수로 그려지지 않음
 4. 쇼 모니터 선택과 발표자 보기(현재·다음 슬라이드, 노트, 경과 시간)
 5. 검은 화면/흰 화면, 레이저 포인터, 스팟 하이라이트, 화면 확대, 번호로 이동
 6. 텍스트 제자리 편집(글꼴·크기·색·굵게·기울임꼴·밑줄·취소선·강조 색·정렬)
@@ -202,7 +202,7 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 1. スライド ショーでの手書き: ペン・蛍光ペン・消しゴム、7 色、太さの調整
 2. 手書きをスライドごとに記憶し、スライドを切り替えると再表示
-3. 手書きはスライド ショー専用: 編集画面で誤って描かれない
+3. 手書きはスライド ショー専用: 描画タブはショー中にだけ表示され、編集画面で誤って描かれない
 4. 表示モニターの選択と発表者ツール (現在と次のスライド、ノート、経過時間)
 5. 黒い画面/白い画面、レーザー ポインター、スポットハイライト、画面の拡大、番号でジャンプ
 6. テキストのその場編集 (フォント・サイズ・色・太字・斜体・下線・取り消し線・蛍光ペンの色・配置)
@@ -318,7 +318,7 @@ Version 0.2.3
 
 1. Slide show ink: pen, highlighter, eraser, 7 colors, adjustable width
 2. Ink remembered per slide and shown again when you return to it
-3. Ink in the slide show only: no stray strokes while editing
+3. Ink in the slide show only: the Draw tab appears only during the show, and no stray strokes while editing
 4. Choose the show monitor; Presenter View with current and next slides, notes and elapsed time
 5. Black/white screen, laser pointer, spotlight, zoom, jump to slide by number
 6. In-place text editing (font, size, color, bold, italic, underline, strikethrough, highlight, alignment)
