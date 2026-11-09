@@ -63,8 +63,12 @@ Shift를 누른 채 그리면 직선, Ctrl+Z로 판서 되돌리기, Ctrl+Enter�
 
 ### 이 버전의 새로운 기능
 
+버전 0.2.7
+- 그리기 탭은 슬라이드 쇼 중에만 나타납니다.
+- 설정 탭에 정보 창을 추가했습니다. 버전, 라이선스, 링크를 확인하고 버그 신고용 정보를 복사할 수 있습니다.
+
 버전 0.2.6
-- 판서는 슬라이드 쇼에서만 할 수 있습니다. 편집 화면에서는 펜·형광펜·지우개를 고를 수 없어 슬라이드를 고치다 실수로 그릴 일이 없습니다. 그리기 탭도 쇼 중에만 나타납니다.
+- 판서는 슬라이드 쇼에서만 할 수 있습니다. 편집 화면에서는 펜·형광펜·지우개를 고를 수 없어 슬라이드를 고치다 실수로 그릴 일이 없습니다.
 - 쇼에서 그린 판서는 쇼를 마쳐도 슬라이드별로 남아 다음 쇼와 PDF·판서 노트에 들어갑니다.
 - 편집 화면의 Ctrl+Z는 슬라이드 편집만 되돌립니다.
 - 펜 → 포인터 → 펜으로 바꿀 때 앱이 꺼지던 문제를 고쳤습니다.
@@ -179,8 +183,12 @@ Shift を押しながら描くと直線、Ctrl+Z で手書きを元に戻し、C
 
 ### このバージョンの新機能
 
+バージョン 0.2.7
+- 描画タブはスライド ショー中にだけ表示されます。
+- 設定タブに情報ウィンドウを追加しました。バージョン、ライセンス、リンクを確認し、バグ報告用の情報をコピーできます。
+
 バージョン 0.2.6
-- 手書きはスライド ショーでのみ使えます。編集画面ではペン・蛍光ペン・消しゴムを選べないため、スライドの編集中に誤って描くことはありません。描画タブもショー中にだけ表示されます。
+- 手書きはスライド ショーでのみ使えます。編集画面ではペン・蛍光ペン・消しゴムを選べないため、スライドの編集中に誤って描くことはありません。
 - ショーで描いた手書きはショーを終えてもスライドごとに残り、次のショーや PDF・手書きノートに含まれます。
 - 編集画面の Ctrl+Z はスライドの編集だけを元に戻します。
 - ペン → ポインター → ペンと切り替えるとアプリが終了する問題を修正しました。
@@ -295,8 +303,12 @@ A lightweight app to open .pptx presentations, edit text, shapes and tables, and
 
 ### What's new in this version
 
+Version 0.2.7
+- The Draw tab now appears only during the slide show.
+- Added an About window on the Settings tab: version, license and links, plus system info to copy for bug reports.
+
 Version 0.2.6
-- Ink is now drawn only in the slide show. The pen, highlighter and eraser can't be picked in the editor, so you never draw by mistake while editing slides. The Draw tab, too, appears only during the show.
+- Ink is now drawn only in the slide show. The pen, highlighter and eraser can't be picked in the editor, so you never draw by mistake while editing slides.
 - Ink drawn in the show stays with its slides after the show ends, for the next show and for PDF / Ink Notes.
 - Ctrl+Z in the editor now undoes slide edits only.
 - Fixed the app closing when switching pen → pointer → pen.
@@ -312,7 +324,6 @@ Version 0.2.3
 - Slide numbers are shown.
 - Table fonts, first-column emphasis and lightened or darkened colors now match PowerPoint.
 - Very thin lines and separators are no longer missing.
-- Fixed the "The path is empty" error when restarting after changing the language with no file open.
 
 ### Product features
 
